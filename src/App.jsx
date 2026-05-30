@@ -1341,7 +1341,7 @@ function DetailForm({ item, isNew, onSave, onCancel }) {
   );
 }
 
-// ── SCALE PROFILES (compact for integrated tab) ──────────────────
+// ── SCALE WBS_PROFILES (compact for integrated tab) ──────────────────
 const WBS_PROFILES = [
   { id:"SCADA_RTC",         name:"SCADA RTC",            section:"SCADA",    status:"Approved", tiers:[{f:1,t:2,s:1.00},{f:3,t:4,s:0.95},{f:5,t:7,s:0.90},{f:8,t:9,s:0.85},{f:10,t:null,s:0.80}] },
   { id:"SCADA_OTHER",       name:"SCADA General",        section:"SCADA",    status:"Draft",    tiers:[{f:1,t:2,s:1.00},{f:3,t:5,s:0.95},{f:6,t:null,s:0.90}] },
@@ -1480,7 +1480,7 @@ function PeopleTab({ people, setPeople }) {
   );
 }
 
-// ── SCALING PROFILES TAB (compact) ───────────────────────────────
+// ── SCALING WBS_PROFILES TAB (compact) ───────────────────────────────
 function ScalingTab() {
   const [selected, setSelected] = useState("SCADA_RTC");
   const [previewQty, setPreviewQty] = useState(6);
@@ -1499,7 +1499,7 @@ function ScalingTab() {
     }));
   };
 
-  const sections = [...new Set(PROFILES.map(p => p.section))];
+  const sections = [...new Set(WBS_PROFILES.map(p => p.section))];
 
   return (
     <div className="flex-1 flex overflow-hidden">
@@ -1839,7 +1839,7 @@ function WBSManager() {
         <span>
           {wbsItems.filter(w=>w.active).length} active WBS items ·{" "}
           {people.filter(p=>p.active).length} active people ·{" "}
-          {WBS_PROFILES.filter(p=>p.status==="Approved").length}/{PROFILES.length} profiles approved
+          {WBS_PROFILES.filter(p=>p.status==="Approved").length}/{WBS_PROFILES.length} profiles approved
         </span>
       </div>
     </div>
