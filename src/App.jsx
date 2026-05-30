@@ -1480,6 +1480,14 @@ function PeopleTab({ people, setPeople }) {
   );
 }
 
+// ── HELPERS FOR SCALING TAB ──────────────────────────────────────────
+const FACTOR_COLOR = (f) =>
+  f >= 1.00 ? "border-2 border-green-400 text-green-700 bg-green-50" :
+  f >= 0.92 ? "border-2 border-blue-400 text-blue-700 bg-blue-50" :
+  f >= 0.87 ? "border-2 border-yellow-400 text-yellow-700 bg-yellow-50" :
+  f >= 0.80 ? "border-2 border-orange-400 text-orange-700 bg-orange-50" :
+              "border-2 border-red-400 text-red-700 bg-red-50";
+
 // ── SCALING WBS_PROFILES TAB (compact) ───────────────────────────────
 function ScalingTab() {
   const [selected, setSelected] = useState("SCADA_RTC");
