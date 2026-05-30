@@ -1,5 +1,12 @@
 import { useState, useMemo } from "react";
 
+// ════════════════════════════════════════════════════════════════
+// IET ESTIMATION TOOL — COMBINED APP
+// Tab 1: Estimation Entry Form
+// Tab 2: WBS Manager (Admin)
+// ════════════════════════════════════════════════════════════════
+
+
 // ── DATA ────────────────────────────────────────────────────────
 const PHASES = [
   { id: 1, label: "1 · Planning" },
@@ -972,7 +979,7 @@ const TABS = [
   { id: "summary",    label: "📊 Summary",              badge: null },
 ];
 
-export default function App() {
+function EstimationApp() {
   const [activeTab, setActiveTab]     = useState("estimate");
   const [isCommercial, setIsComm]     = useState(false);
 
@@ -1048,6 +1055,837 @@ export default function App() {
       <div className="bg-gray-200 border-t text-xs text-gray-500 px-4 py-1 flex justify-between flex-shrink-0">
         <span>Auto-saving to Dataverse — all changes saved immediately</span>
         <span>Investment Type: <strong className={isCommercial ? "text-orange-700" : "text-blue-700"}>{isCommercial ? "Commercially Funded" : "Internally Funded"}</strong> · Estimate Class: Class 4 · Rev A</span>
+      </div>
+    </div>
+  );
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// WBS MANAGER — Tab 2
+// ════════════════════════════════════════════════════════════════
+
+
+// ── SAMPLE DATA ──────────────────────────────────────────────────
+const SAMPLE_WBS = [
+  { code:"3.1.3.04.1.01", parent:"3.1.3.04.1", depth:6, scope:"Supply",     desc:"Disconnector 132kV 2500A - Busbar Height 4000mm",       resource:"ZS Electrical Technician", delivery:"EE Delivered", uom:"EA", crew:null, hrs:null, active:true,  modified:"D. Lawrence",  modDate:"2026-05-20" },
+  { code:"3.1.3.04.1.02", parent:"3.1.3.04.1", depth:6, scope:"Supply",     desc:"Disconnector 132kV 2000A - Busbar Height 4000mm",       resource:"ZS Electrical Technician", delivery:"EE Delivered", uom:"EA", crew:null, hrs:null, active:true,  modified:"D. Lawrence",  modDate:"2026-05-20" },
+  { code:"3.1.3.04.1.09", parent:"3.1.3.04.1", depth:6, scope:"Supply",     desc:"Disconnector 66kV 2500A - Busbar Height 3500mm",        resource:"ZS Electrical Technician", delivery:"EE Delivered", uom:"EA", crew:null, hrs:null, active:true,  modified:"D. Lawrence",  modDate:"2026-05-20" },
+  { code:"3.1.3.04.1.10", parent:"3.1.3.04.1", depth:6, scope:"Supply",     desc:"Disconnector 66kV 2000A - Busbar Height 3500mm",        resource:"ZS Electrical Technician", delivery:"EE Delivered", uom:"EA", crew:null, hrs:null, active:true,  modified:"S. Chen",      modDate:"2026-04-15" },
+  { code:"3.1.3.04.1.15", parent:"3.1.3.04.1", depth:6, scope:"Supply",     desc:"Disconnector Support Structure 3500mm",                  resource:"ZS Electrical Technician", delivery:"EE Delivered", uom:"EA", crew:null, hrs:null, active:false, modified:"M. Thompson",  modDate:"2026-03-10" },
+  { code:"3.1.3.04.4.01", parent:"3.1.3.04.4", depth:6, scope:"Install",    desc:"≥66kV Disconnector Install",                            resource:"ZS Electrical Technician", delivery:"EE Delivered", uom:"EA", crew:4,    hrs:16,   active:true,  modified:"D. Lawrence",  modDate:"2026-05-20" },
+  { code:"3.1.3.04.4.03", parent:"3.1.3.04.4", depth:6, scope:"Install",    desc:"≥66kV Earth Switch Install",                            resource:"ZS Electrical Technician", delivery:"EE Delivered", uom:"EA", crew:4,    hrs:8,    active:true,  modified:"D. Lawrence",  modDate:"2026-05-20" },
+  { code:"3.1.3.04.7.01", parent:"3.1.3.04.7", depth:6, scope:"Commission", desc:"≥66kV Disconnector Commission",                         resource:"ZS Specialist Technician", delivery:"EE Delivered", uom:"EA", crew:2,    hrs:4,    active:true,  modified:"P. Nair",      modDate:"2026-05-15" },
+  { code:"3.1.3.02.1.01", parent:"3.1.3.02.1", depth:6, scope:"Supply",     desc:"132kV Live Tank Circuit Breaker - 3AP1-FG 145kV (SF6)", resource:"ZS Electrical Technician", delivery:"EE Delivered", uom:"EA", crew:null, hrs:null, active:true,  modified:"D. Lawrence",  modDate:"2026-05-20" },
+  { code:"3.1.3.02.4.01", parent:"3.1.3.02.4", depth:6, scope:"Install",    desc:"≥66kV Circuit Breaker Install",                         resource:"ZS Electrical Technician", delivery:"EE Delivered", uom:"EA", crew:4,    hrs:40,   active:true,  modified:"D. Lawrence",  modDate:"2026-05-20" },
+  { code:"3.1.3.02.7.01", parent:"3.1.3.02.7", depth:6, scope:"Commission", desc:"≥66kV Circuit Breaker Commission",                      resource:"ZS Specialist Technician", delivery:"EE Delivered", uom:"EA", crew:2,    hrs:24,   active:true,  modified:"P. Nair",      modDate:"2026-05-15" },
+  { code:"3.1.3.05.1.01", parent:"3.1.3.05.1", depth:6, scope:"Supply",     desc:"Current Transformer 132kV Oil/Paper 1000A",             resource:"ZS Electrical Technician", delivery:"EE Delivered", uom:"EA", crew:null, hrs:null, active:true,  modified:"D. Lawrence",  modDate:"2026-05-20" },
+  { code:"3.1.3.05.4.01", parent:"3.1.3.05.4", depth:6, scope:"Install",    desc:"≥66kV Current Transformer Install",                     resource:"ZS Electrical Technician", delivery:"EE Delivered", uom:"EA", crew:4,    hrs:8,    active:true,  modified:"D. Lawrence",  modDate:"2026-05-20" },
+];
+
+const SAMPLE_PEOPLE = [
+  { id:1,  name:"Daniel Lawrence",  email:"d.lawrence@ee.com.au",   role:"Lead Estimator",   team:"Zone Substation",  canReview:true,  active:true  },
+  { id:2,  name:"Sarah Chen",       email:"s.chen@ee.com.au",       role:"Estimator",        team:"Zone Substation",  canReview:false, active:true  },
+  { id:3,  name:"Mark Thompson",    email:"m.thompson@ee.com.au",   role:"Estimator",        team:"Subtransmission",  canReview:false, active:true  },
+  { id:4,  name:"Priya Nair",       email:"p.nair@ee.com.au",       role:"Senior Estimator", team:"Zone Substation",  canReview:true,  active:true  },
+  { id:5,  name:"James O'Brien",    email:"j.obrien@ee.com.au",     role:"Estimator",        team:"Communications",   canReview:false, active:true  },
+  { id:6,  name:"Michael Santos",   email:"m.santos@ee.com.au",     role:"Lead Estimator",   team:"Commissioning",    canReview:true,  active:true  },
+  { id:7,  name:"Anh Nguyen",       email:"a.nguyen@ee.com.au",     role:"Estimator",        team:"Zone Substation",  canReview:false, active:true  },
+  { id:8,  name:"Emma Blackwood",   email:"e.blackwood@ee.com.au",  role:"Project Manager",  team:"Zone Substation",  canReview:true,  active:true  },
+  { id:9,  name:"Tom Eriksson",     email:"t.eriksson@ee.com.au",   role:"Senior Estimator", team:"Civil & Earthing", canReview:true,  active:false },
+];
+
+const WBS_SCOPES = ["All","Supply","Install","Commission","Supply & Install","Inactive"];
+const WBS_SCOPE_STYLES = {
+  "Supply":          "bg-blue-100 text-blue-700 border border-blue-200",
+  "Install":         "bg-purple-100 text-purple-700 border border-purple-200",
+  "Commission":      "bg-teal-100 text-teal-700 border border-teal-200",
+  "Supply & Install":"bg-indigo-100 text-indigo-700 border border-indigo-200",
+  "Demolition":      "bg-red-100 text-red-700 border border-red-200",
+};
+const WBS_ROLE_STYLES = {
+  "Lead Estimator":   "bg-blue-100 text-blue-700",
+  "Senior Estimator": "bg-purple-100 text-purple-700",
+  "Estimator":        "bg-gray-100 text-gray-600",
+  "Project Manager":  "bg-green-100 text-green-700",
+};
+
+// ── SMALL COMPONENTS ─────────────────────────────────────────────
+function ScopeBadge({ scope }) {
+  return <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${WBS_SCOPE_STYLES[scope] || "bg-gray-100 text-gray-500"}`}>{scope}</span>;
+}
+
+function StdHrsBadge({ crew, hrs }) {
+  if (!crew || !hrs) return <span className="text-xs text-gray-300">—</span>;
+  const total = crew * hrs;
+  return <span className="text-xs font-mono text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">{crew}×{hrs}={total}h</span>;
+}
+
+function WBSNavigatorItem({ node, selected, onSelect, depth = 0 }) {
+  const [expanded, setExpanded] = useState(depth < 2);
+  const hasKids = node.children && node.children.length > 0;
+  const isLeaf  = !hasKids;
+
+  return (
+    <div>
+      <div
+        onClick={() => { if (hasKids) setExpanded(e => !e); else onSelect(node); }}
+        className={`flex items-center gap-1 py-1 px-2 cursor-pointer rounded mx-1 text-xs transition-colors ${
+          selected?.code === node.code ? "bg-blue-700 text-white" : "text-gray-700 hover:bg-gray-100"
+        }`}
+        style={{ paddingLeft: `${8 + depth * 12}px` }}
+      >
+        <span className="w-3 text-center text-gray-400 flex-shrink-0">
+          {hasKids ? (expanded ? "▾" : "▸") : "·"}
+        </span>
+        <span className="font-mono text-gray-400 text-xs flex-shrink-0">{node.code}</span>
+        <span className="ml-1 truncate">{node.label}</span>
+        {node.scope && <ScopeBadge scope={node.scope} />}
+      </div>
+      {hasKids && expanded && node.children.map(child => (
+        <WBSNavigatorItem key={child.code} node={child} selected={selected} onSelect={onSelect} depth={depth + 1} />
+      ))}
+    </div>
+  );
+}
+
+// Build tree from flat WBS list
+const WBS_NAV_TREE = [
+  { code:"3.1.3", label:"HV Plant", children: [
+    { code:"3.1.3.02", label:"Circuit Breakers", children:[
+      { code:"3.1.3.02.1", label:"Supply", scope:"Supply",     children:[] },
+      { code:"3.1.3.02.4", label:"Install", scope:"Install",   children:[] },
+      { code:"3.1.3.02.7", label:"Commission", scope:"Commission", children:[] },
+    ]},
+    { code:"3.1.3.04", label:"Disconnectors & Earth Switches", children:[
+      { code:"3.1.3.04.1", label:"Supply", scope:"Supply",     children:[] },
+      { code:"3.1.3.04.4", label:"Install", scope:"Install",   children:[] },
+      { code:"3.1.3.04.7", label:"Commission", scope:"Commission", children:[] },
+    ]},
+    { code:"3.1.3.05", label:"Current Transformers", children:[
+      { code:"3.1.3.05.1", label:"Supply", scope:"Supply",     children:[] },
+      { code:"3.1.3.05.4", label:"Install", scope:"Install",   children:[] },
+    ]},
+  ]},
+];
+
+// ── DETAIL FORM ──────────────────────────────────────────────────
+function DetailForm({ item, isNew, onSave, onCancel }) {
+  const [desc,     setDesc]     = useState(item?.desc     || "");
+  const [scope,    setScope]    = useState(item?.scope    || "Supply");
+  const [resource, setResource] = useState(item?.resource || "ZS Electrical Technician");
+  const [delivery, setDelivery] = useState(item?.delivery || "EE Delivered");
+  const [uom,      setUom]      = useState(item?.uom      || "EA");
+  const [crew,     setCrew]     = useState(item?.crew     || "");
+  const [hrs,      setHrs]      = useState(item?.hrs      || "");
+  const [reason,   setReason]   = useState("");
+  const [approvedBy, setApprovedBy] = useState("");
+
+  const isInstOrComm = scope === "Install" || scope === "Commission";
+  const totalHrs = (parseFloat(crew) || 0) * (parseFloat(hrs) || 0);
+  const hoursChanged = !isNew && item && (
+    parseFloat(crew) !== item.crew || parseFloat(hrs) !== item.hrs
+  );
+
+  return (
+    <div className="w-96 bg-white border-l flex flex-col overflow-hidden flex-shrink-0 shadow-xl">
+      <div className={`px-4 py-3 text-white flex items-center justify-between ${isNew ? "bg-green-700" : "bg-blue-700"}`}>
+        <div>
+          <div className="text-xs font-bold uppercase tracking-wide">
+            {isNew ? "Add New WBS Item" : "Edit WBS Item"}
+          </div>
+          {!isNew && item && <div className="font-mono text-xs opacity-75">{item.code}</div>}
+        </div>
+        <button onClick={onCancel} className="text-white opacity-60 hover:opacity-100 text-lg">×</button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+
+        {/* Description */}
+        <div>
+          <label className="text-xs font-semibold text-gray-600 block mb-1">Description <span className="text-red-500">*</span></label>
+          <input value={desc} onChange={e => setDesc(e.target.value)}
+            placeholder="Full activity description…"
+            className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" />
+        </div>
+
+        {/* Scope + Delivery */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-semibold text-gray-600 block mb-1">Scope <span className="text-red-500">*</span></label>
+            <select value={scope} onChange={e => setScope(e.target.value)}
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+              {["Supply","Install","Commission","Supply & Install","Demolition / Removal"].map(s => <option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 block mb-1">UOM</label>
+            <select value={uom} onChange={e => setUom(e.target.value)}
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+              {["EA","m","m²","hr","lot"].map(u => <option key={u}>{u}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Resource + Delivery */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-semibold text-gray-600 block mb-1">Default Resource</label>
+            <select value={resource} onChange={e => setResource(e.target.value)}
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+              {["ZS Electrical Technician","ZS Specialist Technician","Project Manager","Substation Designer","Protection Engineer","Telecomms Technician"].map(r => <option key={r}>{r}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 block mb-1">Delivery Method</label>
+            <select value={delivery} onChange={e => setDelivery(e.target.value)}
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+              <option>EE Delivered</option>
+              <option>Contractor Delivered</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Standard Hours — only for Install/Commission */}
+        {isInstOrComm && (
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+            <div className="text-xs font-bold text-purple-800 mb-2 uppercase tracking-wide">
+              Pre-Agreed Standard Hours
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Crew Size</label>
+                <input type="number" min="1" value={crew} onChange={e => setCrew(e.target.value)}
+                  className="w-full border border-purple-300 rounded px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Hrs / Person</label>
+                <input type="number" min="0.5" step="0.5" value={hrs} onChange={e => setHrs(e.target.value)}
+                  className="w-full border border-purple-300 rounded px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-purple-400 bg-white" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Total Hrs/Unit</label>
+                <div className={`border rounded px-2 py-1.5 text-xs text-center font-bold ${totalHrs > 0 ? "border-purple-400 bg-purple-100 text-purple-800" : "border-gray-200 bg-gray-50 text-gray-400"}`}>
+                  {totalHrs > 0 ? `${totalHrs} hrs` : "—"}
+                </div>
+              </div>
+            </div>
+            {hoursChanged && (
+              <div className="mt-2 bg-yellow-50 border border-yellow-300 rounded p-2">
+                <div className="text-xs text-yellow-800 font-semibold mb-1">⚠️ Hours are changing</div>
+                <div className="text-xs text-yellow-700 mb-2">
+                  This will affect all future estimates. Historical estimates are not changed.
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">Approved By <span className="text-red-500">*</span></label>
+                  <input value={approvedBy} onChange={e => setApprovedBy(e.target.value)}
+                    placeholder="Stakeholder manager name…"
+                    className="w-full border border-yellow-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-yellow-400" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Scope Links — only for Supply */}
+        {scope === "Supply" && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="text-xs font-bold text-blue-800 mb-2 uppercase tracking-wide">
+              Scope Links
+            </div>
+            <div className="space-y-2">
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Linked Install Row</label>
+                <select className="w-full border border-blue-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                  <option>3.1.3.04.4.01 — ≥66kV Disconnector Install</option>
+                  <option>3.1.3.04.4.03 — ≥66kV Earth Switch Install</option>
+                  <option>— None —</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Linked Commission Row</label>
+                <select className="w-full border border-blue-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                  <option>4.1.2.03.7.01 — ≥66kV Disconnector Commission</option>
+                  <option>— None —</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Change reason — edit only */}
+        {!isNew && (
+          <div>
+            <label className="text-xs font-semibold text-gray-600 block mb-1">Change Reason</label>
+            <textarea value={reason} onChange={e => setReason(e.target.value)}
+              placeholder="Required if editing standard hours. Optional otherwise."
+              rows={2}
+              className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-blue-400" />
+          </div>
+        )}
+      </div>
+
+      <div className="p-4 border-t flex gap-2">
+        <button
+          disabled={!desc.trim() || (isInstOrComm && hoursChanged && !approvedBy.trim())}
+          onClick={() => onSave({ desc, scope, resource, delivery, uom, crew: parseFloat(crew)||null, hrs: parseFloat(hrs)||null })}
+          className="flex-1 text-xs bg-blue-700 hover:bg-blue-600 disabled:bg-blue-300 text-white py-2 rounded font-semibold">
+          {isNew ? "Create WBS Item" : "Save Changes"}
+        </button>
+        <button onClick={onCancel}
+          className="px-4 text-xs border border-gray-300 hover:bg-gray-50 rounded text-gray-600">
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── SCALE PROFILES (compact for integrated tab) ──────────────────
+const WBS_PROFILES = [
+  { id:"SCADA_RTC",         name:"SCADA RTC",            section:"SCADA",    status:"Approved", tiers:[{f:1,t:2,s:1.00},{f:3,t:4,s:0.95},{f:5,t:7,s:0.90},{f:8,t:9,s:0.85},{f:10,t:null,s:0.80}] },
+  { id:"SCADA_OTHER",       name:"SCADA General",        section:"SCADA",    status:"Draft",    tiers:[{f:1,t:2,s:1.00},{f:3,t:5,s:0.95},{f:6,t:null,s:0.90}] },
+  { id:"HV_PLANT_OUTDOOR",  name:"HV Plant — Outdoor",   section:"HV Plant", status:"Pending",  tiers:[{f:1,t:2,s:1.00},{f:3,t:5,s:0.80},{f:6,t:null,s:0.75}] },
+  { id:"HV_PLANT_INSTR",    name:"HV Plant — Instrument",section:"HV Plant", status:"Pending",  tiers:[{f:1,t:2,s:1.00},{f:3,t:5,s:0.80},{f:6,t:null,s:0.75}] },
+  { id:"PROTECTION_STD",    name:"Protection Standard",  section:"Protection",status:"Draft",   tiers:[{f:1,t:2,s:1.00},{f:3,t:5,s:0.92},{f:6,t:9,s:0.87},{f:10,t:null,s:0.83}] },
+  { id:"COMMS_STANDARD",    name:"Communications",        section:"Comms",    status:"Draft",    tiers:[{f:1,t:2,s:1.00},{f:3,t:6,s:0.90},{f:7,t:null,s:0.85}] },
+];
+
+const WBS_ST = { Approved:"bg-green-100 text-green-700", Pending:"bg-yellow-100 text-yellow-700", Draft:"bg-gray-100 text-gray-500" };
+const WBS_FC = (f) => f>=1?"text-green-600":f>=0.90?"text-blue-600":f>=0.85?"text-yellow-600":f>=0.80?"text-orange-600":"text-red-600";
+
+// ── PEOPLE & ROLES TAB ───────────────────────────────────────────
+function PeopleTab({ people, setPeople }) {
+  const [search, setSearch]   = useState("");
+  const [filter, setFilter]   = useState("Active");
+  const [editing, setEditing] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newPerson, setNewPerson] = useState({ name:"", email:"", role:"Estimator", team:"Zone Substation", canReview:false });
+
+  const filtered = people.filter(p => {
+    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.email.toLowerCase().includes(search.toLowerCase());
+    const matchFilter = filter === "All" || (filter === "Active" && p.active) || (filter === "Inactive" && !p.active) || (filter === "Reviewers" && p.canReview);
+    return matchSearch && matchFilter;
+  });
+
+  const deactivate = (id) => setPeople(prev => prev.map(p => p.id===id ? {...p, active:false} : p));
+  const reactivate = (id) => setPeople(prev => prev.map(p => p.id===id ? {...p, active:true} : p));
+  const addPerson  = () => {
+    setPeople(prev => [...prev, { id: Date.now(), ...newPerson, active:true }]);
+    setShowAdd(false);
+    setNewPerson({ name:"", email:"", role:"Estimator", team:"Zone Substation", canReview:false });
+  };
+
+  return (
+    <div className="flex-1 overflow-hidden flex flex-col">
+      {/* Toolbar */}
+      <div className="bg-white border-b px-4 py-2 flex items-center gap-3">
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Search name or email…"
+          className="border border-gray-300 rounded px-2 py-1.5 text-xs w-56 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+        <div className="flex border border-gray-200 rounded overflow-hidden">
+          {["Active","Inactive","Reviewers","All"].map(f => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={`text-xs px-3 py-1.5 ${filter===f ? "bg-blue-700 text-white" : "text-gray-600 hover:bg-gray-50"}`}>
+              {f}
+            </button>
+          ))}
+        </div>
+        <div className="flex-1" />
+        <button onClick={() => setShowAdd(true)}
+          className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded font-semibold">
+          + Add Person
+        </button>
+      </div>
+
+      {/* Add form */}
+      {showAdd && (
+        <div className="bg-green-50 border-b border-green-200 px-4 py-3">
+          <div className="text-xs font-bold text-green-800 mb-2 uppercase tracking-wide">Add New Person</div>
+          <div className="grid grid-cols-5 gap-2 items-end">
+            <div>
+              <label className="text-xs text-gray-500 block mb-0.5">Full Name *</label>
+              <input value={newPerson.name} onChange={e => setNewPerson(p => ({...p, name:e.target.value}))}
+                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-0.5">Email *</label>
+              <input value={newPerson.email} onChange={e => setNewPerson(p => ({...p, email:e.target.value}))}
+                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-0.5">Role</label>
+              <select value={newPerson.role} onChange={e => setNewPerson(p => ({...p, role:e.target.value}))}
+                className="w-full border border-gray-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-400">
+                {["Estimator","Senior Estimator","Lead Estimator","Project Manager"].map(r => <option key={r}>{r}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-0.5">Team</label>
+              <select value={newPerson.team} onChange={e => setNewPerson(p => ({...p, team:e.target.value}))}
+                className="w-full border border-gray-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-400">
+                {["Zone Substation","Subtransmission","Communications","Civil & Earthing","Commissioning"].map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div className="flex gap-2 items-center">
+              <label className="flex items-center gap-1 text-xs text-gray-600">
+                <input type="checkbox" checked={newPerson.canReview} onChange={e => setNewPerson(p => ({...p, canReview:e.target.checked}))} className="accent-blue-600" />
+                Can review
+              </label>
+              <button onClick={addPerson} disabled={!newPerson.name || !newPerson.email}
+                className="text-xs bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white px-3 py-1 rounded font-semibold whitespace-nowrap">
+                Add
+              </button>
+              <button onClick={() => setShowAdd(false)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Table header */}
+      <div className="grid text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 border-b px-4 py-2"
+        style={{ gridTemplateColumns:"1fr 1fr 140px 160px 80px 80px 120px" }}>
+        <div>Name</div><div>Email</div><div>Role</div><div>Team</div>
+        <div className="text-center">Reviewer</div><div className="text-center">Active</div><div />
+      </div>
+
+      {/* Rows */}
+      <div className="flex-1 overflow-y-auto">
+        {filtered.map((p, i) => (
+          <div key={p.id}
+            className={`grid items-center px-4 py-2.5 border-b text-xs ${p.active ? (i%2===0?"bg-white":"bg-gray-50") : "bg-red-50 opacity-70"}`}
+            style={{ gridTemplateColumns:"1fr 1fr 140px 160px 80px 80px 120px" }}>
+            <div className="font-semibold text-gray-800">{p.name}</div>
+            <div className="text-gray-500 truncate">{p.email}</div>
+            <div><span className={`text-xs px-1.5 py-0.5 rounded font-medium ${WBS_ROLE_STYLES[p.role] || "bg-gray-100 text-gray-600"}`}>{p.role}</span></div>
+            <div className="text-gray-600">{p.team}</div>
+            <div className="text-center">{p.canReview ? <span className="text-green-600 font-bold">✓</span> : <span className="text-gray-300">—</span>}</div>
+            <div className="text-center">{p.active ? <span className="text-green-600 font-bold">✓</span> : <span className="text-red-500 text-xs">Inactive</span>}</div>
+            <div className="flex gap-1 justify-end">
+              {p.active
+                ? <button onClick={() => deactivate(p.id)} className="text-xs text-red-500 hover:text-red-700 border border-red-200 rounded px-2 py-0.5">Deactivate</button>
+                : <button onClick={() => reactivate(p.id)} className="text-xs text-green-600 hover:text-green-800 border border-green-200 rounded px-2 py-0.5">Reactivate</button>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Summary */}
+      <div className="bg-gray-100 border-t px-4 py-1.5 text-xs text-gray-500 flex gap-4">
+        <span>{people.filter(p=>p.active).length} active</span>
+        <span>{people.filter(p=>!p.active).length} inactive</span>
+        <span>{people.filter(p=>p.canReview).length} can review</span>
+      </div>
+    </div>
+  );
+}
+
+// ── SCALING PROFILES TAB (compact) ───────────────────────────────
+function ScalingTab() {
+  const [selected, setSelected] = useState("SCADA_RTC");
+  const [previewQty, setPreviewQty] = useState(6);
+  const [profiles, setProfiles] = useState(WBS_PROFILES);
+  const profile = profiles.find(p => p.id === selected);
+
+  const previewFactor = useMemo(() => {
+    if (!profile) return 1;
+    const match = profile.tiers.find(t => previewQty >= t.f && (t.t === null || previewQty <= t.t));
+    return match ? match.s : 1;
+  }, [profile, previewQty]);
+
+  const updateTierFactor = (tierIdx, val) => {
+    setProfiles(prev => prev.map(p => p.id !== selected ? p : {
+      ...p, tiers: p.tiers.map((t, i) => i === tierIdx ? { ...t, s: val } : t)
+    }));
+  };
+
+  const sections = [...new Set(PROFILES.map(p => p.section))];
+
+  return (
+    <div className="flex-1 flex overflow-hidden">
+      {/* Profile list */}
+      <div className="w-64 border-r bg-white flex flex-col overflow-hidden">
+        <div className="p-2 border-b">
+          <div className="text-xs font-bold text-gray-600 uppercase tracking-wide">Scaling Profiles</div>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {sections.map(sec => (
+            <div key={sec}>
+              <div className="px-3 py-1 text-xs font-bold text-gray-400 uppercase tracking-wide bg-gray-50 border-b border-t mt-1">{sec}</div>
+              {profiles.filter(p => p.section === sec).map(p => (
+                <div key={p.id} onClick={() => setSelected(p.id)}
+                  className={`px-3 py-2 cursor-pointer border-b border-gray-100 transition-colors ${selected===p.id ? "bg-blue-50 border-l-4 border-l-blue-600" : "hover:bg-gray-50"}`}>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className={`text-xs font-medium ${selected===p.id?"text-blue-800":"text-gray-700"}`}>{p.name}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${WBS_ST[p.status]}`}>{p.status}</span>
+                  </div>
+                  <div className="text-xs text-gray-400 mt-0.5">{p.tiers.length} tiers</div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="p-2 border-t">
+          <button className="w-full text-xs text-blue-700 border border-blue-300 rounded py-1.5 hover:bg-blue-50 font-semibold">
+            + New Profile
+          </button>
+        </div>
+      </div>
+
+      {/* Tier editor */}
+      <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 p-4 gap-4">
+        {profile && (
+          <>
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-blue-700 text-white px-4 py-2 flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold">{profile.name}</span>
+                  <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${WBS_ST[profile.status]}`}>{profile.status}</span>
+                </div>
+                <span className="text-xs text-blue-200">Edit tier values below — changes save to Dataverse</span>
+              </div>
+
+              <div className="p-4">
+                {/* Column labels */}
+                <div className="grid text-xs font-semibold text-gray-500 uppercase mb-1"
+                  style={{ gridTemplateColumns:"80px 80px 110px 80px 1fr" }}>
+                  <div className="text-center">Qty From</div>
+                  <div className="text-center">Qty To</div>
+                  <div className="text-center">Scale Factor</div>
+                  <div className="text-center">Reduction</div>
+                  <div className="text-center">Visual</div>
+                </div>
+
+                {profile.tiers.map((tier, i) => (
+                  <div key={i} className="grid items-center gap-2 py-2 border-b border-gray-100 last:border-0"
+                    style={{ gridTemplateColumns:"80px 80px 110px 80px 1fr" }}>
+                    <div className="text-center text-xs font-mono bg-gray-100 rounded px-2 py-1">{tier.f}</div>
+                    <div className="text-center text-xs font-mono bg-gray-100 rounded px-2 py-1">{tier.t ?? "∞"}</div>
+                    <div className="flex justify-center">
+                      <input type="number" min="0.5" max="1.0" step="0.01"
+                        value={tier.s}
+                        onChange={e => updateTierFactor(i, parseFloat(e.target.value) || 1)}
+                        className={`w-20 border rounded px-2 py-1 text-xs text-center font-bold focus:outline-none focus:ring-1 focus:ring-blue-400 ${FACTOR_COLOR(tier.s)}`} />
+                    </div>
+                    <div className={`text-xs font-bold text-center ${FC(tier.s)}`}>
+                      {tier.s >= 1 ? "None" : `-${((1-tier.s)*100).toFixed(0)}%`}
+                    </div>
+                    <div className="bg-gray-100 rounded h-4 overflow-hidden">
+                      <div className={`h-full rounded ${tier.s>=1?"bg-green-400":tier.s>=0.90?"bg-blue-400":tier.s>=0.80?"bg-orange-400":"bg-red-400"}`}
+                        style={{ width:`${tier.s*100}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {profile.status !== "Approved" && (
+                <div className="px-4 pb-3">
+                  <button className="text-xs bg-green-700 hover:bg-green-600 text-white px-4 py-1.5 rounded font-semibold">
+                    Mark as Approved ✓
+                  </button>
+                  <span className="text-xs text-gray-400 ml-2">Requires stakeholder name and date before approving</span>
+                </div>
+              )}
+            </div>
+
+            {/* Live preview */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+              <div className="text-xs font-bold text-gray-700 mb-3 uppercase tracking-wide">Live Preview</div>
+              <div className="flex items-center gap-4 flex-wrap">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Test quantity</label>
+                  <input type="number" min="1" value={previewQty} onChange={e => setPreviewQty(parseInt(e.target.value)||1)}
+                    className="w-20 border border-gray-300 rounded px-2 py-1.5 text-sm text-center font-bold focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                </div>
+                <div className="text-2xl text-gray-300">→</div>
+                <div className={`px-4 py-2 rounded-lg border-2 text-center ${FACTOR_COLOR(previewFactor)}`}>
+                  <div className="text-lg font-bold">{previewFactor.toFixed(2)}</div>
+                  <div className="text-xs">Scale Factor</div>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 flex-1">
+                  <div className="text-xs text-blue-700 font-semibold">Example: 32 base hrs/unit</div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    Base total: <strong>{previewQty*32} hrs</strong>
+                    <span className="mx-2 text-gray-300">→</span>
+                    Scaled: <strong className="text-blue-700">{(previewQty*32*previewFactor).toFixed(1)} hrs</strong>
+                    {previewFactor < 1 && <span className="ml-2 text-green-600">(saving {(previewQty*32*(1-previewFactor)).toFixed(1)} hrs)</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── WBS MANAGER MAIN ─────────────────────────────────────────────
+const WBS_TABS = [
+  { id:"wbs",     label:"🏗️ WBS Items" },
+  { id:"scaling", label:"📊 Commissioning Scaling" },
+  { id:"people",  label:"👥 People & Roles" },
+];
+
+function WBSManager() {
+  const [activeTab, setActiveTab]       = useState("wbs");
+  const [wbsItems, setWbsItems]         = useState(SAMPLE_WBS);
+  const [people, setPeople]             = useState(SAMPLE_PEOPLE);
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [scopeFilter, setScopeFilter]   = useState("All");
+  const [searchText, setSearchText]     = useState("");
+  const [showDetail, setShowDetail]     = useState(false);
+  const [editingItem, setEditingItem]   = useState(null);
+  const [isNew, setIsNew]               = useState(false);
+  const [deactivateId, setDeactivateId] = useState(null);
+  const [deactivateReason, setDeactivateReason] = useState("");
+
+  const displayItems = useMemo(() => {
+    return wbsItems.filter(item => {
+      const matchGroup = !selectedGroup || item.parent.startsWith(selectedGroup.code);
+      const matchScope = scopeFilter === "All" || scopeFilter === "Inactive"
+        ? (scopeFilter === "Inactive" ? !item.active : true)
+        : item.scope === scopeFilter && item.active;
+      const matchSearch = !searchText || item.desc.toLowerCase().includes(searchText.toLowerCase()) || item.code.includes(searchText);
+      return matchGroup && matchScope && matchSearch;
+    });
+  }, [wbsItems, selectedGroup, scopeFilter, searchText]);
+
+  const handleEdit = (item) => { setEditingItem(item); setIsNew(false); setShowDetail(true); };
+  const handleAdd  = () => { setEditingItem(null); setIsNew(true); setShowDetail(true); };
+  const handleSave = () => { setShowDetail(false); };
+  const handleDeactivate = (item) => { setDeactivateId(item.code); setDeactivateReason(""); };
+  const confirmDeactivate = () => {
+    setWbsItems(prev => prev.map(w => w.code === deactivateId ? {...w, active:false} : w));
+    setDeactivateId(null);
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-gray-100 font-sans text-sm select-none">
+
+      {/* TOP BAR */}
+      <div className="bg-blue-900 text-white px-4 py-2 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <span className="font-bold">⚡ IET WBS Manager</span>
+          <span className="text-xs bg-orange-500 px-2 py-0.5 rounded font-semibold">ADMIN</span>
+          <span className="text-blue-300 text-xs">Restricted access — Lead Estimators & System Admins only</span>
+        </div>
+        <span className="text-blue-300 text-xs">D. Lawrence · Lead Estimator</span>
+      </div>
+
+      {/* TAB BAR */}
+      <div className="bg-white border-b flex items-end px-4 flex-shrink-0 shadow-sm">
+        {WBS_TABS.map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2.5 text-xs font-semibold transition-colors border-b-2 mr-1 -mb-px ${
+              activeTab === tab.id
+                ? "border-blue-600 text-blue-700 bg-blue-50"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── WBS ITEMS TAB ── */}
+      {activeTab === "wbs" && (
+        <div className="flex flex-1 overflow-hidden">
+
+          {/* Left: Navigator */}
+          <div className="w-56 bg-white border-r flex flex-col overflow-hidden flex-shrink-0">
+            <div className="p-2 border-b text-xs font-bold text-gray-600 uppercase tracking-wide bg-gray-50">
+              WBS Navigator
+            </div>
+            <div className="flex-1 overflow-y-auto py-1">
+              {WBS_NAV_TREE.map(node => (
+                <WBSNavigatorItem key={node.code} node={node} selected={selectedGroup} onSelect={setSelectedGroup} />
+              ))}
+            </div>
+            <div className="p-2 border-t">
+              <button onClick={() => setSelectedGroup(null)}
+                className="w-full text-xs text-gray-500 hover:text-blue-700 py-1">
+                ← Show all items
+              </button>
+            </div>
+          </div>
+
+          {/* Centre: Item list */}
+          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+
+            {/* Toolbar */}
+            <div className="bg-white border-b px-3 py-2 flex items-center gap-2 flex-shrink-0">
+              <input value={searchText} onChange={e => setSearchText(e.target.value)}
+                placeholder="Search description or WBS code…"
+                className="border border-gray-300 rounded px-2 py-1.5 text-xs w-52 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+              <div className="flex border border-gray-200 rounded overflow-hidden">
+                {WBS_SCOPES.map(s => (
+                  <button key={s} onClick={() => setScopeFilter(s)}
+                    className={`text-xs px-2.5 py-1.5 transition-colors ${scopeFilter===s ? "bg-blue-700 text-white" : "text-gray-600 hover:bg-gray-50"}`}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+              <div className="flex-1" />
+              <span className="text-xs text-gray-400">{displayItems.length} items</span>
+              <button onClick={handleAdd}
+                className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded font-semibold">
+                + Add WBS Item
+              </button>
+            </div>
+
+            {/* Column headers */}
+            <div className="grid text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 border-b px-3 py-1.5 flex-shrink-0"
+              style={{ gridTemplateColumns:"2fr 80px 80px 120px 100px 80px 120px" }}>
+              <div>Description / WBS Code</div>
+              <div className="text-center">Scope</div>
+              <div className="text-center">UOM</div>
+              <div className="text-center">Std Hours</div>
+              <div className="text-center">Resource</div>
+              <div className="text-center">Active</div>
+              <div className="text-center">Actions</div>
+            </div>
+
+            {/* Rows */}
+            <div className="flex-1 overflow-y-auto">
+              {displayItems.map((item, idx) => (
+                <div key={item.code}
+                  className={`grid items-center px-3 py-2 border-b text-xs ${
+                    !item.active ? "bg-red-50 opacity-70" :
+                    idx%2===0 ? "bg-white" : "bg-gray-50"
+                  }`}
+                  style={{ gridTemplateColumns:"2fr 80px 80px 120px 100px 80px 120px" }}>
+
+                  <div className="min-w-0 pr-2">
+                    <div className={`font-medium truncate ${!item.active ? "line-through text-gray-400" : "text-gray-800"}`}>
+                      {item.desc}
+                    </div>
+                    <div className="font-mono text-gray-400 text-xs">{item.code}</div>
+                  </div>
+
+                  <div className="flex justify-center">
+                    <ScopeBadge scope={item.scope} />
+                  </div>
+
+                  <div className="text-center text-gray-500">{item.uom}</div>
+
+                  <div className="flex justify-center">
+                    <StdHrsBadge crew={item.crew} hrs={item.hrs} />
+                  </div>
+
+                  <div className="text-center text-gray-500 text-xs truncate px-1" title={item.resource}>
+                    {item.resource?.split(" ").slice(-2).join(" ")}
+                  </div>
+
+                  <div className="text-center">
+                    {item.active
+                      ? <span className="text-green-600 font-bold">✓</span>
+                      : <span className="text-red-500 text-xs font-semibold">Inactive</span>}
+                  </div>
+
+                  <div className="flex gap-1 justify-center">
+                    <button onClick={() => handleEdit(item)}
+                      className="text-xs text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-2 py-0.5 hover:bg-blue-50">
+                      Edit
+                    </button>
+                    {item.active
+                      ? <button onClick={() => handleDeactivate(item)}
+                          className="text-xs text-red-500 hover:text-red-700 border border-red-200 rounded px-2 py-0.5 hover:bg-red-50">
+                          Deactivate
+                        </button>
+                      : <button onClick={() => setWbsItems(prev => prev.map(w => w.code===item.code ? {...w,active:true} : w))}
+                          className="text-xs text-green-600 hover:text-green-800 border border-green-200 rounded px-2 py-0.5 hover:bg-green-50">
+                          Reactivate
+                        </button>}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Deactivation confirmation */}
+            {deactivateId && (
+              <div className="border-t bg-red-50 px-4 py-3 flex items-center gap-3 flex-shrink-0">
+                <span className="text-xs font-bold text-red-700">⚠️ Deactivating: {deactivateId}</span>
+                <input value={deactivateReason} onChange={e => setDeactivateReason(e.target.value)}
+                  placeholder="Reason for deactivation (required)…"
+                  className="flex-1 border border-red-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-red-400 bg-white" />
+                <button onClick={confirmDeactivate} disabled={!deactivateReason.trim()}
+                  className="text-xs bg-red-700 hover:bg-red-600 disabled:opacity-40 text-white px-3 py-1.5 rounded font-semibold">
+                  Confirm Deactivate
+                </button>
+                <button onClick={() => setDeactivateId(null)}
+                  className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+              </div>
+            )}
+          </div>
+
+          {/* Detail form slide-in */}
+          {showDetail && (
+            <DetailForm
+              item={editingItem}
+              isNew={isNew}
+              onSave={handleSave}
+              onCancel={() => setShowDetail(false)}
+            />
+          )}
+        </div>
+      )}
+
+      {activeTab === "scaling" && <ScalingTab />}
+      {activeTab === "people"  && <PeopleTab people={people} setPeople={setPeople} />}
+
+      {/* BOTTOM BAR */}
+      <div className="bg-gray-200 border-t text-xs text-gray-500 px-4 py-1 flex justify-between flex-shrink-0">
+        <span>⚙️ IET WBS Manager · All changes logged to audit trail</span>
+        <span>
+          {wbsItems.filter(w=>w.active).length} active WBS items ·{" "}
+          {people.filter(p=>p.active).length} active people ·{" "}
+          {WBS_PROFILES.filter(p=>p.status==="Approved").length}/{PROFILES.length} profiles approved
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
+// ROOT — switches between Estimation App and WBS Manager
+// ════════════════════════════════════════════════════════════════
+export default function App() {
+  const [page, setPage] = useState("estimation");
+  return (
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      {/* App switcher bar */}
+      <div style={{ background: "#0f2848", padding: "4px 16px", display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+        <span style={{ color: "#93c5fd", fontSize: "10px", fontWeight: "bold", marginRight: "8px" }}>
+          IET PLATFORM
+        </span>
+        <button
+          onClick={() => setPage("estimation")}
+          style={{
+            fontSize: "11px", padding: "4px 12px", borderRadius: "4px", border: "none",
+            cursor: "pointer", fontWeight: page === "estimation" ? "bold" : "normal",
+            background: page === "estimation" ? "#1d4ed8" : "transparent",
+            color: page === "estimation" ? "white" : "#93c5fd",
+          }}>
+          📐 Estimation Tool
+        </button>
+        <button
+          onClick={() => setPage("wbs")}
+          style={{
+            fontSize: "11px", padding: "4px 12px", borderRadius: "4px", border: "none",
+            cursor: "pointer", fontWeight: page === "wbs" ? "bold" : "normal",
+            background: page === "wbs" ? "#92400e" : "transparent",
+            color: page === "wbs" ? "white" : "#f59e0b",
+          }}>
+          ⚙️ WBS Manager
+        </button>
+        <span style={{ marginLeft: "auto", color: "#475569", fontSize: "10px" }}>
+          Demo — Essential Energy IET Platform
+        </span>
+      </div>
+      {/* Page content */}
+      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        {page === "estimation" && <EstimationApp />}
+        {page === "wbs"        && <WBSManager />}
       </div>
     </div>
   );
