@@ -1575,7 +1575,7 @@ function ScalingTab() {
                         onChange={e => updateTierFactor(i, parseFloat(e.target.value) || 1)}
                         className={`w-20 border rounded px-2 py-1 text-xs text-center font-bold focus:outline-none focus:ring-1 focus:ring-blue-400 ${FACTOR_COLOR(tier.s)}`} />
                     </div>
-                    <div className={`text-xs font-bold text-center ${FC(tier.s)}`}>
+                    <div className={`text-xs font-bold text-center ${WBS_FC(tier.s)}`}>
                       {tier.s >= 1 ? "None" : `-${((1-tier.s)*100).toFixed(0)}%`}
                     </div>
                     <div className="bg-gray-100 rounded h-4 overflow-hidden">
