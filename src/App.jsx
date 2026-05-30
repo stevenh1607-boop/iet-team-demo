@@ -643,11 +643,22 @@ function EstimationScreen({ isCommercial }) {
              eeTotal: a.eeTotal+c.eeInt, commTotal: a.commTotal+c.comm };
   }, { installHrs:0, commHrs:0, eeTotal:0, commTotal:0 }), [items, quantities, factors, installHrsOverride, plantCost, materialsCost, contractorRate, deliveryMethod, isCommercial]);
 
-  const investTotals = useMemo(() => Object.values(SUPPLY_ITEMS).flat().reduce((a, it) => {
-    const c = calcLine(it);
-    return { installHrs: a.installHrs+c.installHrs, commHrs: a.commHrs+c.commHrs,
-             eeTotal: a.eeTotal+c.eeInt, commTotal: a.commTotal+c.comm };
-  }, { installHrs:0, commHrs:0, eeTotal:0, commTotal:0 }), [quantities, factors, installHrsOverride, plantCost, materialsCost, contractorRate, deliveryMethod, isCommercial]);
+  const optEquipTotal = useMemo(() => {
+    return Object.entries(optEquipSelections).reduce((acc, [id, qty]) => {
+      const item = Object.values(OPTIONAL_EQUIPMENT).flat().find(i => i.id === id);
+      if (!item || !qty || parseFloat(qty) === 0 || item.price === 0) return acc;
+      return acc + parseFloat(qty) * item.price;
+    }, 0);
+  }, [optEquipSelections]);
+
+  const investTotals = useMemo(() => {
+    const base = Object.values(SUPPLY_ITEMS).flat().reduce((a, it) => {
+      const c = calcLine(it);
+      return { installHrs: a.installHrs+c.installHrs, commHrs: a.commHrs+c.commHrs,
+               eeTotal: a.eeTotal+c.eeInt, commTotal: a.commTotal+c.comm };
+    }, { installHrs:0, commHrs:0, eeTotal:0, commTotal:0 });
+    return { ...base, eeTotal: base.eeTotal, commTotal: base.commTotal };
+  }, [quantities, factors, installHrsOverride, plantCost, materialsCost, contractorRate, deliveryMethod, isCommercial]);
 
   const toggleRow  = (code) => setExpandedRows(p => ({ ...p, [code]: !p[code] }));
   const toggleNode = (code) => setExpandedNodes(p => ({ ...p, [code]: !p[code] }));
