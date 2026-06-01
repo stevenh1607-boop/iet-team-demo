@@ -1,3 +1,7 @@
+https://raw.githubusercontent.com/stevenh1607-boop/iet-estimation-tool_demo/main/src/App.jsx
+→ https://raw.githubusercontent.com/stevenh1607-boop/iet-estimation-tool_demo/main/src/App.jsx
+Content-Type: text/plain; charset=utf-8
+
 import { useState, useMemo } from "react";
 
 // ════════════════════════════════════════════════════════════════
@@ -330,7 +334,7 @@ function GeneralInfoScreen() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-gray-100 p-4">
+    <div className="flex-1 overflow-y-auto bg-orange-50 p-4">
       <div className="max-w-5xl mx-auto space-y-4">
 
         {/* ── INVESTMENT IDENTITY ── */}
@@ -695,16 +699,16 @@ function EstimationScreen({ isCommercial }) {
   return (
     <div className="flex flex-1 overflow-hidden">
       {/* LEFT */}
-      <div className="w-60 bg-blue-950 flex flex-col overflow-hidden flex-shrink-0">
+      <div className="w-60 bg-gray-900 flex flex-col overflow-hidden flex-shrink-0">
         <div className="p-2 border-b border-blue-800">
           <input value={searchText} onChange={e => setSearchText(e.target.value)}
             placeholder="Search WBS or description…"
-            className="w-full bg-blue-900 text-white text-xs px-2 py-1.5 rounded border border-blue-700 placeholder-blue-400 focus:outline-none focus:border-blue-400" />
+            className="w-full bg-gray-800 text-white text-xs px-2 py-1.5 rounded border border-blue-700 placeholder-blue-400 focus:outline-none focus:border-blue-400" />
         </div>
         <div className="flex border-b border-blue-800 overflow-x-auto">
           {PHASES.map(p => (
             <button key={p.id} onClick={() => setActivePhase(p.id)}
-              className={`text-xs px-2 py-1.5 whitespace-nowrap flex-shrink-0 transition-colors ${activePhase===p.id ? "bg-blue-700 text-white font-bold border-b-2 border-blue-400" : "text-blue-300 hover:bg-blue-900"}`}>
+              className={`text-xs px-2 py-1.5 whitespace-nowrap flex-shrink-0 transition-colors ${activePhase===p.id ? "bg-orange-600 text-white font-bold border-b-2 border-orange-400" : "text-gray-300 hover:bg-gray-800"}`}>
               {p.label}
             </button>
           ))}
@@ -714,7 +718,7 @@ function EstimationScreen({ isCommercial }) {
           {searchText
             ? Object.values(SUPPLY_ITEMS).flat().filter(i => i.desc.toLowerCase().includes(searchText.toLowerCase()) || i.code.startsWith(searchText))
                 .map(i => <div key={i.code} onClick={() => { const l4=i.code.split(".").slice(0,4).join("."); selectGroup(l4,[i.code.split(".")[0],i.code.split(".").slice(0,2).join("."),l4]); setSearchText(""); }}
-                  className="px-3 py-1 cursor-pointer hover:bg-blue-800 text-xs text-gray-200 truncate">
+                  className="px-3 py-1 cursor-pointer hover:bg-gray-700 text-xs text-gray-200 truncate">
                   <span className="font-mono text-blue-400 mr-1">{i.code.split(".").slice(0,4).join(".")}</span>{i.desc}
                 </div>)
             : renderTree(WBS_TREE[activePhase]||[], 0, [String(activePhase)])}
@@ -919,7 +923,7 @@ function EstimationScreen({ isCommercial }) {
 
       {/* RIGHT */}
       <div className="w-60 bg-white border-l flex flex-col overflow-hidden flex-shrink-0">
-        <div className="bg-blue-900 text-white text-xs font-bold px-3 py-2 uppercase tracking-wide">Live Cost Display</div>
+        <div className="bg-orange-700 text-white text-xs font-bold px-3 py-2 uppercase tracking-wide">Live Cost Display</div>
         <div className="flex-1 overflow-y-auto">
           <div className="px-3 py-2 bg-blue-50 border-b">
             <div className="text-xs font-bold text-blue-800 mb-2 uppercase tracking-wide truncate">{groupLabel}</div>
@@ -943,7 +947,7 @@ function EstimationScreen({ isCommercial }) {
                 <span className="text-xs text-gray-600">{r.label}</span><span className={`text-xs font-bold ${r.color}`}>{r.value}</span>
               </div>
             ))}
-            <div className="mt-2 py-1.5 px-2 bg-blue-800 rounded text-white flex justify-between items-center mb-1">
+            <div className="mt-2 py-1.5 px-2 bg-orange-800 rounded text-white flex justify-between items-center mb-1">
               <span className="text-xs font-semibold">EE Internal Total</span><span className="text-xs font-bold">{fmt(investTotals.eeTotal)}</span>
             </div>
             <div className="py-1.5 px-2 bg-orange-600 rounded text-white flex justify-between items-center">
@@ -984,10 +988,10 @@ function EstimationApp() {
   const [isCommercial, setIsComm]     = useState(false);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100 font-sans text-sm select-none">
+    <div className="flex flex-col h-screen bg-orange-50 font-sans text-sm select-none">
 
       {/* TOP BAR */}
-      <div className="bg-blue-900 text-white px-4 py-2 flex items-center justify-between shadow-lg flex-shrink-0">
+      <div className="bg-orange-700 text-white px-4 py-2 flex items-center justify-between shadow-lg flex-shrink-0">
         <div className="flex items-center gap-3">
           <span className="font-bold text-base tracking-wide">⚡ IET Estimation Tool</span>
           <span className="text-blue-300 text-xs">|</span>
@@ -1410,491 +1414,4 @@ function PeopleTab({ people, setPeople }) {
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-0.5">Email *</label>
-              <input value={newPerson.email} onChange={e => setNewPerson(p => ({...p, email:e.target.value}))}
-                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 block mb-0.5">Role</label>
-              <select value={newPerson.role} onChange={e => setNewPerson(p => ({...p, role:e.target.value}))}
-                className="w-full border border-gray-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-400">
-                {["Estimator","Senior Estimator","Lead Estimator","Project Manager"].map(r => <option key={r}>{r}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 block mb-0.5">Team</label>
-              <select value={newPerson.team} onChange={e => setNewPerson(p => ({...p, team:e.target.value}))}
-                className="w-full border border-gray-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-400">
-                {["Zone Substation","Subtransmission","Communications","Civil & Earthing","Commissioning"].map(t => <option key={t}>{t}</option>)}
-              </select>
-            </div>
-            <div className="flex gap-2 items-center">
-              <label className="flex items-center gap-1 text-xs text-gray-600">
-                <input type="checkbox" checked={newPerson.canReview} onChange={e => setNewPerson(p => ({...p, canReview:e.target.checked}))} className="accent-blue-600" />
-                Can review
-              </label>
-              <button onClick={addPerson} disabled={!newPerson.name || !newPerson.email}
-                className="text-xs bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white px-3 py-1 rounded font-semibold whitespace-nowrap">
-                Add
-              </button>
-              <button onClick={() => setShowAdd(false)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Table header */}
-      <div className="grid text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 border-b px-4 py-2"
-        style={{ gridTemplateColumns:"1fr 1fr 140px 160px 80px 80px 120px" }}>
-        <div>Name</div><div>Email</div><div>Role</div><div>Team</div>
-        <div className="text-center">Reviewer</div><div className="text-center">Active</div><div />
-      </div>
-
-      {/* Rows */}
-      <div className="flex-1 overflow-y-auto">
-        {filtered.map((p, i) => (
-          <div key={p.id}
-            className={`grid items-center px-4 py-2.5 border-b text-xs ${p.active ? (i%2===0?"bg-white":"bg-gray-50") : "bg-red-50 opacity-70"}`}
-            style={{ gridTemplateColumns:"1fr 1fr 140px 160px 80px 80px 120px" }}>
-            <div className="font-semibold text-gray-800">{p.name}</div>
-            <div className="text-gray-500 truncate">{p.email}</div>
-            <div><span className={`text-xs px-1.5 py-0.5 rounded font-medium ${WBS_ROLE_STYLES[p.role] || "bg-gray-100 text-gray-600"}`}>{p.role}</span></div>
-            <div className="text-gray-600">{p.team}</div>
-            <div className="text-center">{p.canReview ? <span className="text-green-600 font-bold">✓</span> : <span className="text-gray-300">—</span>}</div>
-            <div className="text-center">{p.active ? <span className="text-green-600 font-bold">✓</span> : <span className="text-red-500 text-xs">Inactive</span>}</div>
-            <div className="flex gap-1 justify-end">
-              {p.active
-                ? <button onClick={() => deactivate(p.id)} className="text-xs text-red-500 hover:text-red-700 border border-red-200 rounded px-2 py-0.5">Deactivate</button>
-                : <button onClick={() => reactivate(p.id)} className="text-xs text-green-600 hover:text-green-800 border border-green-200 rounded px-2 py-0.5">Reactivate</button>}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Summary */}
-      <div className="bg-gray-100 border-t px-4 py-1.5 text-xs text-gray-500 flex gap-4">
-        <span>{people.filter(p=>p.active).length} active</span>
-        <span>{people.filter(p=>!p.active).length} inactive</span>
-        <span>{people.filter(p=>p.canReview).length} can review</span>
-      </div>
-    </div>
-  );
-}
-
-// ── HELPERS FOR SCALING TAB ──────────────────────────────────────────
-const FACTOR_COLOR = (f) =>
-  f >= 1.00 ? "border-2 border-green-400 text-green-700 bg-green-50" :
-  f >= 0.92 ? "border-2 border-blue-400 text-blue-700 bg-blue-50" :
-  f >= 0.87 ? "border-2 border-yellow-400 text-yellow-700 bg-yellow-50" :
-  f >= 0.80 ? "border-2 border-orange-400 text-orange-700 bg-orange-50" :
-              "border-2 border-red-400 text-red-700 bg-red-50";
-
-// ── SCALING WBS_PROFILES TAB (compact) ───────────────────────────────
-function ScalingTab() {
-  const [selected, setSelected] = useState("SCADA_RTC");
-  const [previewQty, setPreviewQty] = useState(6);
-  const [profiles, setProfiles] = useState(WBS_PROFILES);
-  const profile = profiles.find(p => p.id === selected);
-
-  const previewFactor = useMemo(() => {
-    if (!profile) return 1;
-    const match = profile.tiers.find(t => previewQty >= t.f && (t.t === null || previewQty <= t.t));
-    return match ? match.s : 1;
-  }, [profile, previewQty]);
-
-  const updateTierFactor = (tierIdx, val) => {
-    setProfiles(prev => prev.map(p => p.id !== selected ? p : {
-      ...p, tiers: p.tiers.map((t, i) => i === tierIdx ? { ...t, s: val } : t)
-    }));
-  };
-
-  const sections = [...new Set(WBS_PROFILES.map(p => p.section))];
-
-  return (
-    <div className="flex-1 flex overflow-hidden">
-      {/* Profile list */}
-      <div className="w-64 border-r bg-white flex flex-col overflow-hidden">
-        <div className="p-2 border-b">
-          <div className="text-xs font-bold text-gray-600 uppercase tracking-wide">Scaling Profiles</div>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {sections.map(sec => (
-            <div key={sec}>
-              <div className="px-3 py-1 text-xs font-bold text-gray-400 uppercase tracking-wide bg-gray-50 border-b border-t mt-1">{sec}</div>
-              {profiles.filter(p => p.section === sec).map(p => (
-                <div key={p.id} onClick={() => setSelected(p.id)}
-                  className={`px-3 py-2 cursor-pointer border-b border-gray-100 transition-colors ${selected===p.id ? "bg-blue-50 border-l-4 border-l-blue-600" : "hover:bg-gray-50"}`}>
-                  <div className="flex items-center justify-between gap-1">
-                    <span className={`text-xs font-medium ${selected===p.id?"text-blue-800":"text-gray-700"}`}>{p.name}</span>
-                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${WBS_ST[p.status]}`}>{p.status}</span>
-                  </div>
-                  <div className="text-xs text-gray-400 mt-0.5">{p.tiers.length} tiers</div>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-        <div className="p-2 border-t">
-          <button className="w-full text-xs text-blue-700 border border-blue-300 rounded py-1.5 hover:bg-blue-50 font-semibold">
-            + New Profile
-          </button>
-        </div>
-      </div>
-
-      {/* Tier editor */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 p-4 gap-4">
-        {profile && (
-          <>
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-              <div className="bg-blue-700 text-white px-4 py-2 flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-bold">{profile.name}</span>
-                  <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${WBS_ST[profile.status]}`}>{profile.status}</span>
-                </div>
-                <span className="text-xs text-blue-200">Edit tier values below — changes save to Dataverse</span>
-              </div>
-
-              <div className="p-4">
-                {/* Column labels */}
-                <div className="grid text-xs font-semibold text-gray-500 uppercase mb-1"
-                  style={{ gridTemplateColumns:"80px 80px 110px 80px 1fr" }}>
-                  <div className="text-center">Qty From</div>
-                  <div className="text-center">Qty To</div>
-                  <div className="text-center">Scale Factor</div>
-                  <div className="text-center">Reduction</div>
-                  <div className="text-center">Visual</div>
-                </div>
-
-                {profile.tiers.map((tier, i) => (
-                  <div key={i} className="grid items-center gap-2 py-2 border-b border-gray-100 last:border-0"
-                    style={{ gridTemplateColumns:"80px 80px 110px 80px 1fr" }}>
-                    <div className="text-center text-xs font-mono bg-gray-100 rounded px-2 py-1">{tier.f}</div>
-                    <div className="text-center text-xs font-mono bg-gray-100 rounded px-2 py-1">{tier.t ?? "∞"}</div>
-                    <div className="flex justify-center">
-                      <input type="number" min="0.5" max="1.0" step="0.01"
-                        value={tier.s}
-                        onChange={e => updateTierFactor(i, parseFloat(e.target.value) || 1)}
-                        className={`w-20 border rounded px-2 py-1 text-xs text-center font-bold focus:outline-none focus:ring-1 focus:ring-blue-400 ${FACTOR_COLOR(tier.s)}`} />
-                    </div>
-                    <div className={`text-xs font-bold text-center ${WBS_FC(tier.s)}`}>
-                      {tier.s >= 1 ? "None" : `-${((1-tier.s)*100).toFixed(0)}%`}
-                    </div>
-                    <div className="bg-gray-100 rounded h-4 overflow-hidden">
-                      <div className={`h-full rounded ${tier.s>=1?"bg-green-400":tier.s>=0.90?"bg-blue-400":tier.s>=0.80?"bg-orange-400":"bg-red-400"}`}
-                        style={{ width:`${tier.s*100}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {profile.status !== "Approved" && (
-                <div className="px-4 pb-3">
-                  <button className="text-xs bg-green-700 hover:bg-green-600 text-white px-4 py-1.5 rounded font-semibold">
-                    Mark as Approved ✓
-                  </button>
-                  <span className="text-xs text-gray-400 ml-2">Requires stakeholder name and date before approving</span>
-                </div>
-              )}
-            </div>
-
-            {/* Live preview */}
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-              <div className="text-xs font-bold text-gray-700 mb-3 uppercase tracking-wide">Live Preview</div>
-              <div className="flex items-center gap-4 flex-wrap">
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Test quantity</label>
-                  <input type="number" min="1" value={previewQty} onChange={e => setPreviewQty(parseInt(e.target.value)||1)}
-                    className="w-20 border border-gray-300 rounded px-2 py-1.5 text-sm text-center font-bold focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                </div>
-                <div className="text-2xl text-gray-300">→</div>
-                <div className={`px-4 py-2 rounded-lg border-2 text-center ${FACTOR_COLOR(previewFactor)}`}>
-                  <div className="text-lg font-bold">{previewFactor.toFixed(2)}</div>
-                  <div className="text-xs">Scale Factor</div>
-                </div>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 flex-1">
-                  <div className="text-xs text-blue-700 font-semibold">Example: 32 base hrs/unit</div>
-                  <div className="text-xs text-gray-600 mt-1">
-                    Base total: <strong>{previewQty*32} hrs</strong>
-                    <span className="mx-2 text-gray-300">→</span>
-                    Scaled: <strong className="text-blue-700">{(previewQty*32*previewFactor).toFixed(1)} hrs</strong>
-                    {previewFactor < 1 && <span className="ml-2 text-green-600">(saving {(previewQty*32*(1-previewFactor)).toFixed(1)} hrs)</span>}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── WBS MANAGER MAIN ─────────────────────────────────────────────
-const WBS_TABS = [
-  { id:"wbs",     label:"🏗️ WBS Items" },
-  { id:"scaling", label:"📊 Commissioning Scaling" },
-  { id:"people",  label:"👥 People & Roles" },
-];
-
-function WBSManager() {
-  const [activeTab, setActiveTab]       = useState("wbs");
-  const [wbsItems, setWbsItems]         = useState(SAMPLE_WBS);
-  const [people, setPeople]             = useState(SAMPLE_PEOPLE);
-  const [selectedGroup, setSelectedGroup] = useState(null);
-  const [scopeFilter, setScopeFilter]   = useState("All");
-  const [searchText, setSearchText]     = useState("");
-  const [showDetail, setShowDetail]     = useState(false);
-  const [editingItem, setEditingItem]   = useState(null);
-  const [isNew, setIsNew]               = useState(false);
-  const [deactivateId, setDeactivateId] = useState(null);
-  const [deactivateReason, setDeactivateReason] = useState("");
-
-  const displayItems = useMemo(() => {
-    return wbsItems.filter(item => {
-      const matchGroup = !selectedGroup || item.parent.startsWith(selectedGroup.code);
-      const matchScope = scopeFilter === "All" || scopeFilter === "Inactive"
-        ? (scopeFilter === "Inactive" ? !item.active : true)
-        : item.scope === scopeFilter && item.active;
-      const matchSearch = !searchText || item.desc.toLowerCase().includes(searchText.toLowerCase()) || item.code.includes(searchText);
-      return matchGroup && matchScope && matchSearch;
-    });
-  }, [wbsItems, selectedGroup, scopeFilter, searchText]);
-
-  const handleEdit = (item) => { setEditingItem(item); setIsNew(false); setShowDetail(true); };
-  const handleAdd  = () => { setEditingItem(null); setIsNew(true); setShowDetail(true); };
-  const handleSave = () => { setShowDetail(false); };
-  const handleDeactivate = (item) => { setDeactivateId(item.code); setDeactivateReason(""); };
-  const confirmDeactivate = () => {
-    setWbsItems(prev => prev.map(w => w.code === deactivateId ? {...w, active:false} : w));
-    setDeactivateId(null);
-  };
-
-  return (
-    <div className="flex flex-col h-screen bg-gray-100 font-sans text-sm select-none">
-
-      {/* TOP BAR */}
-      <div className="bg-blue-900 text-white px-4 py-2 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <span className="font-bold">⚡ IET WBS Manager</span>
-          <span className="text-xs bg-orange-500 px-2 py-0.5 rounded font-semibold">ADMIN</span>
-          <span className="text-blue-300 text-xs">Restricted access — Lead Estimators & System Admins only</span>
-        </div>
-        <span className="text-blue-300 text-xs">D. Lawrence · Lead Estimator</span>
-      </div>
-
-      {/* TAB BAR */}
-      <div className="bg-white border-b flex items-end px-4 flex-shrink-0 shadow-sm">
-        {WBS_TABS.map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2.5 text-xs font-semibold transition-colors border-b-2 mr-1 -mb-px ${
-              activeTab === tab.id
-                ? "border-blue-600 text-blue-700 bg-blue-50"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── WBS ITEMS TAB ── */}
-      {activeTab === "wbs" && (
-        <div className="flex flex-1 overflow-hidden">
-
-          {/* Left: Navigator */}
-          <div className="w-56 bg-white border-r flex flex-col overflow-hidden flex-shrink-0">
-            <div className="p-2 border-b text-xs font-bold text-gray-600 uppercase tracking-wide bg-gray-50">
-              WBS Navigator
-            </div>
-            <div className="flex-1 overflow-y-auto py-1">
-              {WBS_NAV_TREE.map(node => (
-                <WBSNavigatorItem key={node.code} node={node} selected={selectedGroup} onSelect={setSelectedGroup} />
-              ))}
-            </div>
-            <div className="p-2 border-t">
-              <button onClick={() => setSelectedGroup(null)}
-                className="w-full text-xs text-gray-500 hover:text-blue-700 py-1">
-                ← Show all items
-              </button>
-            </div>
-          </div>
-
-          {/* Centre: Item list */}
-          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-
-            {/* Toolbar */}
-            <div className="bg-white border-b px-3 py-2 flex items-center gap-2 flex-shrink-0">
-              <input value={searchText} onChange={e => setSearchText(e.target.value)}
-                placeholder="Search description or WBS code…"
-                className="border border-gray-300 rounded px-2 py-1.5 text-xs w-52 focus:outline-none focus:ring-1 focus:ring-blue-400" />
-              <div className="flex border border-gray-200 rounded overflow-hidden">
-                {WBS_SCOPES.map(s => (
-                  <button key={s} onClick={() => setScopeFilter(s)}
-                    className={`text-xs px-2.5 py-1.5 transition-colors ${scopeFilter===s ? "bg-blue-700 text-white" : "text-gray-600 hover:bg-gray-50"}`}>
-                    {s}
-                  </button>
-                ))}
-              </div>
-              <div className="flex-1" />
-              <span className="text-xs text-gray-400">{displayItems.length} items</span>
-              <button onClick={handleAdd}
-                className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded font-semibold">
-                + Add WBS Item
-              </button>
-            </div>
-
-            {/* Column headers */}
-            <div className="grid text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 border-b px-3 py-1.5 flex-shrink-0"
-              style={{ gridTemplateColumns:"2fr 80px 80px 120px 100px 80px 120px" }}>
-              <div>Description / WBS Code</div>
-              <div className="text-center">Scope</div>
-              <div className="text-center">UOM</div>
-              <div className="text-center">Std Hours</div>
-              <div className="text-center">Resource</div>
-              <div className="text-center">Active</div>
-              <div className="text-center">Actions</div>
-            </div>
-
-            {/* Rows */}
-            <div className="flex-1 overflow-y-auto">
-              {displayItems.map((item, idx) => (
-                <div key={item.code}
-                  className={`grid items-center px-3 py-2 border-b text-xs ${
-                    !item.active ? "bg-red-50 opacity-70" :
-                    idx%2===0 ? "bg-white" : "bg-gray-50"
-                  }`}
-                  style={{ gridTemplateColumns:"2fr 80px 80px 120px 100px 80px 120px" }}>
-
-                  <div className="min-w-0 pr-2">
-                    <div className={`font-medium truncate ${!item.active ? "line-through text-gray-400" : "text-gray-800"}`}>
-                      {item.desc}
-                    </div>
-                    <div className="font-mono text-gray-400 text-xs">{item.code}</div>
-                  </div>
-
-                  <div className="flex justify-center">
-                    <ScopeBadge scope={item.scope} />
-                  </div>
-
-                  <div className="text-center text-gray-500">{item.uom}</div>
-
-                  <div className="flex justify-center">
-                    <StdHrsBadge crew={item.crew} hrs={item.hrs} />
-                  </div>
-
-                  <div className="text-center text-gray-500 text-xs truncate px-1" title={item.resource}>
-                    {item.resource?.split(" ").slice(-2).join(" ")}
-                  </div>
-
-                  <div className="text-center">
-                    {item.active
-                      ? <span className="text-green-600 font-bold">✓</span>
-                      : <span className="text-red-500 text-xs font-semibold">Inactive</span>}
-                  </div>
-
-                  <div className="flex gap-1 justify-center">
-                    <button onClick={() => handleEdit(item)}
-                      className="text-xs text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-2 py-0.5 hover:bg-blue-50">
-                      Edit
-                    </button>
-                    {item.active
-                      ? <button onClick={() => handleDeactivate(item)}
-                          className="text-xs text-red-500 hover:text-red-700 border border-red-200 rounded px-2 py-0.5 hover:bg-red-50">
-                          Deactivate
-                        </button>
-                      : <button onClick={() => setWbsItems(prev => prev.map(w => w.code===item.code ? {...w,active:true} : w))}
-                          className="text-xs text-green-600 hover:text-green-800 border border-green-200 rounded px-2 py-0.5 hover:bg-green-50">
-                          Reactivate
-                        </button>}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Deactivation confirmation */}
-            {deactivateId && (
-              <div className="border-t bg-red-50 px-4 py-3 flex items-center gap-3 flex-shrink-0">
-                <span className="text-xs font-bold text-red-700">⚠️ Deactivating: {deactivateId}</span>
-                <input value={deactivateReason} onChange={e => setDeactivateReason(e.target.value)}
-                  placeholder="Reason for deactivation (required)…"
-                  className="flex-1 border border-red-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-red-400 bg-white" />
-                <button onClick={confirmDeactivate} disabled={!deactivateReason.trim()}
-                  className="text-xs bg-red-700 hover:bg-red-600 disabled:opacity-40 text-white px-3 py-1.5 rounded font-semibold">
-                  Confirm Deactivate
-                </button>
-                <button onClick={() => setDeactivateId(null)}
-                  className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
-              </div>
-            )}
-          </div>
-
-          {/* Detail form slide-in */}
-          {showDetail && (
-            <DetailForm
-              item={editingItem}
-              isNew={isNew}
-              onSave={handleSave}
-              onCancel={() => setShowDetail(false)}
-            />
-          )}
-        </div>
-      )}
-
-      {activeTab === "scaling" && <ScalingTab />}
-      {activeTab === "people"  && <PeopleTab people={people} setPeople={setPeople} />}
-
-      {/* BOTTOM BAR */}
-      <div className="bg-gray-200 border-t text-xs text-gray-500 px-4 py-1 flex justify-between flex-shrink-0">
-        <span>⚙️ IET WBS Manager · All changes logged to audit trail</span>
-        <span>
-          {wbsItems.filter(w=>w.active).length} active WBS items ·{" "}
-          {people.filter(p=>p.active).length} active people ·{" "}
-          {WBS_PROFILES.filter(p=>p.status==="Approved").length}/{WBS_PROFILES.length} profiles approved
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════
-// ROOT — switches between Estimation App and WBS Manager
-// ════════════════════════════════════════════════════════════════
-export default function App() {
-  const [page, setPage] = useState("estimation");
-  return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* App switcher bar */}
-      <div style={{ background: "#0f2848", padding: "4px 16px", display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
-        <span style={{ color: "#93c5fd", fontSize: "10px", fontWeight: "bold", marginRight: "8px" }}>
-          IET PLATFORM
-        </span>
-        <button
-          onClick={() => setPage("estimation")}
-          style={{
-            fontSize: "11px", padding: "4px 12px", borderRadius: "4px", border: "none",
-            cursor: "pointer", fontWeight: page === "estimation" ? "bold" : "normal",
-            background: page === "estimation" ? "#1d4ed8" : "transparent",
-            color: page === "estimation" ? "white" : "#93c5fd",
-          }}>
-          📐 Estimation Tool
-        </button>
-        <button
-          onClick={() => setPage("wbs")}
-          style={{
-            fontSize: "11px", padding: "4px 12px", borderRadius: "4px", border: "none",
-            cursor: "pointer", fontWeight: page === "wbs" ? "bold" : "normal",
-            background: page === "wbs" ? "#92400e" : "transparent",
-            color: page === "wbs" ? "white" : "#f59e0b",
-          }}>
-          ⚙️ WBS Manager
-        </button>
-        <span style={{ marginLeft: "auto", color: "#475569", fontSize: "10px" }}>
-          Demo — Essential Energy IET Platform
-        </span>
-      </div>
-      {/* Page content */}
-      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        {page === "estimation" && <EstimationApp />}
-        {page === "wbs"        && <WBSManager />}
-      </div>
-    </div>
-  );
-}
+              <input value={newPerson.email} onChange={e => setNewPerson
