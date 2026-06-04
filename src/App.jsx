@@ -9,7 +9,7 @@ import { useState, useMemo, useEffect, useCallback, createContext, useContext, u
 const BASE = import.meta.env.BASE_URL || "/";
 
 // ── DATA CONTEXT ────────────────────────────────────────────────
-const DataCtx = createContext({ wbs:[], rates:[], supply:[], loading:true, error:null });
+const DataCtx = createContext({ wbs:[], rates:[], supply:[], equipment:[], loading:true, error:null });
 function useData() { return useContext(DataCtx); }
 
 // ── HELPERS ─────────────────────────────────────────────────────
@@ -1167,16 +1167,299 @@ const defaultInv = () => ({
 });
 
 // ── ROOT APP ─────────────────────────────────────────────────────
+// ── EQUIPMENT SCREEN ─────────────────────────────────────────────
+const TYPE_COLORS = {
+  PCE:   { badge:"bg-amber-100 text-amber-800 border border-amber-300",   icon:"🔩", label:"Period Contract" },
+  LLT:   { badge:"bg-red-100 text-red-700 border border-red-300",         icon:"⏱", label:"Long Lead Time"  },
+  SCADA: { badge:"bg-blue-100 text-blue-700 border border-blue-300",      icon:"📡", label:"SCADA"           },
+  COMMS: { badge:"bg-purple-100 text-purple-700 border border-purple-300",icon:"📶", label:"Communications"  },
+};
+
+function EquipmentScreen({ equipSel, setEquipSel, isCommercial }) {
+  const { equipment, loading } = useData();
+  const [typeFilter, setTypeFilter] = useState("All");
+  const [catFilter,  setCatFilter]  = useState("All");
+  const [search,     setSearch]     = useState("");
+  const [view,       setView]       = useState("catalogue"); // catalogue | selected
+
+  const updQty = (id, val) => setEquipSel(p=>({...p,[id]:val}));
+
+  // Unique categories for filter
+  const categories = useMemo(()=>{
+    const cats = [...new Set(equipment.filter(e=>typeFilter==="All"||e.type===typeFilter).map(e=>e.category).filter(Boolean))].sort();
+    return cats;
+  },[equipment, typeFilter]);
+
+  const filtered = useMemo(()=>{
+    return equipment.filter(e=>{
+      const mt = typeFilter==="All" || e.type===typeFilter;
+      const mc = catFilter==="All"  || e.category===catFilter;
+      const ms = !search || e.description?.toLowerCase().includes(search.toLowerCase())
+        || e.wbs_code?.toLowerCase().includes(search.toLowerCase())
+        || e.make_model?.toLowerCase().includes(search.toLowerCase())
+        || e.category?.toLowerCase().includes(search.toLowerCase());
+      return mt && mc && ms;
+    });
+  },[equipment, typeFilter, catFilter, search]);
+
+  const selected = equipment.filter(e=>parseFloat(equipSel[e.id]||"0")>0);
+  const selTotal = selected.reduce((a,e)=>a+(parseFloat(equipSel[e.id]||"0")*e.price),0);
+  const ANS_mat  = isCommercial ? (1+0.2686) : 1;
+  const selTotalComm = selected.reduce((a,e)=>a+(parseFloat(equipSel[e.id]||"0")*e.price*ANS_mat),0);
+
+  if (loading) return (
+    <div className="flex-1 flex items-center justify-center text-gray-400">
+      <div className="text-center"><div className="text-2xl animate-spin mb-2">⟳</div><div>Loading equipment catalogue…</div></div>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-1 overflow-hidden bg-gray-50">
+
+      {/* LEFT — filters */}
+      <div className="w-52 bg-white border-r flex flex-col flex-shrink-0 overflow-hidden">
+        <div className="bg-teal-700 text-white px-3 py-2 flex-shrink-0">
+          <div className="text-xs font-bold uppercase tracking-wide">🔧 Equipment Catalogue</div>
+          <div className="text-xs opacity-75 mt-0.5">{equipment.length} items total</div>
+        </div>
+
+        {/* Type filter */}
+        <div className="px-3 py-2 border-b flex-shrink-0">
+          <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Type</div>
+          {["All","PCE","LLT","SCADA","COMMS"].map(t=>(
+            <button key={t} onClick={()=>{setTypeFilter(t);setCatFilter("All");}}
+              className={`w-full text-left flex items-center justify-between px-2 py-1.5 rounded text-xs mb-0.5 transition-colors ${
+                typeFilter===t?"bg-teal-600 text-white":"text-gray-700 hover:bg-gray-100"}`}>
+              <span className="flex items-center gap-1.5">
+                {t!=="All"&&<span>{TYPE_COLORS[t]?.icon}</span>}
+                {t==="All"?"All Types":TYPE_COLORS[t]?.label}
+              </span>
+              <span className={`text-xs px-1 rounded font-mono ${typeFilter===t?"bg-teal-500 text-white":"bg-gray-100 text-gray-500"}`}>
+                {t==="All"?equipment.length:equipment.filter(e=>e.type===t).length}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Category filter */}
+        {categories.length > 0 && (
+          <div className="px-3 py-2 flex-1 overflow-y-auto">
+            <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Category</div>
+            <button onClick={()=>setCatFilter("All")}
+              className={`w-full text-left px-2 py-1 rounded text-xs mb-0.5 ${catFilter==="All"?"bg-teal-50 text-teal-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>
+              All Categories
+            </button>
+            {categories.map(c=>(
+              <button key={c} onClick={()=>setCatFilter(c)}
+                className={`w-full text-left px-2 py-1 rounded text-xs mb-0.5 truncate ${catFilter===c?"bg-teal-50 text-teal-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>
+                {c}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* MAIN */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Toolbar */}
+        <div className="bg-white border-b px-4 py-2 flex items-center gap-3 flex-shrink-0">
+          <div className="flex border border-gray-200 rounded overflow-hidden">
+            <button onClick={()=>setView("catalogue")}
+              className={`text-xs px-3 py-1.5 ${view==="catalogue"?"bg-teal-700 text-white":"text-gray-600 hover:bg-gray-50"}`}>
+              Catalogue ({filtered.length})
+            </button>
+            <button onClick={()=>setView("selected")}
+              className={`text-xs px-3 py-1.5 ${view==="selected"?"bg-teal-700 text-white":"text-gray-600 hover:bg-gray-50"}`}>
+              Selected ({selected.length})
+            </button>
+          </div>
+          <input value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Search description, WBS, part number…"
+            className="border border-gray-300 rounded px-2 py-1.5 text-xs w-72 focus:outline-none focus:ring-1 focus:ring-teal-400"/>
+          {search && <button onClick={()=>setSearch("")} className="text-xs text-gray-400 hover:text-gray-600">✕ Clear</button>}
+          {selected.length>0&&(
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-xs text-gray-500">Selected total:</span>
+              <span className="font-bold text-blue-800 text-xs">{fmt(selTotal)}</span>
+              {isCommercial&&<span className="font-bold text-orange-700 text-xs">→ {fmt(selTotalComm)} comm</span>}
+            </div>
+          )}
+        </div>
+
+        {/* CATALOGUE VIEW */}
+        {view==="catalogue" && (
+          <div className="flex-1 overflow-y-auto">
+            {filtered.length===0?(
+              <div className="flex items-center justify-center h-48 text-gray-400 text-sm">No items match filters</div>
+            ):(
+              <table className="w-full text-xs">
+                <thead className="bg-gray-50 border-b sticky top-0 z-10">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-500 w-16">Type</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-500 w-32">WBS Code</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-500">Description</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-500 w-28">Category</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-500 w-28">Make / Part</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-500 w-20">Voltage</th>
+                    <th className="text-right px-3 py-2 font-semibold text-gray-500 w-24">Price</th>
+                    <th className="text-center px-3 py-2 font-semibold text-orange-700 w-20">Quantity</th>
+                    <th className="text-right px-3 py-2 font-semibold text-blue-700 w-24">Line Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((item,idx)=>{
+                    const qty    = equipSel[item.id]||"";
+                    const qtyNum = parseFloat(qty)||0;
+                    const hasQty = qtyNum > 0;
+                    const lineTotal = qtyNum * item.price;
+                    const tc = TYPE_COLORS[item.type]||{badge:"bg-gray-100 text-gray-500",icon:"•"};
+                    return (
+                      <tr key={item.id} className={`border-b transition-colors ${hasQty?"bg-teal-50 border-l-4 border-l-teal-500":idx%2===0?"bg-white":"bg-gray-50"} hover:bg-teal-50`}>
+                        <td className="px-3 py-1.5">
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${tc.badge}`}>
+                            {tc.icon} {item.type}
+                          </span>
+                        </td>
+                        <td className="px-3 py-1.5 font-mono text-blue-600 whitespace-nowrap">{item.wbs_code}</td>
+                        <td className="px-3 py-1.5 text-gray-800 max-w-xs">
+                          <div className="truncate font-medium">{item.description}</div>
+                          {item.contract_no&&item.contract_no!==item.item_no&&(
+                            <div className="text-gray-400 text-xs">Contract: {item.contract_no}</div>
+                          )}
+                        </td>
+                        <td className="px-3 py-1.5 text-gray-500 truncate">{item.category}</td>
+                        <td className="px-3 py-1.5 text-gray-500 font-mono text-xs truncate">{item.make_model}</td>
+                        <td className="px-3 py-1.5 text-gray-500">{item.voltage}</td>
+                        <td className="px-3 py-1.5 text-right font-medium text-gray-800 whitespace-nowrap">
+                          {item.price>0?fmt(item.price):<span className="text-orange-500 font-medium">POA</span>}
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <div className="flex justify-center">
+                            <input type="number" min="0" value={qty}
+                              onChange={e=>updQty(item.id,e.target.value)}
+                              placeholder="0"
+                              className={`w-16 text-center border rounded py-0.5 text-sm font-bold focus:outline-none focus:ring-1 focus:ring-teal-400 ${hasQty?"border-teal-400 bg-teal-50 text-teal-800":"border-gray-300 text-gray-500"}`}/>
+                          </div>
+                        </td>
+                        <td className="px-3 py-1.5 text-right font-bold">
+                          {hasQty&&item.price>0
+                            ?<span className="text-teal-700">{fmt(lineTotal)}</span>
+                            :hasQty&&item.price===0
+                              ?<span className="text-orange-500 text-xs">POA</span>
+                              :<span className="text-gray-300">–</span>
+                          }
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {/* SELECTED VIEW */}
+        {view==="selected" && (
+          <div className="flex-1 overflow-y-auto">
+            {selected.length===0?(
+              <div className="flex items-center justify-center h-48 text-center text-gray-400">
+                <div>
+                  <div className="text-3xl mb-2">🔧</div>
+                  <div className="text-sm font-semibold">No equipment selected yet</div>
+                  <div className="text-xs mt-1">Switch to Catalogue view and enter quantities</div>
+                </div>
+              </div>
+            ):(
+              <>
+                {/* Group selected by type */}
+                {["PCE","LLT","SCADA","COMMS"].map(type=>{
+                  const typeItems = selected.filter(e=>e.type===type);
+                  if(!typeItems.length) return null;
+                  const typeTotal = typeItems.reduce((a,e)=>a+parseFloat(equipSel[e.id]||"0")*e.price,0);
+                  const tc = TYPE_COLORS[type];
+                  return (
+                    <div key={type} className="mb-4 mx-4 mt-4 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{tc.icon}</span>
+                          <span className="font-bold text-sm text-gray-800">{tc.label} Equipment</span>
+                          <span className="text-xs text-gray-400">({typeItems.length} item{typeItems.length!==1?"s":""})</span>
+                        </div>
+                        <span className="font-bold text-sm text-gray-800">{fmt(typeTotal)}</span>
+                      </div>
+                      <table className="w-full text-xs">
+                        <thead className="bg-gray-50 border-b">
+                          <tr>
+                            <th className="text-left px-3 py-2 font-semibold text-gray-500">WBS Code</th>
+                            <th className="text-left px-3 py-2 font-semibold text-gray-500">Description</th>
+                            <th className="text-left px-3 py-2 font-semibold text-gray-500">Category</th>
+                            <th className="text-left px-3 py-2 font-semibold text-gray-500">Make / Part</th>
+                            <th className="text-right px-3 py-2 font-semibold text-gray-500">Unit Price</th>
+                            <th className="text-center px-3 py-2 font-semibold text-orange-700">Qty</th>
+                            <th className="text-right px-3 py-2 font-semibold text-teal-700">Line Total</th>
+                            {isCommercial&&<th className="text-right px-3 py-2 font-semibold text-orange-700">Commercial</th>}
+                            <th className="px-3 py-2 w-10"/>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {typeItems.map(item=>{
+                            const qtyNum = parseFloat(equipSel[item.id]||"0");
+                            const lineTotal = qtyNum * item.price;
+                            const lineTotalComm = lineTotal * ANS_mat;
+                            return (
+                              <tr key={item.id} className="border-b hover:bg-gray-50">
+                                <td className="px-3 py-2 font-mono text-blue-600">{item.wbs_code}</td>
+                                <td className="px-3 py-2 font-medium text-gray-800 max-w-xs truncate">{item.description}</td>
+                                <td className="px-3 py-2 text-gray-500">{item.category}</td>
+                                <td className="px-3 py-2 text-gray-500 font-mono text-xs">{item.make_model}</td>
+                                <td className="px-3 py-2 text-right text-gray-700">{item.price>0?fmt(item.price):"POA"}</td>
+                                <td className="px-3 py-2 text-center font-bold text-orange-700">{qtyNum}</td>
+                                <td className="px-3 py-2 text-right font-bold text-teal-700">{item.price>0?fmt(lineTotal):"POA"}</td>
+                                {isCommercial&&<td className="px-3 py-2 text-right font-bold text-orange-700">{item.price>0?fmt(lineTotalComm):"POA"}</td>}
+                                <td className="px-3 py-2 text-center">
+                                  <button onClick={()=>updQty(item.id,"0")}
+                                    className="text-red-400 hover:text-red-600 text-xs">✕</button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })}
+
+                {/* Grand total footer */}
+                <div className="mx-4 mb-4 bg-teal-700 rounded-lg p-3 text-white flex items-center justify-between">
+                  <div>
+                    <div className="text-xs opacity-75">Equipment Total ({selected.length} items)</div>
+                    {isCommercial&&<div className="text-xs opacity-75 mt-0.5">Includes ANS materials margin {(0.2686*100).toFixed(1)}%</div>}
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-lg">{fmt(selTotal)}</div>
+                    {isCommercial&&<div className="font-bold text-orange-300">{fmt(selTotalComm)} commercial</div>}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const APP_TABS = [
   {id:"estimation", label:"⚡ Estimation Tool"},
   {id:"wbsmanager", label:"🗂 WBS Manager"},
   {id:"saved",      label:"💾 Saved Investments"},
 ];
 const EST_TABS = [
-  {id:"setup",    label:"⚙️ Investment Setup"},
-  {id:"estimate", label:"📐 Estimation"},
-  {id:"review",   label:"📋 Review Lines"},
-  {id:"summary",  label:"📊 Summary"},
+  {id:"setup",      label:"⚙️ Investment Setup"},
+  {id:"estimate",   label:"📐 Estimation"},
+  {id:"equipment",  label:"🔧 Equipment"},
+  {id:"review",     label:"📋 Review Lines"},
+  {id:"summary",    label:"📊 Summary"},
 ];
 
 export default function App() {
@@ -1191,6 +1474,8 @@ export default function App() {
   const [wbsData,     setWbsData]     = useState([]);
   const [ratesData,   setRatesData]   = useState([]);
   const [supplyData,  setSupplyData]  = useState([]);
+  const [equipData,   setEquipData]   = useState([]);
+  const [equipSel,    setEquipSel]    = useState({}); // {EQ0001: qty}
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
 
@@ -1199,11 +1484,43 @@ export default function App() {
       fetch(`${BASE}data/wbs_master.json`).then(r=>{if(!r.ok)throw new Error("wbs_master "+r.status);return r.json();}),
       fetch(`${BASE}data/resource_rates.json`).then(r=>{if(!r.ok)throw new Error("resource_rates "+r.status);return r.json();}),
       fetch(`${BASE}data/supply_items.json`).then(r=>{if(!r.ok)throw new Error("supply_items "+r.status);return r.json();}),
+      fetch(`${BASE}data/equipment.json`).then(r=>{if(!r.ok)throw new Error("equipment "+r.status);return r.json();}),
     ])
-    .then(([wbs,rates,supply])=>{
+    .then(([wbs,rates,supply,equip])=>{
       setWbsData(wbs.records||[]);
       setRatesData(rates.records||[]);
       setSupplyData(supply.items||[]);
+      // Normalise equipment items into the shape EquipmentScreen expects
+      const normalised = (equip.items||[]).map(e => {
+        // Determine type badge: LLT takes priority over PCE
+        let type = e.source === 'SCADA' ? 'SCADA'
+                 : e.source === 'Comms' ? 'COMMS'
+                 : e.is_llt            ? 'LLT'
+                 :                       'PCE';
+        // make_model: combine make + model for PCE, part_no for others
+        const make_model = e.make && e.model ? `${e.make} / ${e.model}`
+                         : e.part_no || e.catalogue_id || '';
+        return {
+          id:          e.id,
+          type,
+          source:      e.source,
+          wbs_code:    e.wbs_code || '',
+          description: e.description || e.item || '',
+          category:    e.category || e.group || '',
+          make_model,
+          voltage:     e.family || '',
+          contract_no: e.contract_no || '',
+          item_no:     e.item_no || e.part_no || '',
+          unit:        e.unit || 'EA',
+          price:       e.escalated_price > 0 ? e.escalated_price : e.current_price || 0,
+          current_price: e.current_price || 0,
+          lead_time_weeks: e.lead_time_weeks || 0,
+          is_llt:      !!e.is_llt,
+          is_poa:      !!e.is_poa,
+          comments:    e.comments || '',
+        };
+      });
+      setEquipData(normalised);
       setLoading(false);
     })
     .catch(err=>{setError(err.message);setLoading(false);});
@@ -1240,10 +1557,11 @@ export default function App() {
     setEstTab("summary");
   },[]);
 
+  const equipSelected = Object.values(equipSel).filter(q=>parseFloat(q)>0).length;
   const linesEntered = Object.values(lines).filter(l=>parseFloat(l.qty)>0).length;
 
   return (
-    <DataCtx.Provider value={{wbs:wbsData,rates:ratesData,supply:supplyData,loading,error}}>
+    <DataCtx.Provider value={{wbs:wbsData,rates:ratesData,supply:supplyData,equipment:equipData,loading,error}}>
       <div className="flex flex-col h-screen font-sans text-sm select-none">
 
         {/* Top nav */}
@@ -1266,7 +1584,7 @@ export default function App() {
           ))}
           <div className="flex-1"/>
           {loading&&<span className="text-xs text-blue-300 animate-pulse pr-4">⟳ Loading live data…</span>}
-          {!loading&&!error&&<span className="text-xs text-green-400 pr-4">✓ {wbsData.length} WBS · {supplyData.length} items · {ratesData.length} rates</span>}
+          {!loading&&!error&&<span className="text-xs text-green-400 pr-4">✓ {wbsData.length} WBS · {supplyData.length} items · {equipData.length} equipment · {ratesData.length} rates</span>}
           {error&&<span className="text-xs text-red-400 pr-4">⚠ Data error — {error}</span>}
         </div>
 
@@ -1283,6 +1601,9 @@ export default function App() {
                     {tab.label}
                     {tab.id==="review"&&linesEntered>0&&(
                       <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">{linesEntered}</span>
+                    )}
+                    {tab.id==="equipment"&&equipSelected>0&&(
+                      <span className="absolute -top-1 -right-1 bg-teal-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">{equipSelected}</span>
                     )}
                   </button>
                 ))}
@@ -1303,14 +1624,15 @@ export default function App() {
               </div>
 
               <div className="flex-1 overflow-hidden flex flex-col">
-                {estTab==="setup"   && <InvestmentSetup inv={inv} onChange={setInv}/>}
-                {estTab==="estimate"&& (
+                {estTab==="setup"     && <InvestmentSetup inv={inv} onChange={setInv}/>}
+                {estTab==="estimate"  && (
                   <div className="flex flex-1 overflow-hidden">
                     <EstimationScreen isCommercial={isCommercial} lines={lines} setLines={setLines}/>
                   </div>
                 )}
-                {estTab==="review"  && <ReviewLines lines={lines} supply={supplyData} isCommercial={isCommercial}/>}
-                {estTab==="summary" && <SummaryScreen inv={inv} lines={lines} supply={supplyData} isCommercial={isCommercial} onSave={saveInvestment} lastSaved={lastSaved}/>}
+                {estTab==="equipment" && <EquipmentScreen equipSel={equipSel} setEquipSel={setEquipSel} isCommercial={isCommercial}/>}
+                {estTab==="review"    && <ReviewLines lines={lines} supply={supplyData} isCommercial={isCommercial} equipSel={equipSel}/>}
+                {estTab==="summary"   && <SummaryScreen inv={inv} lines={lines} supply={supplyData} isCommercial={isCommercial} equipSel={equipSel} onSave={saveInvestment} lastSaved={lastSaved}/>}
               </div>
             </>
           )}
