@@ -1,4 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, createContext, useContext } from "react";
+
+// ── LIVE DATA CONTEXT ────────────────────────────────────────────
+// Fetched once at app root and shared everywhere via context
+const DataContext = createContext({
+  wbsMaster:     [],   // 2,359 rows from wbs_master.json
+  resourceRates: [],   // 25 rows from resource_rates.json
+  loading:       true,
+  error:         null,
+});
 
 // ════════════════════════════════════════════════════════════════
 // IET ESTIMATION TOOL — COMBINED APP
@@ -1170,7 +1179,7 @@ const WBS_NAV_TREE = [
 ];
 
 // ── DETAIL FORM ──────────────────────────────────────────────────
-function DetailForm({ item, isNew, onSave, onCancel }) {
+function DetailForm({ item, isNew, onSave, onCancel, resourceTypes = [] }) {
   const [desc,     setDesc]     = useState(item?.desc     || "");
   const [scope,    setScope]    = useState(item?.scope    || "Supply");
   const [resource, setResource] = useState(item?.resource || "ZS Electrical Technician");
@@ -1233,7 +1242,7 @@ function DetailForm({ item, isNew, onSave, onCancel }) {
             <label className="text-xs font-semibold text-gray-600 block mb-1">Default Resource</label>
             <select value={resource} onChange={e => setResource(e.target.value)}
               className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
-              {["ZS Electrical Technician","ZS Specialist Technician","Project Manager","Substation Designer","Protection Engineer","Telecomms Technician"].map(r => <option key={r}>{r}</option>)}
+              {(resourceTypes.length > 0 ? resourceTypes : ["ZS Electrical Technician","ZS Specialist Technician","Project Manager","Substation Designer","Protection Engineer","Telecomms Technician"]).map(r => <option key={r}>{r}</option>)}
             </select>
           </div>
           <div>
@@ -1354,16 +1363,15 @@ const WBS_PROFILES = [
 const WBS_ST = { Approved:"bg-green-100 text-green-700", Pending:"bg-yellow-100 text-yellow-700", Draft:"bg-gray-100 text-gray-500" };
 const WBS_FC = (f) => f>=1?"text-green-600":f>=0.90?"text-blue-600":f>=0.85?"text-yellow-600":f>=0.80?"text-orange-600":"text-red-600";
 
-// ── PEOPLE & ROLES TAB ───────────────────────────────────────────
+// ── PEOPLE & ROLES TAB ─────────────────────────────────────────
 function PeopleTab({ people, setPeople }) {
   const [search, setSearch]   = useState("");
   const [filter, setFilter]   = useState("Active");
-  const [editing, setEditing] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [newPerson, setNewPerson] = useState({ name:"", email:"", role:"Estimator", team:"Zone Substation", canReview:false });
 
   const filtered = people.filter(p => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.email.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.email.toLowerCase().includes(search.toLowerCase());
     const matchFilter = filter === "All" || (filter === "Active" && p.active) || (filter === "Inactive" && !p.active) || (filter === "Reviewers" && p.canReview);
     return matchSearch && matchFilter;
   });
@@ -1371,6 +1379,7 @@ function PeopleTab({ people, setPeople }) {
   const deactivate = (id) => setPeople(prev => prev.map(p => p.id===id ? {...p, active:false} : p));
   const reactivate = (id) => setPeople(prev => prev.map(p => p.id===id ? {...p, active:true} : p));
   const addPerson  = () => {
+    if (!newPerson.name.trim() || !newPerson.email.trim()) return;
     setPeople(prev => [...prev, { id: Date.now(), ...newPerson, active:true }]);
     setShowAdd(false);
     setNewPerson({ name:"", email:"", role:"Estimator", team:"Zone Substation", canReview:false });
@@ -1378,7 +1387,6 @@ function PeopleTab({ people, setPeople }) {
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col">
-      {/* Toolbar */}
       <div className="bg-white border-b px-4 py-2 flex items-center gap-3">
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search name or email…"
@@ -1392,13 +1400,12 @@ function PeopleTab({ people, setPeople }) {
           ))}
         </div>
         <div className="flex-1" />
-        <button onClick={() => setShowAdd(true)}
+        <button onClick={() => setShowAdd(s => !s)}
           className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded font-semibold">
-          + Add Person
+          {showAdd ? "Cancel" : "+ Add Person"}
         </button>
       </div>
 
-      {/* Add form */}
       {showAdd && (
         <div className="bg-green-50 border-b border-green-200 px-4 py-3">
           <div className="text-xs font-bold text-green-800 mb-2 uppercase tracking-wide">Add New Person</div>
@@ -1410,4 +1417,368 @@ function PeopleTab({ people, setPeople }) {
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-0.5">Email *</label>
-              <input value={newPerson.email} onChange={e => setNewPerson
+              <input value={newPerson.email} onChange={e => setNewPerson(p => ({...p, email:e.target.value}))}
+                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-0.5">Role</label>
+              <select value={newPerson.role} onChange={e => setNewPerson(p => ({...p, role:e.target.value}))}
+                className="w-full border border-gray-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-400">
+                {["Estimator","Senior Estimator","Lead Estimator","Project Manager"].map(r => <option key={r}>{r}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-0.5">Team</label>
+              <select value={newPerson.team} onChange={e => setNewPerson(p => ({...p, team:e.target.value}))}
+                className="w-full border border-gray-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-400">
+                {["Zone Substation","Subtransmission","Communications","Commissioning","Civil & Earthing"].map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div className="flex items-end gap-2">
+              <label className="flex items-center gap-1 text-xs text-gray-600 mb-1 cursor-pointer">
+                <input type="checkbox" checked={newPerson.canReview} onChange={e => setNewPerson(p => ({...p, canReview:e.target.checked}))} />
+                Can Review
+              </label>
+              <button onClick={addPerson}
+                disabled={!newPerson.name.trim() || !newPerson.email.trim()}
+                className="flex-1 text-xs bg-green-700 hover:bg-green-600 disabled:bg-gray-300 text-white px-3 py-1.5 rounded font-semibold">
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto">
+        <table className="w-full text-xs">
+          <thead className="bg-gray-50 border-b sticky top-0">
+            <tr>
+              {["Name","Email","Role","Team","Reviewer","Status","Actions"].map(h => (
+                <th key={h} className="text-left px-3 py-2 font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(p => (
+              <tr key={p.id} className={`border-b ${p.active ? "hover:bg-gray-50" : "opacity-50 bg-gray-50"}`}>
+                <td className="px-3 py-2 font-semibold text-gray-800">{p.name}</td>
+                <td className="px-3 py-2 text-gray-500">{p.email}</td>
+                <td className="px-3 py-2">
+                  <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${WBS_ROLE_STYLES[p.role] || "bg-gray-100 text-gray-500"}`}>{p.role}</span>
+                </td>
+                <td className="px-3 py-2 text-gray-600">{p.team}</td>
+                <td className="px-3 py-2 text-center">{p.canReview ? <span className="text-green-600 font-bold">✓</span> : <span className="text-gray-300">–</span>}</td>
+                <td className="px-3 py-2">
+                  <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${p.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                    {p.active ? "Active" : "Inactive"}
+                  </span>
+                </td>
+                <td className="px-3 py-2">
+                  {p.active
+                    ? <button onClick={() => deactivate(p.id)} className="text-xs text-red-500 hover:text-red-700">Deactivate</button>
+                    : <button onClick={() => reactivate(p.id)} className="text-xs text-green-600 hover:text-green-800">Reactivate</button>
+                  }
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {filtered.length === 0 && (
+          <div className="text-center py-12 text-gray-400 text-sm">No people match this filter.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// WBS MANAGER — root component wired to live data
+// ════════════════════════════════════════════════════════════════
+function WBSManager() {
+  const { wbsMaster, resourceRates, loading, error } = useContext(DataContext);
+  const [activeTab, setActiveTab] = useState("items");
+  const [wbsSearch, setWbsSearch] = useState("");
+  const [scopeFilter, setScopeFilter] = useState("All");
+  const [selectedWbs, setSelectedWbs] = useState(null);
+  const [people, setPeople] = useState(SAMPLE_PEOPLE);
+
+  // Derive resource type names from live data for the detail form dropdown
+  const resourceTypeNames = resourceRates.map(r => r.resource_type);
+
+  // Filter WBS items for the table
+  const filteredWbs = wbsMaster.filter(row => {
+    const matchSearch = !wbsSearch ||
+      row.wbs_code.toLowerCase().includes(wbsSearch.toLowerCase()) ||
+      (row.description || "").toLowerCase().includes(wbsSearch.toLowerCase());
+    const matchScope = scopeFilter === "All" || row.scope === scopeFilter ||
+      (scopeFilter === "Inactive" && row.active === false);
+    return matchSearch && matchScope;
+  }).slice(0, 200); // cap at 200 rows for browser performance
+
+  return (
+    <div className="flex flex-col h-full bg-gray-50">
+      {/* Tab bar */}
+      <div className="bg-white border-b flex items-end px-4 flex-shrink-0">
+        {[
+          { id:"items",   label:"📋 WBS Items",           count: wbsMaster.length },
+          { id:"scaling", label:"📐 Commissioning Scaling", count: WBS_PROFILES.length },
+          { id:"people",  label:"👥 People & Roles",       count: people.filter(p=>p.active).length },
+        ].map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+            className={`relative px-4 py-2.5 text-xs font-semibold transition-colors border-b-2 mr-1 -mb-px flex items-center gap-1.5 ${
+              activeTab === tab.id ? "border-blue-600 text-blue-700 bg-blue-50" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+            {tab.label}
+            <span className="bg-gray-200 text-gray-600 text-xs px-1.5 py-0.5 rounded-full font-mono">{tab.count}</span>
+          </button>
+        ))}
+        <div className="flex-1" />
+        {loading && <span className="text-xs text-blue-500 animate-pulse pb-2 pr-2">⟳ Loading live data…</span>}
+        {error  && <span className="text-xs text-red-500 pb-2 pr-2">⚠ {error}</span>}
+        {!loading && !error && (
+          <span className="text-xs text-green-600 pb-2 pr-2">✓ Live data — {wbsMaster.length} WBS · {resourceRates.length} rates</span>
+        )}
+      </div>
+
+      {/* ── WBS ITEMS TAB ── */}
+      {activeTab === "items" && (
+        <div className="flex flex-1 overflow-hidden">
+          {/* Table */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Toolbar */}
+            <div className="bg-white border-b px-4 py-2 flex items-center gap-3 flex-shrink-0">
+              <input value={wbsSearch} onChange={e => setWbsSearch(e.target.value)}
+                placeholder="Search WBS code or description…"
+                className="border border-gray-300 rounded px-2 py-1.5 text-xs w-64 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+              <div className="flex border border-gray-200 rounded overflow-hidden">
+                {WBS_SCOPES.map(s => (
+                  <button key={s} onClick={() => setScopeFilter(s)}
+                    className={`text-xs px-2.5 py-1.5 ${scopeFilter===s ? "bg-blue-700 text-white" : "text-gray-600 hover:bg-gray-50"}`}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs text-gray-400">
+                {filteredWbs.length === 200 ? "Showing first 200 of " + wbsMaster.filter(r => {
+                  const ms = !wbsSearch || r.wbs_code.toLowerCase().includes(wbsSearch.toLowerCase()) || (r.description||"").toLowerCase().includes(wbsSearch.toLowerCase());
+                  const sc = scopeFilter==="All" || r.scope===scopeFilter;
+                  return ms && sc;
+                }).length : `${filteredWbs.length}`} items
+              </span>
+            </div>
+
+            {/* Table */}
+            <div className="flex-1 overflow-y-auto">
+              {loading ? (
+                <div className="flex items-center justify-center h-full text-gray-400">
+                  <div className="text-center">
+                    <div className="text-2xl mb-2 animate-spin">⟳</div>
+                    <div className="text-sm">Loading 2,359 WBS items from GitHub…</div>
+                  </div>
+                </div>
+              ) : (
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50 border-b sticky top-0 z-10">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-semibold text-gray-500 w-36">WBS Code</th>
+                      <th className="text-left px-3 py-2 font-semibold text-gray-500">Description</th>
+                      <th className="text-left px-3 py-2 font-semibold text-gray-500 w-28">Scope</th>
+                      <th className="text-left px-3 py-2 font-semibold text-gray-500 w-8">Lvl</th>
+                      <th className="text-left px-3 py-2 font-semibold text-gray-500 w-16">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredWbs.map(row => (
+                      <tr key={row.wbs_code}
+                        onClick={() => setSelectedWbs(row)}
+                        className={`border-b cursor-pointer transition-colors ${selectedWbs?.wbs_code === row.wbs_code ? "bg-blue-50 border-l-4 border-l-blue-500" : "hover:bg-gray-50"}`}
+                        style={{ paddingLeft: row.depth > 1 ? `${(row.depth-1)*10}px` : "0" }}>
+                        <td className="px-3 py-1.5 font-mono text-blue-700 whitespace-nowrap">{row.wbs_code}</td>
+                        <td className="px-3 py-1.5 text-gray-800 max-w-xs truncate" style={{ paddingLeft: `${12 + ((row.depth||1)-1)*8}px` }}>
+                          {row.description || <span className="text-gray-400 italic">—</span>}
+                        </td>
+                        <td className="px-3 py-1.5">
+                          {row.scope && row.scope !== "" && row.scope !== "nan"
+                            ? <ScopeBadge scope={row.scope} />
+                            : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-3 py-1.5 text-center text-gray-400">{row.depth}</td>
+                        <td className="px-3 py-1.5">
+                          <button onClick={e => { e.stopPropagation(); setSelectedWbs(row); }}
+                            className="text-blue-600 hover:text-blue-800 text-xs">Edit</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
+          {/* Detail panel */}
+          {selectedWbs && (
+            <DetailForm
+              item={{ ...selectedWbs, resource: selectedWbs.resource || resourceTypeNames[0] || "Electrical Technician - Zone Substation" }}
+              isNew={false}
+              resourceTypes={resourceTypeNames}
+              onSave={() => setSelectedWbs(null)}
+              onCancel={() => setSelectedWbs(null)}
+            />
+          )}
+        </div>
+      )}
+
+      {/* ── COMMISSIONING SCALING TAB ── */}
+      {activeTab === "scaling" && (
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="max-w-4xl mx-auto space-y-4">
+            {WBS_PROFILES.map(profile => (
+              <div key={profile.id} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b">
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold text-sm text-gray-800">{profile.name}</span>
+                    <span className="text-xs text-gray-400 font-mono">{profile.id}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${WBS_ST[profile.status]}`}>{profile.status}</span>
+                  </div>
+                  <span className="text-xs text-gray-400">{profile.section}</span>
+                </div>
+                <div className="p-3">
+                  <div className="flex gap-2 flex-wrap">
+                    {profile.tiers.map((tier, i) => (
+                      <div key={i} className="border border-gray-200 rounded p-2 text-center min-w-20 bg-gray-50">
+                        <div className="text-xs text-gray-500 mb-1">
+                          Qty {tier.f}{tier.t ? `–${tier.t}` : "+"}
+                        </div>
+                        <div className={`text-sm font-bold ${WBS_FC(tier.s)}`}>
+                          {(tier.s * 100).toFixed(0)}%
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── PEOPLE & ROLES TAB ── */}
+      {activeTab === "people" && (
+        <PeopleTab people={people} setPeople={setPeople} />
+      )}
+    </div>
+  );
+}
+
+
+// ── RESOURCE RATES VIEW (standalone tab in WBS Manager) ─────────
+// Shows the live resource_rates.json data in a readable table
+function ResourceRatesView() {
+  const { resourceRates, loading } = useContext(DataContext);
+  if (loading) return <div className="p-8 text-center text-gray-400 text-sm animate-pulse">Loading rates…</div>;
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <table className="w-full text-xs">
+        <thead className="bg-gray-50 border-b sticky top-0">
+          <tr>
+            {["Resource Type","AER Code","ERP Code","EE Internal $/hr","EE Commercial $/hr","Contractor $/hr","ANS Margin %","UOM"].map(h => (
+              <th key={h} className="text-left px-3 py-2 font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {resourceRates.map(r => (
+            <tr key={r.resource_type} className="border-b hover:bg-gray-50">
+              <td className="px-3 py-1.5 font-medium text-gray-800">{r.resource_type}</td>
+              <td className="px-3 py-1.5 font-mono text-blue-700">{r.aer_code}</td>
+              <td className="px-3 py-1.5 text-gray-500">{r.erp_code}</td>
+              <td className="px-3 py-1.5 text-right font-medium text-blue-900">${r.ee_internal_rate?.toFixed(2)}</td>
+              <td className="px-3 py-1.5 text-right font-medium text-orange-700">${r.ee_commercial_rate?.toFixed(2)}</td>
+              <td className="px-3 py-1.5 text-right text-gray-500">{r.contractor_rate ? `$${r.contractor_rate.toFixed(2)}` : "—"}</td>
+              <td className="px-3 py-1.5 text-right text-teal-700">{r.ans_margin_pct_labour != null ? (r.ans_margin_pct_labour*100).toFixed(1)+"%" : "—"}</td>
+              <td className="px-3 py-1.5 text-gray-500">{r.uom}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// ROOT APP — fetches data once, provides context, renders tabs
+// ════════════════════════════════════════════════════════════════
+const APP_TABS = [
+  { id: "estimation", label: "⚡ Estimation Tool" },
+  { id: "wbsmanager", label: "🗂 WBS Manager" },
+  { id: "rates",      label: "💲 Resource Rates" },
+];
+
+export default function App() {
+  const [appTab, setAppTab] = useState("estimation");
+  const [wbsMaster,     setWbsMaster]     = useState([]);
+  const [resourceRates, setResourceRates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(null);
+
+  const BASE = import.meta.env.BASE_URL || "/";
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`${BASE}data/wbs_master.json`).then(r => { if (!r.ok) throw new Error("wbs_master.json " + r.status); return r.json(); }),
+      fetch(`${BASE}data/resource_rates.json`).then(r => { if (!r.ok) throw new Error("resource_rates.json " + r.status); return r.json(); }),
+    ])
+    .then(([wbs, rates]) => {
+      setWbsMaster(wbs.records || []);
+      setResourceRates(rates.records || []);
+      setLoading(false);
+    })
+    .catch(err => {
+      setError(err.message);
+      setLoading(false);
+    });
+  }, [BASE]);
+
+  return (
+    <DataContext.Provider value={{ wbsMaster, resourceRates, loading, error }}>
+      <div className="flex flex-col h-screen font-sans text-sm select-none">
+        {/* Top navigation bar */}
+        <div className="bg-blue-900 text-white px-4 py-0 flex items-center gap-0 flex-shrink-0 shadow-lg">
+          <span className="font-bold text-sm tracking-wide mr-4 py-3">⚡ IET Demo</span>
+          {APP_TABS.map(tab => (
+            <button key={tab.id} onClick={() => setAppTab(tab.id)}
+              className={`px-5 py-3 text-xs font-semibold transition-colors border-b-2 ${
+                appTab === tab.id
+                  ? "border-orange-400 text-white bg-blue-800"
+                  : "border-transparent text-blue-300 hover:text-white hover:bg-blue-800"
+              }`}>
+              {tab.label}
+            </button>
+          ))}
+          <div className="flex-1" />
+          {loading && <span className="text-xs text-blue-300 animate-pulse pr-4">⟳ Loading live data…</span>}
+          {!loading && !error && (
+            <span className="text-xs text-green-400 pr-4">✓ {wbsMaster.length} WBS · {resourceRates.length} rates loaded</span>
+          )}
+          {error && <span className="text-xs text-red-400 pr-4">⚠ Data error — {error}</span>}
+        </div>
+
+        {/* Tab content */}
+        <div className="flex-1 overflow-hidden">
+          {appTab === "estimation"  && <EstimationApp />}
+          {appTab === "wbsmanager" && <WBSManager />}
+          {appTab === "rates"       && (
+            <div className="flex flex-col h-full">
+              <div className="bg-white border-b px-4 py-2 flex-shrink-0">
+                <div className="text-sm font-bold text-gray-800">Resource Rates</div>
+                <div className="text-xs text-gray-500">Live from resource_rates.json — {resourceRates.length} resource types · FY2026 rates</div>
+              </div>
+              <ResourceRatesView />
+            </div>
+          )}
+        </div>
+      </div>
+    </DataContext.Provider>
+  );
+}
