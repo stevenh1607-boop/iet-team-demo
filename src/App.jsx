@@ -333,7 +333,7 @@ function WBSNavTree({ wbs, supply, activePhase, setActivePhase, selectedL4, onSe
     {id:1,label:"1 · Planning"},
     {id:2,label:"2 · Design"},
     {id:3,label:"3 · Construction"},
-    {id:4,label:"4 · Commissioning"},
+    {id:4,label:"4 · Commissioning ⚡"},
     {id:5,label:"5 · M&C"},
   ];
 
@@ -359,259 +359,13 @@ function WBSNavTree({ wbs, supply, activePhase, setActivePhase, selectedL4, onSe
   );
 }
 
-// ── COMMISSIONING SCREEN (Phase 4) ──────────────────────────────
-// Read-only derived totals with economy-of-scale scaling
-// Hrs override available per item if estimator needs to adjust
-function CommissioningScreen({ lines, setLines, isCommercial }) {
-  const { supply, commLookup, commProfiles } = useData();
-  const [selectedGroup, setSelectedGroup] = useState(null);
-
-  // Auto-select first group when groups become available
-  useEffect(()=>{
-    const keys = Object.keys(groups).sort();
-    if (keys.length > 0 && !selectedGroup) setSelectedGroup(keys[0]);
-    if (selectedGroup && !groups[selectedGroup] && keys.length > 0) setSelectedGroup(keys[0]);
-  },[groups]);
-
-  const EE_RATE = 139.26;
-
-  // Derive commission totals from supply lines
-  // For each commission WBS: sum qty of all supply items pointing to it
-  const commTotals = useMemo(() => {
-    const m = {};
-    supply.forEach(item => {
-      const commWbs = item.commission_wbs;
-      if (!commWbs || !commLookup[commWbs]) return;
-      const qty    = parseFloat(lines[item.wbs_code]?.qty || "0");
-      const factor = parseFloat(lines[item.wbs_code]?.factor || "1");
-      if (!m[commWbs]) m[commWbs] = { qty: 0, ...commLookup[commWbs] };
-      m[commWbs].qty += qty * factor;
-    });
-    return m;
-  }, [supply, lines, commLookup]);
-
-  // Group commission items by L4 (first 4 parts of wbs_code)
-  const groups = useMemo(() => {
-    const g = {};
-    Object.entries(commTotals).forEach(([wbs, data]) => {
-      if (data.qty <= 0) return;
-      const l4 = wbs.split('.').slice(0, 4).join('.');
-      if (!g[l4]) g[l4] = { wbs_codes: [], totalHrs: 0, totalCost: 0 };
-      const scale   = getScaleFactor(commProfiles, data.profile_id, data.qty);
-      const baseHrs = data.qty * (data.hrs_per_unit || 0);
-      const scaledHrs = baseHrs * scale;
-      const rate    = data.ee_labour_rate || EE_RATE;
-      g[l4].wbs_codes.push({ wbs, ...data, scale, baseHrs, scaledHrs, rate });
-      g[l4].totalHrs  += scaledHrs;
-      g[l4].totalCost += scaledHrs * rate;
-    });
-    return g;
-  }, [commTotals, commProfiles]);
-
-  // Get L4 description from commLookup or wbs_master
-  const activeItems = selectedGroup ? (groups[selectedGroup]?.wbs_codes || []) : [];
-  const grandHrs    = Object.values(groups).reduce((a, g) => a + g.totalHrs, 0);
-  const grandCost   = Object.values(groups).reduce((a, g) => a + g.totalCost, 0);
-  const grandComm   = grandCost * (1 + ANS_LAB);
-
-  const getHrsOverride = (wbs) => lines[`comm_ovrd_${wbs}`]?.qty || "";
-  const setHrsOverride = (wbs, val) => setLines(p => ({ ...p, [`comm_ovrd_${wbs}`]: { qty: val } }));
-
-  const STATUS_BADGE = { Confirmed:"bg-green-100 text-green-700", Pending:"bg-yellow-100 text-yellow-700", Draft:"bg-gray-100 text-gray-500" };
-
-  if (Object.keys(groups).length === 0) return (
-    <div className="flex-1 flex items-center justify-center bg-gray-50">
-      <div className="text-center text-gray-400">
-        <div className="text-4xl mb-3">🔧</div>
-        <div className="text-sm font-semibold text-gray-500">No commissioning items triggered yet</div>
-        <div className="text-xs mt-1 text-gray-400">Enter supply quantities in Phase 3 — commissioning hours will appear here automatically</div>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="flex flex-1 overflow-hidden w-full">
-      {/* LEFT — group nav */}
-      <div className="w-60 bg-gray-900 flex flex-col flex-shrink-0 overflow-hidden">
-        <div className="bg-teal-800 text-white px-3 py-2 flex-shrink-0">
-          <div className="text-xs font-bold uppercase tracking-wide">Phase 4 — Commissioning</div>
-          <div className="text-xs opacity-75 mt-0.5">Auto-derived · {fmtHrs(grandHrs)} total</div>
-        </div>
-        <div className="flex-1 overflow-y-auto py-1">
-          {Object.entries(groups).sort().map(([l4, g]) => (
-            <div key={l4}
-              onClick={() => setSelectedGroup(l4)}
-              className={`px-3 py-2 cursor-pointer text-xs transition-colors border-b border-gray-800 ${
-                selectedGroup === l4 ? "bg-teal-700 text-white" : "text-gray-300 hover:bg-gray-700"}`}>
-              <div className="font-mono text-gray-400 text-xs">{l4}</div>
-              <div className="font-medium truncate mt-0.5">
-                {g.wbs_codes[0]?.description?.split(' - ')[0] || l4}
-              </div>
-              <div className="flex items-center justify-between mt-1">
-                <span className={selectedGroup===l4 ? "text-teal-200" : "text-gray-500"}>
-                  {fmtHrs(g.totalHrs)}
-                </span>
-                <span className={`text-xs px-1 rounded ${selectedGroup===l4 ? "bg-teal-600 text-white" : "bg-gray-700 text-gray-400"}`}>
-                  {g.wbs_codes.length} items
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="border-t border-gray-700 px-3 py-2">
-          <div className="text-xs text-gray-500 mb-1">Investment Totals</div>
-          <div className="text-xs font-bold text-teal-300">{fmtHrs(grandHrs)} commission hrs</div>
-          <div className="text-xs font-bold text-blue-300">{fmt(grandCost)} EE internal</div>
-          {isCommercial && <div className="text-xs font-bold text-orange-300">{fmt(grandComm)} commercial</div>}
-        </div>
-      </div>
-
-      {/* RIGHT — detail panel */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
-        {!selectedGroup ? (
-          <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
-            Select a commissioning group from the left
-          </div>
-        ) : (
-          <>
-            <div className="bg-white border-b px-4 py-2 flex items-center justify-between flex-shrink-0">
-              <div>
-                <div className="font-bold text-teal-900 text-sm">{selectedGroup} — Commissioning Items</div>
-                <div className="text-xs text-gray-400">
-                  Quantities derived from supply lines · Click hrs to override · Scale factor from economy-of-scale profile
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-xs font-bold text-teal-700">{fmtHrs(groups[selectedGroup]?.totalHrs || 0)}</div>
-                <div className="text-xs text-gray-500">group total</div>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-3 space-y-3">
-              {activeItems.map(item => {
-                const ovrd = getHrsOverride(item.wbs);
-                const effectiveHrs = ovrd !== "" ? parseFloat(ovrd)||0 : item.scaledHrs;
-                const cost = effectiveHrs * (item.rate || EE_RATE);
-                const costComm = cost * (1 + ANS_LAB);
-                const profile = commProfiles[item.profile_id];
-                const isOverridden = ovrd !== "";
-
-                return (
-                  <div key={item.wbs} className={`bg-white rounded-lg border shadow-sm overflow-hidden ${isOverridden ? "border-orange-300" : "border-gray-200"}`}>
-                    <div className="px-4 py-2 bg-gray-50 border-b flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs text-teal-700">{item.wbs}</span>
-                        <span className="font-semibold text-sm text-gray-800">{item.description}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {item.profile_id && (
-                          <span className={`text-xs px-2 py-0.5 rounded font-medium ${STATUS_BADGE[item.profile_status] || "bg-gray-100 text-gray-500"}`}>
-                            {item.profile_name} {item.profile_status === "Pending" ? "⚠️" : "✓"}
-                          </span>
-                        )}
-                        {isOverridden && (
-                          <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded font-medium">hrs overridden</span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="p-4 grid grid-cols-6 gap-4 items-start">
-                      {/* Derived qty */}
-                      <div className="text-center">
-                        <div className="text-xs text-gray-500 mb-1">Derived Qty</div>
-                        <div className="text-xl font-bold text-orange-700">{item.qty.toLocaleString('en-AU', {maximumFractionDigits:1})}</div>
-                        <div className="text-xs text-gray-400">from supply lines</div>
-                      </div>
-
-                      {/* Base hrs */}
-                      <div className="text-center">
-                        <div className="text-xs text-gray-500 mb-1">Base Hrs</div>
-                        <div className="text-xl font-bold text-gray-700">{fmtHrs(item.baseHrs)}</div>
-                        <div className="text-xs text-gray-400">{item.hrs_per_unit}h × {item.qty.toFixed(1)}</div>
-                      </div>
-
-                      {/* Scale factor */}
-                      <div className="text-center">
-                        <div className="text-xs text-gray-500 mb-1">Scale Factor</div>
-                        <div className={`text-xl font-bold ${item.scale < 1 ? "text-blue-700" : "text-gray-500"}`}>
-                          {fmtPct(item.scale)}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {item.scale < 1 ? `saving ${fmtPct(1-item.scale)}` : "no reduction"}
-                        </div>
-                      </div>
-
-                      {/* Scaled hrs */}
-                      <div className="text-center">
-                        <div className="text-xs text-gray-500 mb-1">Scaled Hrs</div>
-                        <div className="text-xl font-bold text-teal-700">{fmtHrs(item.scaledHrs)}</div>
-                        <div className="text-xs text-gray-400">{fmtHrs(item.baseHrs)} × {fmtPct(item.scale)}</div>
-                      </div>
-
-                      {/* Override */}
-                      <div>
-                        <div className="text-xs text-gray-500 mb-1">Override Hrs</div>
-                        <input type="number" min="0" step="0.5"
-                          value={ovrd}
-                          onChange={e => setHrsOverride(item.wbs, e.target.value)}
-                          placeholder={item.scaledHrs.toFixed(1)}
-                          className={`w-full text-center border rounded px-2 py-1.5 text-sm font-bold focus:outline-none focus:ring-1 ${
-                            isOverridden ? "border-orange-400 bg-orange-50 text-orange-800 focus:ring-orange-400" : "border-gray-300 text-gray-400 focus:ring-teal-400"}`}
-                        />
-                        {isOverridden && (
-                          <button onClick={() => setHrsOverride(item.wbs, "")}
-                            className="text-xs text-orange-600 hover:text-orange-800 mt-1 w-full text-center">
-                            ↺ Reset to scaled
-                          </button>
-                        )}
-                        <div className="text-xs text-gray-400 text-center mt-0.5">effective: {fmtHrs(effectiveHrs)}</div>
-                      </div>
-
-                      {/* Cost */}
-                      <div className="text-center">
-                        <div className="text-xs text-gray-500 mb-1">Cost</div>
-                        <div className="text-sm font-bold text-blue-800">{fmt(cost)}</div>
-                        {isCommercial && <div className="text-xs font-bold text-orange-700">{fmt(costComm)}</div>}
-                        <div className="text-xs text-gray-400">{fmt(item.rate || EE_RATE)}/hr</div>
-                      </div>
-                    </div>
-
-                    {/* Profile tiers */}
-                    {profile && (
-                      <div className="px-4 py-2 bg-gray-50 border-t">
-                        <div className="text-xs text-gray-500 mb-1">
-                          {profile.name} scaling tiers
-                          {item.profile_status === "Pending" && <span className="ml-1 text-amber-600">⚠ pending stakeholder approval</span>}
-                        </div>
-                        <div className="flex gap-1.5 flex-wrap">
-                          {profile.tiers.map((tier, i) => {
-                            const isActive = item.qty >= tier.qty_from && (tier.qty_to === null || item.qty <= tier.qty_to);
-                            return (
-                              <span key={i}
-                                className={`text-xs px-2 py-0.5 rounded font-medium border ${isActive ? "bg-teal-600 text-white border-teal-700" : "bg-white text-gray-500 border-gray-200"}`}>
-                                {tier.qty_from}{tier.qty_to ? `–${tier.qty_to}` : "+"} → {fmtPct(tier.scale)}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ── ESTIMATION SCREEN ────────────────────────────────────────────
 function EstimationScreen({ isCommercial, lines, setLines }) {
-  const { wbs, supply, rates, loading } = useData();
+  const { wbs, supply, rates, loading, commLookup, commProfiles } = useData();
   const [activePhase, setActivePhase]   = useState(3);
   const [selectedL4, setSelectedL4]     = useState("3.1.3.04");
+  const [selectedCommGroup, setSelectedCommGroup] = useState(null);
   const [expandedRows, setExpandedRows] = useState({});
   const [navSearch, setNavSearch]       = useState("");
 
@@ -651,7 +405,52 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
     return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs+c.commHrs,eeTotal:a.eeTotal+c.eeInt,commTotal:a.commTotal+c.comm};
   },{installHrs:0,commHrs:0,eeTotal:0,commTotal:0}),[supply,calcItem]);
 
-  const linesEntered = Object.values(lines).filter(l=>parseFloat(l.qty)>0).length;
+  const linesEntered = Object.values(lines).filter(l=>parseFloat(l.qty)>0 && !l._commOvrd).length;
+
+  // ── PHASE 4 COMMISSIONING — derived from supply links ──────────
+  const commTotals = useMemo(()=>{
+    const m = {};
+    supply.forEach(item => {
+      const commWbs = item.commission_wbs;
+      if (!commWbs || !commLookup[commWbs]) return;
+      const qty    = parseFloat(lines[item.wbs_code]?.qty || "0");
+      const factor = parseFloat(lines[item.wbs_code]?.factor || "1");
+      if (!m[commWbs]) m[commWbs] = { qty:0, ...commLookup[commWbs] };
+      m[commWbs].qty += qty * factor;
+    });
+    return m;
+  },[supply, lines, commLookup]);
+
+  const commGroups = useMemo(()=>{
+    const g = {};
+    Object.entries(commTotals).forEach(([commWbs, data])=>{
+      if (data.qty <= 0) return;
+      const l4 = commWbs.split('.').slice(0,4).join('.');
+      if (!g[l4]) g[l4] = { items:[], totalHrs:0, totalCost:0 };
+      const scale     = getScaleFactor(commProfiles, data.profile_id, data.qty);
+      const baseHrs   = data.qty * (data.hrs_per_unit || 0);
+      const ovrdKey   = `comm_ovrd_${commWbs}`;
+      const ovrd      = lines[ovrdKey]?.qty;
+      const scaledHrs = (ovrd !== undefined && ovrd !== "") ? (parseFloat(ovrd)||0) : baseHrs * scale;
+      const rate      = data.ee_labour_rate || 139.26;
+      g[l4].items.push({ commWbs, ...data, scale, baseHrs, scaledHrs, rate, isOverridden: ovrd !== undefined && ovrd !== "" });
+      g[l4].totalHrs  += scaledHrs;
+      g[l4].totalCost += scaledHrs * rate;
+    });
+    return g;
+  },[commTotals, commProfiles, lines]);
+
+  const commGrandHrs  = Object.values(commGroups).reduce((a,g)=>a+g.totalHrs, 0);
+  const commGrandCost = Object.values(commGroups).reduce((a,g)=>a+g.totalCost, 0);
+
+  useEffect(()=>{
+    if (activePhase === 4) {
+      const keys = Object.keys(commGroups).sort();
+      if (keys.length > 0 && (!selectedCommGroup || !commGroups[selectedCommGroup]))
+        setSelectedCommGroup(keys[0]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[activePhase, commGroups]);
 
   if (loading) return (
     <div className="flex-1 flex items-center justify-center bg-gray-50">
@@ -673,8 +472,170 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
         searchText={{nav:navSearch, setNav:setNavSearch}}
       />
 
-      {/* CENTRE — Item list */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      {/* CENTRE + RIGHT — Phase 4 Commissioning OR normal supply items */}
+      {activePhase === 4 ? (
+        // ── PHASE 4: COMMISSIONING DETAIL PANEL ──
+        <>
+          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+            <div className="bg-white border-b px-4 py-2 flex items-center justify-between flex-shrink-0">
+              <div>
+                <div className="font-bold text-teal-900 text-sm">
+                  {selectedCommGroup ? `${selectedCommGroup} — Commissioning` : "Phase 4 — Commissioning"}
+                </div>
+                <div className="text-xs text-gray-400">
+                  Auto-derived from supply quantities · Scale factors applied · Click hrs to override
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs font-bold text-teal-700">{fmtHrs(commGrandHrs)} total comm hrs</div>
+                <div className="text-xs font-bold text-blue-800">{fmt(commGrandCost)} EE internal</div>
+                {isCommercial && <div className="text-xs font-bold text-orange-700">{fmt(commGrandCost*(1+ANS_LAB))} commercial</div>}
+              </div>
+            </div>
+
+            {Object.keys(commGroups).length === 0 ? (
+              <div className="flex-1 flex items-center justify-center bg-gray-50">
+                <div className="text-center text-gray-400">
+                  <div className="text-4xl mb-3">🔧</div>
+                  <div className="text-sm font-semibold text-gray-500">No commissioning items triggered yet</div>
+                  <div className="text-xs mt-1">Enter supply quantities in Phases 1–3 — commissioning hours appear here automatically</div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-1 overflow-hidden">
+                {/* Comm group sub-nav */}
+                <div className="w-52 bg-gray-800 flex flex-col flex-shrink-0 overflow-y-auto">
+                  {Object.entries(commGroups).sort().map(([l4, g])=>(
+                    <div key={l4} onClick={()=>setSelectedCommGroup(l4)}
+                      className={`px-3 py-2 cursor-pointer border-b border-gray-700 text-xs transition-colors ${selectedCommGroup===l4?"bg-teal-700 text-white":"text-gray-300 hover:bg-gray-700"}`}>
+                      <div className="font-mono text-gray-400 text-xs">{l4}</div>
+                      <div className="font-medium truncate mt-0.5">{g.items[0]?.description?.split(' - ')[0]||l4}</div>
+                      <div className="flex justify-between mt-1">
+                        <span className={selectedCommGroup===l4?"text-teal-200":"text-gray-500"}>{fmtHrs(g.totalHrs)}</span>
+                        <span className={`text-xs px-1 rounded ${selectedCommGroup===l4?"bg-teal-600 text-white":"bg-gray-700 text-gray-400"}`}>{g.items.length}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Comm item detail */}
+                <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50">
+                  {(commGroups[selectedCommGroup]?.items || []).map(item=>{
+                    const ovrdKey = `comm_ovrd_${item.commWbs}`;
+                    const ovrd    = lines[ovrdKey]?.qty ?? "";
+                    const setOvrd = val => setLines(p=>({...p,[ovrdKey]:{qty:val,_commOvrd:true}}));
+                    const profile = commProfiles[item.profile_id];
+                    const STATUS_BADGE = {Confirmed:"bg-green-100 text-green-700",Pending:"bg-yellow-100 text-yellow-700"};
+                    return (
+                      <div key={item.commWbs} className={`bg-white rounded-lg border shadow-sm overflow-hidden ${item.isOverridden?"border-orange-300":"border-gray-200"}`}>
+                        <div className="px-4 py-2 bg-gray-50 border-b flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-teal-700">{item.commWbs}</span>
+                            <span className="font-semibold text-sm text-gray-800">{item.description}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {item.profile_id && profile && (
+                              <span className={`text-xs px-2 py-0.5 rounded font-medium ${STATUS_BADGE[item.profile_status]||"bg-gray-100 text-gray-500"}`}>
+                                {profile.name} {item.profile_status==="Pending"?"⚠️":"✓"}
+                              </span>
+                            )}
+                            {item.isOverridden && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">hrs overridden</span>}
+                          </div>
+                        </div>
+                        <div className="p-4 grid grid-cols-6 gap-4 items-start text-xs">
+                          <div className="text-center">
+                            <div className="text-gray-500 mb-1">Derived Qty</div>
+                            <div className="text-xl font-bold text-orange-700">{item.qty.toLocaleString('en-AU',{maximumFractionDigits:1})}</div>
+                            <div className="text-gray-400">from supply</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-gray-500 mb-1">Base Hrs</div>
+                            <div className="text-xl font-bold text-gray-700">{fmtHrs(item.baseHrs)}</div>
+                            <div className="text-gray-400">{item.hrs_per_unit}h × {item.qty.toFixed(1)}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-gray-500 mb-1">Scale Factor</div>
+                            <div className={`text-xl font-bold ${item.scale<1?"text-blue-700":"text-gray-500"}`}>{fmtPct(item.scale)}</div>
+                            <div className="text-gray-400">{item.scale<1?`save ${fmtPct(1-item.scale)}`:"no reduction"}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-gray-500 mb-1">Scaled Hrs</div>
+                            <div className="text-xl font-bold text-teal-700">{fmtHrs(item.baseHrs*item.scale)}</div>
+                            <div className="text-gray-400">{fmtPct(item.scale)} applied</div>
+                          </div>
+                          <div>
+                            <div className="text-gray-500 mb-1">Override Hrs</div>
+                            <input type="number" min="0" step="0.5" value={ovrd}
+                              onChange={e=>setOvrd(e.target.value)}
+                              placeholder={(item.baseHrs*item.scale).toFixed(1)}
+                              className={`w-full text-center border rounded px-2 py-1.5 text-sm font-bold focus:outline-none focus:ring-1 ${item.isOverridden?"border-orange-400 bg-orange-50 text-orange-800 focus:ring-orange-400":"border-gray-300 text-gray-400 focus:ring-teal-400"}`}/>
+                            {item.isOverridden && (
+                              <button onClick={()=>setOvrd("")} className="text-xs text-orange-600 hover:text-orange-800 mt-1 w-full text-center">↺ Reset</button>
+                            )}
+                            <div className="text-gray-400 text-center mt-0.5">→ {fmtHrs(item.scaledHrs)}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-gray-500 mb-1">Cost</div>
+                            <div className="text-sm font-bold text-blue-800">{fmt(item.scaledHrs*(item.rate||139.26))}</div>
+                            {isCommercial && <div className="text-xs font-bold text-orange-700">{fmt(item.scaledHrs*(item.rate||139.26)*(1+ANS_LAB))}</div>}
+                            <div className="text-gray-400">{fmt(item.rate||139.26)}/hr</div>
+                          </div>
+                        </div>
+                        {profile && (
+                          <div className="px-4 py-2 bg-gray-50 border-t">
+                            <div className="text-xs text-gray-500 mb-1">{profile.name} tiers{item.profile_status==="Pending"&&<span className="ml-1 text-amber-600">⚠ pending approval</span>}</div>
+                            <div className="flex gap-1.5 flex-wrap">
+                              {profile.tiers.map((tier,i)=>{
+                                const active = item.qty>=tier.qty_from&&(tier.qty_to===null||item.qty<=tier.qty_to);
+                                return <span key={i} className={`text-xs px-2 py-0.5 rounded font-medium border ${active?"bg-teal-600 text-white border-teal-700":"bg-white text-gray-500 border-gray-200"}`}>
+                                  {tier.qty_from}{tier.qty_to?`–${tier.qty_to}`:"+"} → {fmtPct(tier.scale)}
+                                </span>;
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT — commissioning cost summary panel */}
+          <div className="w-56 bg-white border-l flex flex-col overflow-hidden flex-shrink-0">
+            <div className="bg-teal-700 text-white text-xs font-bold px-3 py-2 uppercase tracking-wide">Commissioning Costs</div>
+            <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
+              {Object.entries(commGroups).sort().map(([l4,g])=>(
+                <div key={l4} className={`py-1 px-1 rounded cursor-pointer ${selectedCommGroup===l4?"bg-teal-50 border border-teal-200":""}`} onClick={()=>setSelectedCommGroup(l4)}>
+                  <div className="text-xs text-gray-500 font-mono">{l4}</div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">{fmtHrs(g.totalHrs)}</span>
+                    <span className="text-xs font-bold text-blue-800">{fmt(g.totalCost)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="border-t px-3 py-2">
+              <div className="flex justify-between text-xs font-bold text-teal-700 mb-1">
+                <span>Total Comm Hrs</span><span>{fmtHrs(commGrandHrs)}</span>
+              </div>
+              <div className="py-1.5 px-2 bg-blue-800 rounded text-white flex justify-between mb-1">
+                <span className="text-xs font-semibold">EE Internal</span>
+                <span className="text-xs font-bold">{fmt(commGrandCost)}</span>
+              </div>
+              {isCommercial && <div className="py-1.5 px-2 bg-orange-600 rounded text-white flex justify-between">
+                <span className="text-xs font-semibold">Commercial</span>
+                <span className="text-xs font-bold">{fmt(commGrandCost*(1+ANS_LAB))}</span>
+              </div>}
+            </div>
+          </div>
+        </>
+      ) : (
+        // ── PHASES 1-3, 5: NORMAL SUPPLY ITEM LIST ──
+        <>
+          {/* CENTRE — Item list */}
+          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <div className="bg-white border-b px-4 py-2 flex items-center justify-between flex-shrink-0">
           <div>
             <div className="font-bold text-blue-900 text-sm">{selectedL4} — {l4label}</div>
@@ -893,6 +854,8 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
@@ -2234,12 +2197,11 @@ const APP_TABS = [
   {id:"saved",      label:"💾 Saved Investments"},
 ];
 const EST_TABS = [
-  {id:"setup",         label:"⚙️ Investment Setup"},
-  {id:"estimate",      label:"📐 Estimation"},
-  {id:"commissioning", label:"🔧 Commissioning"},
-  {id:"equipment",     label:"📦 Equipment"},
-  {id:"review",        label:"📋 Review Lines"},
-  {id:"summary",       label:"📊 Summary"},
+  {id:"setup",    label:"⚙️ Investment Setup"},
+  {id:"estimate", label:"📐 Estimation"},
+  {id:"equipment",label:"📦 Equipment"},
+  {id:"review",   label:"📋 Review Lines"},
+  {id:"summary",  label:"📊 Summary"},
 ];
 
 export default function App() {
@@ -2418,11 +2380,7 @@ export default function App() {
                     <EstimationScreen isCommercial={isCommercial} lines={lines} setLines={setLines}/>
                   </div>
                 )}
-                {estTab==="commissioning" && (
-                  <div className="flex flex-1 overflow-hidden">
-                    <CommissioningScreen lines={lines} setLines={setLines} isCommercial={isCommercial}/>
-                  </div>
-                )}
+
                 {estTab==="equipment"    && <EquipmentScreen lines={lines} setLines={setLines} isCommercial={isCommercial} inv={inv}/>}
                 {estTab==="review"    && <ReviewLines lines={lines} isCommercial={isCommercial}/>}
                 {estTab==="summary"   && <SummaryScreen inv={inv} lines={lines} isCommercial={isCommercial} equipSel={equipSel} onSave={saveInvestment} lastSaved={lastSaved}/>}
