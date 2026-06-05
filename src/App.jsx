@@ -443,6 +443,29 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
   const commGrandHrs  = Object.values(commGroups).reduce((a,g)=>a+g.totalHrs, 0);
   const commGrandCost = Object.values(commGroups).reduce((a,g)=>a+g.totalCost, 0);
 
+  // ALL 144 commission rows — always visible even when qty=0
+  const commAllGroups = useMemo(()=>{
+    const g = {};
+    Object.entries(commLookup).forEach(([commWbs, data])=>{
+      const l4 = commWbs.split('.').slice(0,4).join('.');
+      if (!g[l4]) g[l4] = { label: data.description?.split(' - ')[0] || l4, items:[], totalHrs:0, totalCost:0 };
+      const derivedQty = commTotals[commWbs]?.qty || 0;
+      const scale      = getScaleFactor(commProfiles, data.profile_id, derivedQty);
+      const baseHrs    = derivedQty * (data.hrs_per_unit || 0);
+      const ovrdKey    = `comm_ovrd_${commWbs}`;
+      const ovrd       = lines[ovrdKey]?.qty;
+      const scaledHrs  = (ovrd !== undefined && ovrd !== "") ? (parseFloat(ovrd)||0) : baseHrs * scale;
+      const rate       = data.ee_labour_rate || 139.26;
+      const item       = { wbs:commWbs, ...data, derivedQty, scale, baseHrs, scaledHrs, rate, isOverridden: ovrd !== undefined && ovrd !== "" };
+      g[l4].items.push(item);
+      if (derivedQty > 0) {
+        g[l4].totalHrs  += scaledHrs;
+        g[l4].totalCost += scaledHrs * rate;
+      }
+    });
+    return g;
+  },[commLookup, commTotals, commProfiles, lines]);
+
   useEffect(()=>{
     if (activePhase === 4) {
       const keys = Object.keys(commGroups).sort();
@@ -472,152 +495,123 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
         searchText={{nav:navSearch, setNav:setNavSearch}}
       />
 
-      {/* CENTRE + RIGHT — Phase 4 Commissioning OR normal supply items */}
+      {/* CENTRE + RIGHT — Phase 4 shows ALL commissioning rows; Phases 1-3/5 show supply items */}
       {activePhase === 4 ? (
-        // ── PHASE 4: COMMISSIONING DETAIL PANEL ──
         <>
+          {/* COMMISSIONING — all 144 rows always visible, live-updating */}
           <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-            <div className="bg-white border-b px-4 py-2 flex items-center justify-between flex-shrink-0">
+            <div className="bg-teal-800 text-white px-4 py-2 flex items-center justify-between flex-shrink-0">
               <div>
-                <div className="font-bold text-teal-900 text-sm">
-                  {selectedCommGroup ? `${selectedCommGroup} — Commissioning` : "Phase 4 — Commissioning"}
-                </div>
-                <div className="text-xs text-gray-400">
-                  Auto-derived from supply quantities · Scale factors applied · Click hrs to override
-                </div>
+                <div className="font-bold text-sm">Phase 4 — Commissioning</div>
+                <div className="text-xs opacity-75">All items shown · Qty auto-derived from supply · Scale factor applied · Override hrs if needed</div>
               </div>
-              <div className="text-right">
-                <div className="text-xs font-bold text-teal-700">{fmtHrs(commGrandHrs)} total comm hrs</div>
-                <div className="text-xs font-bold text-blue-800">{fmt(commGrandCost)} EE internal</div>
-                {isCommercial && <div className="text-xs font-bold text-orange-700">{fmt(commGrandCost*(1+ANS_LAB))} commercial</div>}
+              <div className="text-right text-xs">
+                <div className="font-bold">{fmtHrs(commGrandHrs)} total hrs</div>
+                <div className="font-bold">{fmt(commGrandCost)} EE internal</div>
+                {isCommercial && <div className="font-bold text-orange-300">{fmt(commGrandCost*(1+ANS_LAB))} comm</div>}
               </div>
             </div>
-
-            {Object.keys(commGroups).length === 0 ? (
-              <div className="flex-1 flex items-center justify-center bg-gray-50">
-                <div className="text-center text-gray-400">
-                  <div className="text-4xl mb-3">🔧</div>
-                  <div className="text-sm font-semibold text-gray-500">No commissioning items triggered yet</div>
-                  <div className="text-xs mt-1">Enter supply quantities in Phases 1–3 — commissioning hours appear here automatically</div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-1 overflow-hidden">
-                {/* Comm group sub-nav */}
-                <div className="w-52 bg-gray-800 flex flex-col flex-shrink-0 overflow-y-auto">
-                  {Object.entries(commGroups).sort().map(([l4, g])=>(
-                    <div key={l4} onClick={()=>setSelectedCommGroup(l4)}
-                      className={`px-3 py-2 cursor-pointer border-b border-gray-700 text-xs transition-colors ${selectedCommGroup===l4?"bg-teal-700 text-white":"text-gray-300 hover:bg-gray-700"}`}>
-                      <div className="font-mono text-gray-400 text-xs">{l4}</div>
-                      <div className="font-medium truncate mt-0.5">{g.items[0]?.description?.split(' - ')[0]||l4}</div>
-                      <div className="flex justify-between mt-1">
-                        <span className={selectedCommGroup===l4?"text-teal-200":"text-gray-500"}>{fmtHrs(g.totalHrs)}</span>
-                        <span className={`text-xs px-1 rounded ${selectedCommGroup===l4?"bg-teal-600 text-white":"bg-gray-700 text-gray-400"}`}>{g.items.length}</span>
-                      </div>
+            <div className="bg-gray-50 border-b grid flex-shrink-0 text-xs font-semibold text-gray-500 px-3 py-1.5"
+              style={{gridTemplateColumns:"1fr 52px 64px 52px 76px 76px 86px 64px"}}>
+              <div>Description / WBS</div>
+              <div className="text-center">Hrs/Unit</div>
+              <div className="text-center text-orange-700">Derived Qty</div>
+              <div className="text-center text-blue-700">Scale</div>
+              <div className="text-center text-teal-700">Scaled Hrs</div>
+              <div className="text-center text-orange-500">Override</div>
+              <div className="text-right text-blue-800">EE Cost</div>
+              <div className="text-center">Profile</div>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {Object.entries(commAllGroups).sort().map(([l4, group]) => {
+                const hasActive = group.items.some(i => i.derivedQty > 0);
+                return (
+                  <div key={l4}>
+                    <div className={`px-3 py-1 flex items-center gap-2 border-b-2 border-gray-300 text-xs font-bold uppercase tracking-wide cursor-pointer
+                      ${hasActive ? "bg-teal-700 text-white" : "bg-gray-100 text-gray-500"}`}
+                      onClick={()=>setSelectedCommGroup(l4===selectedCommGroup?null:l4)}>
+                      <span className="font-mono font-normal opacity-70">{l4}</span>
+                      <span className="flex-1 truncate">{group.label}</span>
+                      {hasActive && <span className="font-mono font-bold">{fmtHrs(group.totalHrs)}</span>}
                     </div>
-                  ))}
-                </div>
-
-                {/* Comm item detail */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50">
-                  {(commGroups[selectedCommGroup]?.items || []).map(item=>{
-                    const ovrdKey = `comm_ovrd_${item.commWbs}`;
-                    const ovrd    = lines[ovrdKey]?.qty ?? "";
-                    const setOvrd = val => setLines(p=>({...p,[ovrdKey]:{qty:val,_commOvrd:true}}));
-                    const profile = commProfiles[item.profile_id];
-                    const STATUS_BADGE = {Confirmed:"bg-green-100 text-green-700",Pending:"bg-yellow-100 text-yellow-700"};
-                    return (
-                      <div key={item.commWbs} className={`bg-white rounded-lg border shadow-sm overflow-hidden ${item.isOverridden?"border-orange-300":"border-gray-200"}`}>
-                        <div className="px-4 py-2 bg-gray-50 border-b flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs text-teal-700">{item.commWbs}</span>
-                            <span className="font-semibold text-sm text-gray-800">{item.description}</span>
+                    {group.items.map(item => {
+                      const ovrdKey = `comm_ovrd_${item.wbs}`;
+                      const ovrd    = lines[ovrdKey]?.qty ?? "";
+                      const setOvrd = val => setLines(p=>({...p,[ovrdKey]:{qty:val,_commOvrd:true}}));
+                      const isOvrd  = ovrd !== "" && ovrd !== undefined;
+                      const effectiveHrs = isOvrd ? (parseFloat(ovrd)||0) : item.scaledHrs;
+                      const cost    = effectiveHrs * (item.ee_labour_rate||139.26);
+                      const hasQty  = item.derivedQty > 0;
+                      return (
+                        <div key={item.wbs}
+                          className={`grid items-center px-3 py-1.5 border-b text-xs
+                            ${hasQty?"bg-teal-50":"bg-white hover:bg-gray-50"}
+                            ${isOvrd?"border-l-4 border-l-orange-400":""}`}
+                          style={{gridTemplateColumns:"1fr 52px 64px 52px 76px 76px 86px 64px"}}>
+                          <div className="min-w-0 pr-1">
+                            <div className={`truncate font-medium ${hasQty?"text-teal-900":"text-gray-500"}`}>{item.description}</div>
+                            <div className="font-mono text-gray-400 text-xs">{item.wbs}{isOvrd&&<span className="ml-1 text-orange-500">⚡ override</span>}</div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {item.profile_id && profile && (
-                              <span className={`text-xs px-2 py-0.5 rounded font-medium ${STATUS_BADGE[item.profile_status]||"bg-gray-100 text-gray-500"}`}>
-                                {profile.name} {item.profile_status==="Pending"?"⚠️":"✓"}
-                              </span>
-                            )}
-                            {item.isOverridden && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">hrs overridden</span>}
+                          <div className="text-center text-gray-500">{item.hrs_per_unit||0}</div>
+                          <div className={`text-center font-bold ${hasQty?"text-orange-700":"text-gray-300"}`}>
+                            {hasQty ? item.derivedQty.toLocaleString('en-AU',{maximumFractionDigits:1}) : "—"}
                           </div>
-                        </div>
-                        <div className="p-4 grid grid-cols-6 gap-4 items-start text-xs">
-                          <div className="text-center">
-                            <div className="text-gray-500 mb-1">Derived Qty</div>
-                            <div className="text-xl font-bold text-orange-700">{item.qty.toLocaleString('en-AU',{maximumFractionDigits:1})}</div>
-                            <div className="text-gray-400">from supply</div>
+                          <div className={`text-center font-bold ${hasQty&&item.scale<1?"text-blue-700":hasQty?"text-gray-400":"text-gray-200"}`}>
+                            {fmtPct(item.scale)}
                           </div>
-                          <div className="text-center">
-                            <div className="text-gray-500 mb-1">Base Hrs</div>
-                            <div className="text-xl font-bold text-gray-700">{fmtHrs(item.baseHrs)}</div>
-                            <div className="text-gray-400">{item.hrs_per_unit}h × {item.qty.toFixed(1)}</div>
+                          <div className={`text-center font-bold ${hasQty?"text-teal-700":"text-gray-300"}`}>
+                            {hasQty ? fmtHrs(item.scaledHrs) : "—"}
                           </div>
-                          <div className="text-center">
-                            <div className="text-gray-500 mb-1">Scale Factor</div>
-                            <div className={`text-xl font-bold ${item.scale<1?"text-blue-700":"text-gray-500"}`}>{fmtPct(item.scale)}</div>
-                            <div className="text-gray-400">{item.scale<1?`save ${fmtPct(1-item.scale)}`:"no reduction"}</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-gray-500 mb-1">Scaled Hrs</div>
-                            <div className="text-xl font-bold text-teal-700">{fmtHrs(item.baseHrs*item.scale)}</div>
-                            <div className="text-gray-400">{fmtPct(item.scale)} applied</div>
-                          </div>
-                          <div>
-                            <div className="text-gray-500 mb-1">Override Hrs</div>
+                          <div className="flex justify-center">
                             <input type="number" min="0" step="0.5" value={ovrd}
                               onChange={e=>setOvrd(e.target.value)}
-                              placeholder={(item.baseHrs*item.scale).toFixed(1)}
-                              className={`w-full text-center border rounded px-2 py-1.5 text-sm font-bold focus:outline-none focus:ring-1 ${item.isOverridden?"border-orange-400 bg-orange-50 text-orange-800 focus:ring-orange-400":"border-gray-300 text-gray-400 focus:ring-teal-400"}`}/>
-                            {item.isOverridden && (
-                              <button onClick={()=>setOvrd("")} className="text-xs text-orange-600 hover:text-orange-800 mt-1 w-full text-center">↺ Reset</button>
-                            )}
-                            <div className="text-gray-400 text-center mt-0.5">→ {fmtHrs(item.scaledHrs)}</div>
+                              placeholder={hasQty?item.scaledHrs.toFixed(1):""}
+                              className={`w-16 text-center border rounded py-0.5 text-xs font-bold focus:outline-none focus:ring-1
+                                ${isOvrd?"border-orange-400 bg-orange-50 text-orange-800":"border-gray-200 text-gray-400"}`}/>
+                          </div>
+                          <div className={`text-right font-bold ${hasQty?"text-blue-800":"text-gray-300"}`}>
+                            {hasQty ? fmt(cost) : "—"}
                           </div>
                           <div className="text-center">
-                            <div className="text-gray-500 mb-1">Cost</div>
-                            <div className="text-sm font-bold text-blue-800">{fmt(item.scaledHrs*(item.rate||139.26))}</div>
-                            {isCommercial && <div className="text-xs font-bold text-orange-700">{fmt(item.scaledHrs*(item.rate||139.26)*(1+ANS_LAB))}</div>}
-                            <div className="text-gray-400">{fmt(item.rate||139.26)}/hr</div>
+                            {item.profile_id ? (
+                              <span className={`text-xs px-1 py-0.5 rounded font-medium ${
+                                item.profile_status==="Confirmed"?"bg-green-100 text-green-700":
+                                "bg-yellow-100 text-yellow-700"}`}>
+                                {item.profile_id==="HV_PLANT_OUTDOOR"?"HV-O":
+                                 item.profile_id==="HV_PLANT_INSTRUMENT"?"HV-I":
+                                 item.profile_id==="PROTECTION_STANDARD"?"PROT":
+                                 item.profile_id==="SCADA_RTC"?"SCADA":
+                                 item.profile_id==="COMMS_STANDARD"?"COMMS":"—"}
+                              </span>
+                            ) : <span className="text-gray-300">—</span>}
                           </div>
                         </div>
-                        {profile && (
-                          <div className="px-4 py-2 bg-gray-50 border-t">
-                            <div className="text-xs text-gray-500 mb-1">{profile.name} tiers{item.profile_status==="Pending"&&<span className="ml-1 text-amber-600">⚠ pending approval</span>}</div>
-                            <div className="flex gap-1.5 flex-wrap">
-                              {profile.tiers.map((tier,i)=>{
-                                const active = item.qty>=tier.qty_from&&(tier.qty_to===null||item.qty<=tier.qty_to);
-                                return <span key={i} className={`text-xs px-2 py-0.5 rounded font-medium border ${active?"bg-teal-600 text-white border-teal-700":"bg-white text-gray-500 border-gray-200"}`}>
-                                  {tier.qty_from}{tier.qty_to?`–${tier.qty_to}`:"+"} → {fmtPct(tier.scale)}
-                                </span>;
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-
-          {/* RIGHT — commissioning cost summary panel */}
-          <div className="w-56 bg-white border-l flex flex-col overflow-hidden flex-shrink-0">
-            <div className="bg-teal-700 text-white text-xs font-bold px-3 py-2 uppercase tracking-wide">Commissioning Costs</div>
-            <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
-              {Object.entries(commGroups).sort().map(([l4,g])=>(
-                <div key={l4} className={`py-1 px-1 rounded cursor-pointer ${selectedCommGroup===l4?"bg-teal-50 border border-teal-200":""}`} onClick={()=>setSelectedCommGroup(l4)}>
-                  <div className="text-xs text-gray-500 font-mono">{l4}</div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-600">{fmtHrs(g.totalHrs)}</span>
-                    <span className="text-xs font-bold text-blue-800">{fmt(g.totalCost)}</span>
+          {/* RIGHT — commissioning summary */}
+          <div className="w-52 bg-white border-l flex flex-col overflow-hidden flex-shrink-0">
+            <div className="bg-teal-800 text-white text-xs font-bold px-3 py-2 uppercase tracking-wide">Commissioning Totals</div>
+            <div className="flex-1 overflow-y-auto">
+              {Object.entries(commAllGroups).filter(([,g])=>g.totalHrs>0).sort().map(([l4,g])=>(
+                <div key={l4} className="px-3 py-1.5 border-b text-xs">
+                  <div className="font-mono text-gray-400">{l4}</div>
+                  <div className="flex justify-between">
+                    <span className="text-teal-700 font-bold">{fmtHrs(g.totalHrs)}</span>
+                    <span className="text-blue-800 font-bold">{fmt(g.totalCost)}</span>
                   </div>
                 </div>
               ))}
+              {Object.values(commAllGroups).every(g=>g.totalHrs===0) && (
+                <div className="p-3 text-xs text-gray-400 text-center">Enter supply quantities to see costs</div>
+              )}
             </div>
-            <div className="border-t px-3 py-2">
-              <div className="flex justify-between text-xs font-bold text-teal-700 mb-1">
+            <div className="border-t px-3 py-2 space-y-1">
+              <div className="flex justify-between text-xs font-bold text-teal-700 border-b pb-1 mb-1">
                 <span>Total Comm Hrs</span><span>{fmtHrs(commGrandHrs)}</span>
               </div>
               <div className="py-1.5 px-2 bg-blue-800 rounded text-white flex justify-between mb-1">
@@ -632,9 +626,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
           </div>
         </>
       ) : (
-        // ── PHASES 1-3, 5: NORMAL SUPPLY ITEM LIST ──
         <>
-          {/* CENTRE — Item list */}
           <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <div className="bg-white border-b px-4 py-2 flex items-center justify-between flex-shrink-0">
           <div>
