@@ -939,7 +939,7 @@ const SAMPLE_PEOPLE=[
 const ROW_HEIGHT = 30; // px per row
 const OVERSCAN   = 20; // extra rows above/below viewport
 
-function WBSVirtualList({ rows }) {
+function WBSVirtualList({ rows, managerMode=false, editingWbs=null, editVals={}, setEditVals, onStartEdit, onSaveEdit, onCancelEdit, wbsOverrides={} }) {
   const containerRef = useRef(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(600);
@@ -976,7 +976,7 @@ function WBSVirtualList({ rows }) {
             <th className="text-left px-3 py-2 font-semibold text-gray-500 w-36">WBS Code</th>
             <th className="text-left px-3 py-2 font-semibold text-gray-500">Description</th>
             <th className="text-left px-3 py-2 font-semibold text-gray-500 w-36">Scope</th>
-            <th className="text-center px-3 py-2 font-semibold text-gray-500 w-10">Lvl</th>
+            <th className="text-center px-3 py-2 font-semibold text-gray-500 w-16">{managerMode?"Edit":"Lvl"}</th>
           </tr>
         </thead>
       </table>
@@ -987,19 +987,51 @@ function WBSVirtualList({ rows }) {
             <col style={{width:'144px'}}/><col/><col style={{width:'144px'}}/><col style={{width:'40px'}}/>
           </colgroup>
           <tbody>
-            {visibleRows.map(row=>(
-              <tr key={row.wbs_code} className="border-b hover:bg-gray-50" style={{height:ROW_HEIGHT}}>
-                <td className="px-3 py-1 font-mono text-blue-700 whitespace-nowrap overflow-hidden text-ellipsis">{row.wbs_code}</td>
-                <td className="px-3 py-1 text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap"
+            {visibleRows.map(row=>{
+              const isEditing = editingWbs === row.wbs_code;
+              const isAdded   = !!wbsOverrides[row.wbs_code]?._added;
+              return (
+              <tr key={row.wbs_code}
+                className={`border-b hover:bg-gray-50 ${isAdded?"bg-green-50":isEditing?"bg-blue-50":""}`}
+                style={{height:ROW_HEIGHT}}>
+                <td className="px-3 py-1 font-mono text-blue-700 whitespace-nowrap overflow-hidden text-ellipsis">
+                  {row.wbs_code}
+                  {isAdded && <span className="ml-1 text-xs text-green-600 font-semibold">NEW</span>}
+                </td>
+                <td className="px-3 py-1 overflow-hidden whitespace-nowrap"
                   style={{paddingLeft:`${12+((row.depth||1)-1)*10}px`}}>
-                  {row.description||<span className="text-gray-300 italic">—</span>}
+                  {isEditing
+                    ? <input value={editVals.description||""} onChange={e=>setEditVals(p=>({...p,description:e.target.value}))}
+                        autoFocus
+                        className="w-full border border-blue-400 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        style={{height:"22px"}}/>
+                    : <span className="text-gray-800">{row.description||<span className="text-gray-300 italic">—</span>}</span>
+                  }
                 </td>
                 <td className="px-3 py-1">
-                  {row.scope&&row.scope!=="nan"?<ScopeBadge scope={row.scope}/>:<span className="text-gray-300">—</span>}
+                  {isEditing
+                    ? <select value={editVals.scope||"Supply"} onChange={e=>setEditVals(p=>({...p,scope:e.target.value}))}
+                        className="border border-blue-400 rounded px-1 py-0.5 text-xs bg-white focus:outline-none"
+                        style={{height:"22px"}}>
+                        {["Supply","Install","Commission","Supply & Install","Demolition/Removal"].map(s=><option key={s}>{s}</option>)}
+                      </select>
+                    : row.scope&&row.scope!=="nan"?<ScopeBadge scope={row.scope}/>:<span className="text-gray-300">—</span>
+                  }
                 </td>
-                <td className="px-3 py-1 text-center text-gray-400">{row.depth}</td>
+                <td className="px-2 py-1 text-center">
+                  {managerMode
+                    ? isEditing
+                      ? <div className="flex gap-1 justify-center">
+                          <button onClick={()=>onSaveEdit(row.wbs_code)} className="text-green-600 hover:text-green-800 font-bold text-xs">✓</button>
+                          <button onClick={onCancelEdit} className="text-gray-400 hover:text-gray-600 text-xs">✕</button>
+                        </div>
+                      : <button onClick={()=>onStartEdit(row)} className="text-blue-400 hover:text-blue-700 text-xs">Edit</button>
+                    : <span className="text-gray-400">{row.depth}</span>
+                  }
+                </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -1009,19 +1041,68 @@ function WBSVirtualList({ rows }) {
 
 
 function WBSManager({ equipSel, setEquipSel }) {
-  const {wbs,rates,loading,error} = useData();
-  const [tab, setTab] = useState("items");
-  const [search, setSearch] = useState("");
-  const [scopeFilter, setScopeFilter] = useState("All");
-  const [people, setPeople] = useState(SAMPLE_PEOPLE);
-  const [showAdd, setShowAdd] = useState(false);
-  const [newP, setNewP] = useState({name:"",email:"",role:"Estimator",team:"Zone Substation",canReview:false});
+  const {wbs:wbsCtx, rates, loading, error} = useData();
+  const [tab,          setTab]         = useState("items");
+  const [search,       setSearch]      = useState("");
+  const [scopeFilter,  setScopeFilter] = useState("All");
+  const [people,       setPeople]      = useState(SAMPLE_PEOPLE);
+  const [showAdd,      setShowAdd]     = useState(false);
+  const [newP,         setNewP]        = useState({name:"",email:"",role:"Estimator",team:"Zone Substation",canReview:false});
 
-  const filtered = wbs.filter(r=>{
+  // ── PIN-LOCKED MANAGER MODE ──
+  const MANAGER_PIN = "1607";
+  const [managerMode,  setManagerMode] = useState(false);
+  const [showPinModal, setShowPinModal]= useState(false);
+  const [pinInput,     setPinInput]    = useState("");
+  const [pinError,     setPinError]    = useState(false);
+  const pinRef = useRef(null);
+
+  // ── WBS EDIT STATE ──
+  const [wbsOverrides, setWbsOverrides] = useState({}); // {wbs_code: {description, scope}}
+  const [editingWbs,   setEditingWbs]   = useState(null);
+  const [editVals,     setEditVals]     = useState({});
+  const [showAddWbs,   setShowAddWbs]   = useState(false);
+  const [newWbs,       setNewWbs]       = useState({wbs_code:"",description:"",scope:"Supply",depth:6});
+
+  // Merge overrides with context WBS
+  const wbs = useMemo(()=>{
+    if (!Object.keys(wbsOverrides).length) return wbsCtx;
+    return wbsCtx.map(r => wbsOverrides[r.wbs_code] ? {...r,...wbsOverrides[r.wbs_code]} : r);
+  },[wbsCtx, wbsOverrides]);
+
+  const filtered = useMemo(()=>wbs.filter(r=>{
     const ms=!search||r.wbs_code.toLowerCase().includes(search.toLowerCase())||(r.description||"").toLowerCase().includes(search.toLowerCase());
     const sc=scopeFilter==="All"||(scopeFilter==="Inactive"&&r.active===false)||r.scope===scopeFilter;
     return ms&&sc;
-  });
+  }),[wbs, search, scopeFilter]);
+
+  const tryUnlock = () => {
+    if (pinInput === MANAGER_PIN) {
+      setManagerMode(true); setShowPinModal(false);
+      setPinInput(""); setPinError(false);
+    } else {
+      setPinError(true); setPinInput("");
+      setTimeout(()=>setPinError(false), 2000);
+    }
+  };
+
+  const startEditWbs = (row) => {
+    setEditingWbs(row.wbs_code);
+    setEditVals({description: row.description||"", scope: row.scope||"Supply"});
+  };
+  const saveEditWbs = (code) => {
+    setWbsOverrides(p=>({...p,[code]:editVals}));
+    setEditingWbs(null);
+  };
+  const addWbsItem = () => {
+    if (!newWbs.wbs_code.trim()||!newWbs.description.trim()) return;
+    const depth = newWbs.wbs_code.trim().split(".").length;
+    setWbsOverrides(p=>({...p,[newWbs.wbs_code.trim()]:{
+      ...newWbs, depth, wbs_code:newWbs.wbs_code.trim(), _added:true
+    }}));
+    setShowAddWbs(false);
+    setNewWbs({wbs_code:"",description:"",scope:"Supply",depth:6});
+  };
 
   const addPerson=()=>{
     if(!newP.name.trim()||!newP.email.trim()) return;
@@ -1032,22 +1113,53 @@ function WBSManager({ equipSel, setEquipSel }) {
 
   const equipSelectedCount = Object.values(equipSel).filter(q=>parseFloat(q)>0).length;
   const tabs=[
-    {id:"items",label:"📋 WBS Items",count:wbs.length},
-    {id:"rates",label:"💲 Resource Rates",count:rates.length},
+    {id:"items",   label:"📋 WBS Items",          count:wbs.length},
+    {id:"rates",   label:"💲 Resource Rates",      count:rates.length},
     {id:"catalogue",label:"🔧 Equipment Catalogue",count:null},
-    {id:"scaling",label:"📐 Comm Scaling",count:WBS_PROFILES.length},
-    {id:"people",label:"👥 People & Roles",count:people.filter(p=>p.active).length},
+    {id:"scaling", label:"📐 Comm Scaling",         count:WBS_PROFILES.length},
+    {id:"people",  label:"👥 People & Roles",       count:people.filter(p=>p.active).length},
   ];
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
+
+      {/* PIN Modal */}
+      {showPinModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={()=>{setShowPinModal(false);setPinInput("");}}>
+          <div className="bg-white rounded-xl shadow-xl p-6 w-72" onClick={e=>e.stopPropagation()}>
+            <div className="text-center mb-4">
+              <div className="text-3xl mb-2">🔐</div>
+              <div className="font-bold text-gray-900">Manager Mode</div>
+              <div className="text-xs text-gray-500 mt-1">Enter your manager PIN to enable editing</div>
+            </div>
+            <input
+              ref={pinRef}
+              type="password" maxLength={8}
+              value={pinInput} onChange={e=>setPinInput(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&tryUnlock()}
+              placeholder="PIN"
+              autoFocus
+              className={`w-full text-center text-2xl font-mono tracking-widest border-2 rounded-lg px-3 py-3 mb-3 focus:outline-none ${pinError?"border-red-500 bg-red-50 animate-pulse":"border-gray-300 focus:border-blue-500"}`}
+            />
+            {pinError && <div className="text-xs text-red-600 text-center mb-2">Incorrect PIN — try again</div>}
+            <div className="flex gap-2">
+              <button onClick={()=>{setShowPinModal(false);setPinInput("");}}
+                className="flex-1 text-xs border border-gray-200 text-gray-600 py-2 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={tryUnlock}
+                className="flex-1 text-xs bg-blue-700 hover:bg-blue-600 text-white py-2 rounded-lg font-semibold">Unlock</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab bar */}
       <div className="bg-white border-b flex items-end px-4 flex-shrink-0">
         {tabs.map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)}
             className={`px-4 py-2.5 text-xs font-semibold border-b-2 mr-1 -mb-px flex items-center gap-1.5 transition-colors
               ${tab===t.id?"border-blue-600 text-blue-700 bg-blue-50":"border-transparent text-gray-500 hover:text-gray-700"}`}>
             {t.label}
-            <span className="bg-gray-100 text-gray-500 text-xs px-1.5 py-0.5 rounded-full font-mono">{t.count}</span>
+            {t.count!=null && <span className="bg-gray-100 text-gray-500 text-xs px-1.5 py-0.5 rounded-full font-mono">{t.count}</span>}
           </button>
         ))}
         <div className="flex-1"/>
@@ -1059,6 +1171,8 @@ function WBSManager({ equipSel, setEquipSel }) {
       {/* WBS Items */}
       {tab==="items"&&(
         <div className="flex-1 flex flex-col overflow-hidden">
+
+          {/* Toolbar */}
           <div className="bg-white border-b px-4 py-2 flex items-center gap-3 flex-shrink-0">
             <input value={search} onChange={e=>setSearch(e.target.value)}
               placeholder="Search WBS code or description…"
@@ -1070,15 +1184,77 @@ function WBSManager({ equipSel, setEquipSel }) {
               ))}
             </div>
             <span className="text-xs text-gray-400">{filtered.length.toLocaleString()} items</span>
-            {!search && <span className="text-xs text-gray-300 hidden sm:inline">— scroll to browse all, or search to filter</span>}
+            <div className="flex-1"/>
+            {managerMode ? (
+              <>
+                <button onClick={()=>setShowAddWbs(s=>!s)}
+                  className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded font-semibold">
+                  {showAddWbs?"✕ Cancel":"+ Add WBS Item"}
+                </button>
+                <button onClick={()=>setManagerMode(false)}
+                  className="text-xs bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded font-semibold flex items-center gap-1.5">
+                  🔓 Manager Mode <span className="opacity-75">— click to lock</span>
+                </button>
+              </>
+            ) : (
+              <button onClick={()=>setShowPinModal(true)}
+                className="text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400 px-3 py-1.5 rounded font-medium flex items-center gap-1.5">
+                🔒 Manager Mode
+              </button>
+            )}
           </div>
+
+          {/* Add WBS form */}
+          {managerMode && showAddWbs && (
+            <div className="bg-green-50 border-b border-green-200 px-4 py-3 flex-shrink-0">
+              <div className="text-xs font-bold text-green-800 mb-2 uppercase tracking-wide">Add New WBS Item</div>
+              <div className="grid grid-cols-5 gap-2 items-end">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-0.5">WBS Code *</label>
+                  <input value={newWbs.wbs_code} onChange={e=>setNewWbs(p=>({...p,wbs_code:e.target.value}))}
+                    placeholder="e.g. 3.1.3.04.1.10"
+                    className="w-full border rounded px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-green-400"/>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-gray-500 block mb-0.5">Description *</label>
+                  <input value={newWbs.description} onChange={e=>setNewWbs(p=>({...p,description:e.target.value}))}
+                    className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400"/>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-0.5">Scope</label>
+                  <select value={newWbs.scope} onChange={e=>setNewWbs(p=>({...p,scope:e.target.value}))}
+                    className="w-full border rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-400">
+                    {["Supply","Install","Commission","Supply & Install","Demolition/Removal"].map(s=><option key={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <button onClick={addWbsItem} disabled={!newWbs.wbs_code.trim()||!newWbs.description.trim()}
+                    className="w-full text-xs bg-green-700 hover:bg-green-600 disabled:bg-gray-300 text-white px-3 py-1.5 rounded font-semibold">
+                    Add Item
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Virtual list */}
           <div className="flex-1 overflow-hidden">
             {loading?(
               <div className="flex items-center justify-center h-full text-gray-400">
                 <div className="text-center"><div className="text-2xl animate-spin mb-2">⟳</div><div className="text-sm">Loading WBS…</div></div>
               </div>
             ):(
-              <WBSVirtualList rows={filtered} />
+              <WBSVirtualList
+                rows={filtered}
+                managerMode={managerMode}
+                editingWbs={editingWbs}
+                editVals={editVals}
+                setEditVals={setEditVals}
+                onStartEdit={startEditWbs}
+                onSaveEdit={saveEditWbs}
+                onCancelEdit={()=>setEditingWbs(null)}
+                wbsOverrides={wbsOverrides}
+              />
             )}
           </div>
         </div>
@@ -1216,17 +1392,8 @@ function WBSManager({ equipSel, setEquipSel }) {
   );
 }
 
-// ── DEFAULT INVESTMENT STATE ──────────────────────────────────────
-const defaultInv = () => ({
-  name:"Marulan 132kV 3-Way Switching Station", number:"10007569",
-  wacs:"N/A", type:"Commercially Funded", estClass:"Class 4", revision:"A",
-  complexity:"High", newTech:"Moderate", estimatedBy:"Steven Hannigan",
-  reviewedBy:"Daniel Lawrence", startMonth:"Jul", startYear:"2025",
-  planStart:"1", planDur:"4", designStart:"1", designDur:"9",
-  constrStart:"6", constrDur:"15", contInt:"10", contComm:"10",
-});
 
-// ── ROOT APP ─────────────────────────────────────────────────────
+
 // ── EQUIPMENT SCREEN ─────────────────────────────────────────────
 const TYPE_COLORS = {
   PCE:   { badge:"bg-amber-100 text-amber-800 border border-amber-300",   icon:"🔩", label:"Period Contract" },
