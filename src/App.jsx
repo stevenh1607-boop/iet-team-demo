@@ -9,7 +9,7 @@ import { useState, useMemo, useEffect, useCallback, createContext, useContext, u
 const BASE = import.meta.env.BASE_URL || "/";
 
 // ── DATA CONTEXT ────────────────────────────────────────────────
-const DataCtx = createContext({ wbs:[], rates:[], supply:[], equipment:[], loading:true, error:null });
+const DataCtx = createContext({ wbs:[], rates:[], supply:[], equipment:[], equipLookup:{}, loading:true, error:null });
 function useData() { return useContext(DataCtx); }
 
 // ── HELPERS ─────────────────────────────────────────────────────
@@ -934,6 +934,80 @@ const SAMPLE_PEOPLE=[
   {id:10,name:"Ben Morgan",email:"b.morgan@essentialenergy.com.au",role:"Estimator",team:"Zone Substation",canReview:false,active:false},
 ];
 
+// ── VIRTUAL SCROLL LIST FOR WBS ITEMS ───────────────────────────
+// Renders only visible rows — handles all 2,359 rows smoothly
+const ROW_HEIGHT = 30; // px per row
+const OVERSCAN   = 20; // extra rows above/below viewport
+
+function WBSVirtualList({ rows }) {
+  const containerRef = useRef(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(600);
+
+  useEffect(()=>{
+    const el = containerRef.current;
+    if (!el) return;
+    setContainerHeight(el.clientHeight);
+    const onScroll = () => setScrollTop(el.scrollTop);
+    const onResize = () => setContainerHeight(el.clientHeight);
+    el.addEventListener('scroll', onScroll, {passive:true});
+    window.addEventListener('resize', onResize);
+    return ()=>{ el.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onResize); };
+  },[]);
+
+  // Reset scroll when rows change (new filter applied)
+  useEffect(()=>{
+    if (containerRef.current) containerRef.current.scrollTop = 0;
+    setScrollTop(0);
+  },[rows]);
+
+  const totalHeight = rows.length * ROW_HEIGHT;
+  const startIdx = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
+  const endIdx   = Math.min(rows.length, Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + OVERSCAN);
+  const visibleRows = rows.slice(startIdx, endIdx);
+  const offsetTop   = startIdx * ROW_HEIGHT;
+
+  return (
+    <div ref={containerRef} className="h-full overflow-y-auto relative">
+      {/* Sticky header */}
+      <table className="w-full text-xs table-fixed" style={{position:'sticky',top:0,zIndex:10}}>
+        <thead className="bg-gray-50 border-b">
+          <tr>
+            <th className="text-left px-3 py-2 font-semibold text-gray-500 w-36">WBS Code</th>
+            <th className="text-left px-3 py-2 font-semibold text-gray-500">Description</th>
+            <th className="text-left px-3 py-2 font-semibold text-gray-500 w-36">Scope</th>
+            <th className="text-center px-3 py-2 font-semibold text-gray-500 w-10">Lvl</th>
+          </tr>
+        </thead>
+      </table>
+      {/* Virtual scroll body */}
+      <div style={{height: totalHeight, position:'relative'}}>
+        <table className="w-full text-xs table-fixed" style={{position:'absolute',top:offsetTop,left:0,right:0}}>
+          <colgroup>
+            <col style={{width:'144px'}}/><col/><col style={{width:'144px'}}/><col style={{width:'40px'}}/>
+          </colgroup>
+          <tbody>
+            {visibleRows.map(row=>(
+              <tr key={row.wbs_code} className="border-b hover:bg-gray-50" style={{height:ROW_HEIGHT}}>
+                <td className="px-3 py-1 font-mono text-blue-700 whitespace-nowrap overflow-hidden text-ellipsis">{row.wbs_code}</td>
+                <td className="px-3 py-1 text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap"
+                  style={{paddingLeft:`${12+((row.depth||1)-1)*10}px`}}>
+                  {row.description||<span className="text-gray-300 italic">—</span>}
+                </td>
+                <td className="px-3 py-1">
+                  {row.scope&&row.scope!=="nan"?<ScopeBadge scope={row.scope}/>:<span className="text-gray-300">—</span>}
+                </td>
+                <td className="px-3 py-1 text-center text-gray-400">{row.depth}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+
 function WBSManager({ equipSel, setEquipSel }) {
   const {wbs,rates,loading,error} = useData();
   const [tab, setTab] = useState("items");
@@ -947,7 +1021,7 @@ function WBSManager({ equipSel, setEquipSel }) {
     const ms=!search||r.wbs_code.toLowerCase().includes(search.toLowerCase())||(r.description||"").toLowerCase().includes(search.toLowerCase());
     const sc=scopeFilter==="All"||(scopeFilter==="Inactive"&&r.active===false)||r.scope===scopeFilter;
     return ms&&sc;
-  }).slice(0,300);
+  });
 
   const addPerson=()=>{
     if(!newP.name.trim()||!newP.email.trim()) return;
@@ -995,39 +1069,16 @@ function WBSManager({ equipSel, setEquipSel }) {
                   className={`text-xs px-2.5 py-1.5 ${scopeFilter===s?"bg-blue-700 text-white":"text-gray-600 hover:bg-gray-50"}`}>{s}</button>
               ))}
             </div>
-            <span className="text-xs text-gray-400">{filtered.length}{filtered.length===300?"+":""} items</span>
+            <span className="text-xs text-gray-400">{filtered.length.toLocaleString()} items</span>
+            {!search && <span className="text-xs text-gray-300 hidden sm:inline">— scroll to browse all, or search to filter</span>}
           </div>
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-hidden">
             {loading?(
               <div className="flex items-center justify-center h-full text-gray-400">
                 <div className="text-center"><div className="text-2xl animate-spin mb-2">⟳</div><div className="text-sm">Loading WBS…</div></div>
               </div>
             ):(
-              <table className="w-full text-xs">
-                <thead className="bg-gray-50 border-b sticky top-0 z-10">
-                  <tr>
-                    <th className="text-left px-3 py-2 font-semibold text-gray-500 w-36">WBS Code</th>
-                    <th className="text-left px-3 py-2 font-semibold text-gray-500">Description</th>
-                    <th className="text-left px-3 py-2 font-semibold text-gray-500 w-28">Scope</th>
-                    <th className="text-center px-3 py-2 font-semibold text-gray-500 w-10">Lvl</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(row=>(
-                    <tr key={row.wbs_code} className="border-b hover:bg-gray-50">
-                      <td className="px-3 py-1.5 font-mono text-blue-700 whitespace-nowrap">{row.wbs_code}</td>
-                      <td className="px-3 py-1.5 text-gray-800 max-w-xs truncate"
-                        style={{paddingLeft:`${12+((row.depth||1)-1)*10}px`}}>
-                        {row.description||<span className="text-gray-300 italic">—</span>}
-                      </td>
-                      <td className="px-3 py-1.5">
-                        {row.scope&&row.scope!=="nan"?<ScopeBadge scope={row.scope}/>:<span className="text-gray-300">—</span>}
-                      </td>
-                      <td className="px-3 py-1.5 text-center text-gray-400">{row.depth}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <WBSVirtualList rows={filtered} />
             )}
           </div>
         </div>
@@ -1187,20 +1238,20 @@ const TYPE_COLORS = {
 // ── EQUIPMENT SCREEN (Estimation Tool tab) ───────────────────────
 // Shows ONLY items selected for this investment — procurement report view
 function EquipmentScreen({ lines, setLines, isCommercial, inv }) {
-  const { supply, loading } = useData();
+  const { supply, equipLookup, loading } = useData();
   const ANS_mat = isCommercial ? (1 + ANS_MAT) : 1;
 
-  // Classify supply item into equipment type
+  // Classify using the definitive equipment_wbs_lookup first, then heuristic fallback
   const classifyItem = (item) => {
+    // 1. Exact match in lookup (from PCE/SCADA/Comms sheets)
+    if (equipLookup[item.wbs_code]) return equipLookup[item.wbs_code].type;
+    // 2. Heuristic fallback for items not in the catalogue
     const wbs  = item.wbs_code || "";
-    const l2   = wbs.split(".").slice(0,2).join(".");
-    const l3   = wbs.split(".").slice(0,3).join(".");
     const desc = (item.description||"").toLowerCase();
     if (wbs.startsWith("3.5") || desc.includes("scada") || desc.includes("md303") || desc.includes("md100"))
       return "SCADA";
-    if (l3==="3.2.1" || l3==="3.2.2" || l3==="3.2.3" ||
-        desc.includes("router") || desc.includes("switch") || desc.includes("radio") ||
-        desc.includes("fibre") || desc.includes("comms"))
+    if (wbs.split(".").slice(0,2).join(".")==="3.2" ||
+        desc.includes("router") || desc.includes("comms") || desc.includes("fibre"))
       return "COMMS";
     if (item.pce_price > 0)
       return item.lead_time_weeks > 20 ? "LLT" : "PCE";
@@ -1211,9 +1262,21 @@ function EquipmentScreen({ lines, setLines, isCommercial, inv }) {
   const selected = useMemo(()=>{
     return supply
       .filter(s => parseFloat(lines[s.wbs_code]?.qty||"0") > 0)
-      .map(s => ({...s, equipType: classifyItem(s)}))
+      .map(s => {
+        const lk = equipLookup[s.wbs_code] || {};
+        return {
+          ...s,
+          equipType: classifyItem(s),
+          make:       lk.make || s.make || "",
+          model:      lk.model || s.model || "",
+          part_no:    lk.part_no || "",
+          contract_no: lk.contract_no || "",
+          lead_time_weeks: lk.lead_time_weeks || s.lead_time_weeks || 0,
+          catalogue_id: lk.catalogue_id || "",
+        };
+      })
       .filter(s => s.equipType !== null);
-  },[supply, lines]);
+  },[supply, lines, equipLookup]);
 
   const selByType = useMemo(()=>{
     const m = {"LLT":[],"PCE":[],"SCADA":[],"COMMS":[]};
@@ -1706,7 +1769,8 @@ export default function App() {
   const [ratesData,   setRatesData]   = useState([]);
   const [supplyData,  setSupplyData]  = useState([]);
   const [equipData,   setEquipData]   = useState([]);
-  const [equipSel,    setEquipSel]    = useState({}); // {EQ0001: qty}
+  const [equipLookup, setEquipLookup] = useState({}); // wbs_code -> {type,source,make,model,...}
+  const [equipSel,    setEquipSel]    = useState({});
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
 
@@ -1716,8 +1780,9 @@ export default function App() {
       fetch(`${BASE}data/resource_rates.json`).then(r=>{if(!r.ok)throw new Error("resource_rates "+r.status);return r.json();}),
       fetch(`${BASE}data/supply_items.json`).then(r=>{if(!r.ok)throw new Error("supply_items "+r.status);return r.json();}),
       fetch(`${BASE}data/equipment.json`).then(r=>{if(!r.ok)return {items:[]};return r.json();}).catch(()=>({items:[]})),
+      fetch(`${BASE}data/equipment_wbs_lookup.json`).then(r=>{if(!r.ok)return {lookup:{}};return r.json();}).catch(()=>({lookup:{}})),
     ])
-    .then(([wbs,rates,supply,equip])=>{
+    .then(([wbs,rates,supply,equip,lookup])=>{
       setWbsData(wbs.records||[]);
       setRatesData(rates.records||[]);
       setSupplyData(supply.items||[]);
@@ -1752,6 +1817,7 @@ export default function App() {
         };
       });
       setEquipData(normalised);
+      setEquipLookup(lookup.lookup || {});
       setLoading(false);
     })
     .catch(err=>{setError(err.message);setLoading(false);});
@@ -1792,7 +1858,7 @@ export default function App() {
   const linesEntered = Object.values(lines).filter(l=>parseFloat(l.qty)>0).length;
 
   return (
-    <DataCtx.Provider value={{wbs:wbsData,rates:ratesData,supply:supplyData,equipment:equipData,loading,error}}>
+    <DataCtx.Provider value={{wbs:wbsData,rates:ratesData,supply:supplyData,equipment:equipData,equipLookup,loading,error}}>
       <div className="flex flex-col h-screen font-sans text-sm select-none">
 
         {/* Top nav */}
