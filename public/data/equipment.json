@@ -378,7 +378,7 @@
       "unit": "Each",
       "current_price": 115588.0,
       "escalated_price": 120467.39353738536,
-      "lead_time_weeks": NaN,
+      "lead_time_weeks": null,
       "is_llt": false,
       "comments": "Contract effective 11-10-18 - Ext options 5 x 1 year - pricing post Oct 2019 subject to FOREX adj at point of PO.  Current extension applies to 14-10-2023"
     },
@@ -2338,9 +2338,9 @@
       "model": "2GSA005012",
       "rating": "66kV Voltage Transformer Protection and Indication (EMF)",
       "unit": "Each",
-      "current_price": NaN,
+      "current_price": null,
       "escalated_price": 0.0,
-      "lead_time_weeks": NaN,
+      "lead_time_weeks": null,
       "is_llt": false,
       "comments": "nan"
     },
