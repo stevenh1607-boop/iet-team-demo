@@ -618,7 +618,8 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
 }
 
 // ── REVIEW LINES SCREEN ─────────────────────────────────────────
-function ReviewLines({ lines, supply, isCommercial }) {
+function ReviewLines({ lines, isCommercial }) {
+  const { supply } = useData();
   const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
   const totals = entered.reduce((a,item)=>{
     const ln=lines[item.wbs_code]||{};
@@ -714,7 +715,8 @@ function ReviewLines({ lines, supply, isCommercial }) {
 }
 
 // ── SUMMARY SCREEN ───────────────────────────────────────────────
-function SummaryScreen({ inv, lines, supply, isCommercial, onSave, lastSaved }) {
+function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }) {
+  const { supply } = useData();
   const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
 
   // Phase rollups
@@ -1702,7 +1704,7 @@ export default function App() {
       fetch(`${BASE}data/wbs_master.json`).then(r=>{if(!r.ok)throw new Error("wbs_master "+r.status);return r.json();}),
       fetch(`${BASE}data/resource_rates.json`).then(r=>{if(!r.ok)throw new Error("resource_rates "+r.status);return r.json();}),
       fetch(`${BASE}data/supply_items.json`).then(r=>{if(!r.ok)throw new Error("supply_items "+r.status);return r.json();}),
-      fetch(`${BASE}data/equipment.json`).then(r=>{if(!r.ok)throw new Error("equipment "+r.status);return r.json();}),
+      fetch(`${BASE}data/equipment.json`).then(r=>{if(!r.ok)return {items:[]};return r.json();}).catch(()=>({items:[]})),
     ])
     .then(([wbs,rates,supply,equip])=>{
       setWbsData(wbs.records||[]);
@@ -1849,8 +1851,8 @@ export default function App() {
                   </div>
                 )}
                 {estTab==="equipment" && <EquipmentScreen equipSel={equipSel} setEquipSel={setEquipSel} isCommercial={isCommercial} inv={inv}/>}
-                {estTab==="review"    && <ReviewLines lines={lines} supply={supplyData} isCommercial={isCommercial} equipSel={equipSel}/>}
-                {estTab==="summary"   && <SummaryScreen inv={inv} lines={lines} supply={supplyData} isCommercial={isCommercial} equipSel={equipSel} onSave={saveInvestment} lastSaved={lastSaved}/>}
+                {estTab==="review"    && <ReviewLines lines={lines} isCommercial={isCommercial}/>}
+                {estTab==="summary"   && <SummaryScreen inv={inv} lines={lines} isCommercial={isCommercial} equipSel={equipSel} onSave={saveInvestment} lastSaved={lastSaved}/>}
               </div>
             </>
           )}
