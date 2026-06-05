@@ -9,7 +9,7 @@ import { useState, useMemo, useEffect, useCallback, createContext, useContext, u
 const BASE = import.meta.env.BASE_URL || "/";
 
 // ── DATA CONTEXT ────────────────────────────────────────────────
-const DataCtx = createContext({ wbs:[], rates:[], supply:[], equipment:[], equipLookup:{}, loading:true, error:null });
+const DataCtx = createContext({ wbs:[], rates:[], supply:[], equipment:[], equipLookup:{}, commLookup:{}, loading:true, error:null });
 function useData() { return useContext(DataCtx); }
 
 // ── HELPERS ─────────────────────────────────────────────────────
@@ -716,14 +716,15 @@ function ReviewLines({ lines, isCommercial }) {
 
 // ── SUMMARY SCREEN ───────────────────────────────────────────────
 function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }) {
-  const { supply } = useData();
+  const { supply, commLookup } = useData();
   const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
 
-  // Phase rollups
+  // Phase 1-3, 5 rollups from entered supply items
   const phaseNames = {"1":"Planning","2":"Design","3":"Construction","4":"Commissioning","5":"M&C"};
   const byPhase = {};
   entered.forEach(item=>{
     const ph=item.wbs_code.split(".")[0];
+    if(ph==="4") return; // Phase 4 is derived separately
     if(!byPhase[ph]) byPhase[ph]={eeInt:0,comm:0,installHrs:0,commHrs:0,lines:0};
     const ln=lines[item.wbs_code]||{};
     const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial);
@@ -731,6 +732,31 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
     byPhase[ph].installHrs+=c.installHrs; byPhase[ph].commHrs+=c.commHrs;
     byPhase[ph].lines++;
   });
+
+  // Phase 4 — derived from commission_wbs links on supply items
+  // For each unique commission_wbs, sum qty across all supply items pointing to it
+  const commTotals = {}; // comm_wbs -> {qty, hrs_per_unit, ...}
+  entered.forEach(item=>{
+    if(!item.commission_wbs || !commLookup[item.commission_wbs]) return;
+    const qty = parseFloat(lines[item.wbs_code]?.qty||"0");
+    const factor = parseFloat(lines[item.wbs_code]?.factor||"1");
+    const commWbs = item.commission_wbs;
+    if(!commTotals[commWbs]) commTotals[commWbs] = {
+      qty:0, ...commLookup[commWbs]
+    };
+    commTotals[commWbs].qty += qty * factor;
+  });
+
+  const eeRate = 139.26; // default commissioning rate
+  const phase4 = Object.entries(commTotals).reduce((a,[,ct])=>{
+    const hrs = ct.qty * (ct.hrs_per_unit||0);
+    const rate = ct.ee_labour_rate || eeRate;
+    const cost = hrs * rate;
+    const costComm = cost * (1 + ANS_LAB);
+    return {commHrs: a.commHrs+hrs, eeInt: a.eeInt+cost, comm: a.comm+costComm, lines: a.lines+(ct.qty>0?1:0)};
+  },{commHrs:0,eeInt:0,comm:0,lines:0});
+
+  if(phase4.commHrs > 0) byPhase["4"] = {...phase4, installHrs:0};
 
   const grandEE   = Object.values(byPhase).reduce((a,p)=>a+p.eeInt,0);
   const grandComm = Object.values(byPhase).reduce((a,p)=>a+p.comm,0);
@@ -797,7 +823,10 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
             <tbody>
               {Object.entries(byPhase).map(([ph,p])=>(
                 <tr key={ph} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-2 font-semibold text-gray-800">Phase {ph} — {phaseNames[ph]||ph}</td>
+                  <td className="px-4 py-2 font-semibold text-gray-800">
+                    Phase {ph} — {phaseNames[ph]||ph}
+                    {ph==="4" && <span className="ml-2 text-xs font-normal text-teal-600 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">auto-derived from supply links</span>}
+                  </td>
                   <td className="px-4 py-2 text-center text-gray-500">{p.lines}</td>
                   <td className="px-4 py-2 text-right text-purple-700 font-medium">{fmtHrs(p.installHrs)}</td>
                   <td className="px-4 py-2 text-right text-teal-700 font-medium">{fmtHrs(p.commHrs)}</td>
@@ -1936,7 +1965,8 @@ export default function App() {
   const [ratesData,   setRatesData]   = useState([]);
   const [supplyData,  setSupplyData]  = useState([]);
   const [equipData,   setEquipData]   = useState([]);
-  const [equipLookup, setEquipLookup] = useState({}); // wbs_code -> {type,source,make,model,...}
+  const [equipLookup,  setEquipLookup]  = useState({});
+  const [commLookup,   setCommLookup]   = useState({}); // comm_wbs -> {hrs_per_unit, description}
   const [equipSel,    setEquipSel]    = useState({});
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
@@ -1948,8 +1978,9 @@ export default function App() {
       fetch(`${BASE}data/supply_items.json`).then(r=>{if(!r.ok)throw new Error("supply_items "+r.status);return r.json();}),
       fetch(`${BASE}data/equipment.json`).then(r=>{if(!r.ok)return {items:[]};return r.json();}).catch(()=>({items:[]})),
       fetch(`${BASE}data/equipment_wbs_lookup.json`).then(r=>{if(!r.ok)return {lookup:{}};return r.json();}).catch(()=>({lookup:{}})),
+      fetch(`${BASE}data/commission_lookup.json`).then(r=>{if(!r.ok)return {lookup:{}};return r.json();}).catch(()=>({lookup:{}})),
     ])
-    .then(([wbs,rates,supply,equip,lookup])=>{
+    .then(([wbs,rates,supply,equip,lookup,commLookup])=>{
       setWbsData(wbs.records||[]);
       setRatesData(rates.records||[]);
       setSupplyData(supply.items||[]);
@@ -1985,6 +2016,7 @@ export default function App() {
       });
       setEquipData(normalised);
       setEquipLookup(lookup.lookup || {});
+      setCommLookup(commLookup.lookup || {});
       setLoading(false);
     })
     .catch(err=>{setError(err.message);setLoading(false);});
@@ -2025,7 +2057,7 @@ export default function App() {
   const linesEntered = Object.values(lines).filter(l=>parseFloat(l.qty)>0).length;
 
   return (
-    <DataCtx.Provider value={{wbs:wbsData,rates:ratesData,supply:supplyData,equipment:equipData,equipLookup,loading,error}}>
+    <DataCtx.Provider value={{wbs:wbsData,rates:ratesData,supply:supplyData,equipment:equipData,equipLookup,commLookup,loading,error}}>
       <div className="flex flex-col h-screen font-sans text-sm select-none">
 
         {/* Top nav */}
