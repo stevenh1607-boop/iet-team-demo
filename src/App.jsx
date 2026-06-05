@@ -452,10 +452,16 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                   </button>
                   <div className="min-w-0 pr-2">
                     <div className={`font-medium truncate ${hasQty?"text-blue-900":"text-gray-800"}`}>{item.description}</div>
-                    <div className="flex items-center gap-1 mt-0.5">
+                    <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                       <span className="text-gray-400 font-mono text-xs">{item.wbs_code}</span>
                       {item.pce_price>0 && <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-1">PCE {fmt(item.pce_price)}</span>}
-                      {isContr && <span className="text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded px-1">Contractor</span>}
+                      {isContr
+                        ? <span className="text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded px-1">Contractor</span>
+                        : item.resource_main && item.resource_main !== "Supplier" &&
+                          <span className="text-xs text-purple-600 bg-purple-50 border border-purple-200 rounded px-1">{item.resource_main}</span>
+                      }
+                      {item.resource_install && item.install_hrs_per>0 &&
+                        <span className="text-xs text-blue-500 bg-blue-50 border border-blue-200 rounded px-1">Install: {item.resource_install}</span>}
                     </div>
                   </div>
                   <div className="text-center text-gray-500">{item.uom||"EA"}</div>
@@ -479,7 +485,13 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                   <div className="mx-3 mb-3 rounded-lg border border-blue-200 bg-white shadow-sm overflow-hidden">
                     <div className="bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 flex items-center justify-between">
                       <span>Cost Detail — {item.description?.split(" - ")[0]}</span>
-                      <span className="text-blue-200 font-normal">Std: {item.install_hrs_per}h install · {item.comm_hrs_per}h comm · Rate: {fmt(item.ee_labour_rate)}/hr</span>
+                      <span className="text-blue-200 font-normal">
+                        {isContr
+                          ? `Contractor · Install: ${item.resource_install||item.resource_main||"—"} · Comm: ${item.resource_comm||"—"}`
+                          : `${item.resource_main||"EE"} · Install: ${item.resource_install||item.resource_main||"—"} · Comm: ${item.resource_comm||"—"}`
+                        }
+                        {" · "}Std: {item.install_hrs_per}h install · {item.comm_hrs_per}h comm · {fmt(item.ee_labour_rate)}/hr
+                      </span>
                     </div>
                     <div className="p-3 grid gap-3">
                       <div className="grid grid-cols-4 gap-3">
@@ -1938,6 +1950,15 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
     </div>
   );
 }
+
+const defaultInv = {
+  name:"Marulan 132kV 3-Way Switching Station", number:"10007569",
+  wacs:"N/A", type:"Commercially Funded", estClass:"Class 4", revision:"A",
+  complexity:"High", newTech:"Moderate", estimatedBy:"Steven Hannigan",
+  reviewedBy:"Daniel Lawrence", startMonth:"Jul", startYear:"2025",
+  planStart:"1", planDur:"4", designStart:"1", designDur:"9",
+  constrStart:"6", constrDur:"15", contInt:"10", contComm:"10",
+};
 
 const APP_TABS = [
   {id:"estimation", label:"⚡ Estimation Tool"},
