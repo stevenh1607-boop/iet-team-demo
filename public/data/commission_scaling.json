@@ -1,0 +1,1427 @@
+{
+  "profiles": {
+    "SCADA_RTC": {
+      "name": "SCADA RTC",
+      "section": "SCADA",
+      "status": "Confirmed",
+      "tiers": [
+        {
+          "qty_from": 1,
+          "qty_to": 2,
+          "scale": 1.0
+        },
+        {
+          "qty_from": 3,
+          "qty_to": 4,
+          "scale": 0.95
+        },
+        {
+          "qty_from": 5,
+          "qty_to": 7,
+          "scale": 0.9
+        },
+        {
+          "qty_from": 8,
+          "qty_to": 9,
+          "scale": 0.85
+        },
+        {
+          "qty_from": 10,
+          "qty_to": null,
+          "scale": 0.8
+        }
+      ]
+    },
+    "HV_PLANT_OUTDOOR": {
+      "name": "HV Plant \u2014 Outdoor",
+      "section": "HV Plant",
+      "status": "Pending",
+      "tiers": [
+        {
+          "qty_from": 1,
+          "qty_to": 2,
+          "scale": 1.0
+        },
+        {
+          "qty_from": 3,
+          "qty_to": 5,
+          "scale": 0.8
+        },
+        {
+          "qty_from": 6,
+          "qty_to": null,
+          "scale": 0.75
+        }
+      ]
+    },
+    "HV_PLANT_INSTRUMENT": {
+      "name": "HV Plant \u2014 Instrument",
+      "section": "HV Plant",
+      "status": "Pending",
+      "tiers": [
+        {
+          "qty_from": 1,
+          "qty_to": 2,
+          "scale": 1.0
+        },
+        {
+          "qty_from": 3,
+          "qty_to": 5,
+          "scale": 0.8
+        },
+        {
+          "qty_from": 6,
+          "qty_to": null,
+          "scale": 0.75
+        }
+      ]
+    },
+    "PROTECTION_STANDARD": {
+      "name": "Protection Standard",
+      "section": "Protection",
+      "status": "Pending",
+      "tiers": [
+        {
+          "qty_from": 1,
+          "qty_to": 2,
+          "scale": 1.0
+        },
+        {
+          "qty_from": 3,
+          "qty_to": 5,
+          "scale": 0.92
+        },
+        {
+          "qty_from": 6,
+          "qty_to": 9,
+          "scale": 0.87
+        },
+        {
+          "qty_from": 10,
+          "qty_to": null,
+          "scale": 0.83
+        }
+      ]
+    },
+    "COMMS_STANDARD": {
+      "name": "Communications",
+      "section": "Communications",
+      "status": "Pending",
+      "tiers": [
+        {
+          "qty_from": 1,
+          "qty_to": 2,
+          "scale": 1.0
+        },
+        {
+          "qty_from": 3,
+          "qty_to": 6,
+          "scale": 0.9
+        },
+        {
+          "qty_from": 7,
+          "qty_to": null,
+          "scale": 0.85
+        }
+      ]
+    }
+  },
+  "lookup": {
+    "4.1.1.01.7.01": {
+      "description": "Earthing System - Commissioning",
+      "hrs_per_unit": 80.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": null,
+      "profile_name": null,
+      "profile_status": null
+    },
+    "4.1.1.01.7.02": {
+      "description": "Earthing System - Engineering Commissioning",
+      "hrs_per_unit": 80.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Earthing Engineer",
+      "profile_id": null,
+      "profile_name": null,
+      "profile_status": null
+    },
+    "4.1.2.01.7.01": {
+      "description": "\u2265 66kV Circuit Breaker",
+      "hrs_per_unit": 48.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.01.7.02": {
+      "description": "< 66kV Circuit Breaker",
+      "hrs_per_unit": 48.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.01.7.03": {
+      "description": "\u2265 66kV Fault Thrower",
+      "hrs_per_unit": 4.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.02.7.01": {
+      "description": "Overhead Reclosers",
+      "hrs_per_unit": 32.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.02.7.02": {
+      "description": "Ground Mount Reclosers",
+      "hrs_per_unit": 32.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.03.7.01": {
+      "description": "\u2265 66kV Disconnector",
+      "hrs_per_unit": 8.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.03.7.02": {
+      "description": "< 66kV Disconnector",
+      "hrs_per_unit": 6.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.03.7.03": {
+      "description": "\u2265 66kV Earth Switch",
+      "hrs_per_unit": 4.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.03.7.04": {
+      "description": "< 66kV Earth Switch",
+      "hrs_per_unit": 4.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.04.7.01": {
+      "description": "\u2265 66kV Current Transformer",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.04.7.02": {
+      "description": "< 66kV Current Transformer",
+      "hrs_per_unit": 12.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.04.7.03": {
+      "description": "Neutral Current Transformer",
+      "hrs_per_unit": 4.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.05.7.01": {
+      "description": "\u2265 66kV Voltage Transformer",
+      "hrs_per_unit": 12.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.05.7.02": {
+      "description": "< 66kV Voltage Transformer",
+      "hrs_per_unit": 8.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.06.7.01": {
+      "description": "New Power Transformer -  \u2264 8MVA",
+      "hrs_per_unit": 64.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.06.7.02": {
+      "description": "New Power Transformer -  > 8 MVA ~ \u2264 50MVA",
+      "hrs_per_unit": 80.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.06.7.03": {
+      "description": "New Power Transformer -  > 50 MVA ~ \u2264 120MVA",
+      "hrs_per_unit": 96.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.06.7.04": {
+      "description": "Supervise commissioning of contractors (Power Transformer)",
+      "hrs_per_unit": 24.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.07.7.01": {
+      "description": "110 - 132kV Non/Effectively Earthed Surge Arrestor",
+      "hrs_per_unit": 2.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.07.7.02": {
+      "description": "66kV Non/Effectively Earthed Surge Arrestor",
+      "hrs_per_unit": 2.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.07.7.03": {
+      "description": "\u226433kV Non/Effectively Earthed Surge Arrestor",
+      "hrs_per_unit": 2.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.08.7.01": {
+      "description": "Indoor Switchboard (Integrated P&C) - Incomer Panel",
+      "hrs_per_unit": 48.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "PROTECTION_STANDARD",
+      "profile_name": "Protection Standard",
+      "profile_status": "Pending"
+    },
+    "4.1.2.08.7.02": {
+      "description": "Indoor Switchboard (Integrated P&C) - Bus Sectionalizer & Bus Riser Panels",
+      "hrs_per_unit": 24.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.08.7.03": {
+      "description": "Indoor Switchboard (Integrated P&C) - Feeder Panel",
+      "hrs_per_unit": 32.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "PROTECTION_STANDARD",
+      "profile_name": "Protection Standard",
+      "profile_status": "Pending"
+    },
+    "4.1.2.08.7.04": {
+      "description": "Indoor Switchboard (Remote P&C) - Incomer Panel",
+      "hrs_per_unit": 32.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "PROTECTION_STANDARD",
+      "profile_name": "Protection Standard",
+      "profile_status": "Pending"
+    },
+    "4.1.2.08.7.05": {
+      "description": "Indoor Switchboard (Remote P&C) - Bus Sectionalizer & Bus Riser Panels",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.08.7.06": {
+      "description": "Indoor Switchboard (Remote P&C) - Feeder Panel",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "PROTECTION_STANDARD",
+      "profile_name": "Protection Standard",
+      "profile_status": "Pending"
+    },
+    "4.1.2.08.7.07": {
+      "description": "Outdoor Switchboard (Remote P&C) - Incomer Panel",
+      "hrs_per_unit": 32.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "PROTECTION_STANDARD",
+      "profile_name": "Protection Standard",
+      "profile_status": "Pending"
+    },
+    "4.1.2.08.7.08": {
+      "description": "Outdoor Switchboard (Remote P&C) - Bus Sectionalizer & Bus Riser Panels",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.08.7.09": {
+      "description": "Outdoor Switchboard (Remote P&C) - Feeder Panel",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "PROTECTION_STANDARD",
+      "profile_name": "Protection Standard",
+      "profile_status": "Pending"
+    },
+    "4.1.2.09.7.01": {
+      "description": "<66kV Capacitor or Reactor Bank",
+      "hrs_per_unit": 32.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.09.7.02": {
+      "description": "\u226566kV Capacitor or Reactor Bank",
+      "hrs_per_unit": 48.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.09.7.03": {
+      "description": "<66kV STATCOM Unit",
+      "hrs_per_unit": 32.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.09.7.04": {
+      "description": "\u226566kV STATCOM Unit",
+      "hrs_per_unit": 48.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.10.7.01": {
+      "description": "1500l polyethylene/steel coalescing oil water separator package",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.11.7.01": {
+      "description": "Aluminium Rigid Bus - Feeder Bay",
+      "hrs_per_unit": 4.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.11.7.02": {
+      "description": "Aluminium Rigid Bus - Transverse Bay (per section)",
+      "hrs_per_unit": 4.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.11.7.03": {
+      "description": "Aluminium Rigid Bus - TX Bay",
+      "hrs_per_unit": 4.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.11.7.04": {
+      "description": "Conductor Strung Bus - Feeder Bay",
+      "hrs_per_unit": 0.6667,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.11.7.05": {
+      "description": "Conductor Strung Bus - Transverse Bay (per section)",
+      "hrs_per_unit": 0.6667,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.11.7.06": {
+      "description": "Conductor Strung Bus - TX Bay",
+      "hrs_per_unit": 0.6667,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.12.7.01": {
+      "description": "\u226566kV Cable",
+      "hrs_per_unit": 0.12,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.12.7.02": {
+      "description": "<66kV Cable",
+      "hrs_per_unit": 0.0533,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.13.7.01": {
+      "description": "Padmount Substation \u2264100kVA",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.13.7.02": {
+      "description": "Padmount Substation >100kVA",
+      "hrs_per_unit": 48.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.13.7.03": {
+      "description": "Switching Station 3-Way",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.13.7.04": {
+      "description": "Switching Station 4-Way",
+      "hrs_per_unit": 24.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.13.7.05": {
+      "description": "Switching Station 6-Way",
+      "hrs_per_unit": 32.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.14.7.01": {
+      "description": "110V 110Ah Battery Bank",
+      "hrs_per_unit": 64.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.14.7.02": {
+      "description": "110V 200Ah Battery Bank",
+      "hrs_per_unit": 64.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.14.7.03": {
+      "description": "48V 110Ah Battery Bank",
+      "hrs_per_unit": 64.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.14.7.04": {
+      "description": "Battery Charger",
+      "hrs_per_unit": 32.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.14.7.05": {
+      "description": "DC/DC Converter",
+      "hrs_per_unit": 2.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.14.7.06": {
+      "description": "DC-DC Converter 48vDC to 48vDC",
+      "hrs_per_unit": 2.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.14.7.07": {
+      "description": "DC-DC Converter 48vDC to 24vDC",
+      "hrs_per_unit": 2.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.14.7.08": {
+      "description": "Hybrid Power Supply Unit",
+      "hrs_per_unit": 1.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.14.7.09": {
+      "description": "Power Supply Unit - 12V",
+      "hrs_per_unit": 1.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.14.7.10": {
+      "description": "Power Supply Unit - 48V",
+      "hrs_per_unit": 1.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.14.7.11": {
+      "description": "230VAC/48VDC Inverter",
+      "hrs_per_unit": 2.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.15.7.01": {
+      "description": "Arc Flash Protection System [Indoor switchboard]",
+      "hrs_per_unit": 32.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.15.7.02": {
+      "description": "Busbar Protection Relay [Indoor switchboard]",
+      "hrs_per_unit": 32.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.15.7.03": {
+      "description": "Busbar Protection Relay [Outdoor CB's]",
+      "hrs_per_unit": 32.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.15.7.04": {
+      "description": "Feeder Directional Relay",
+      "hrs_per_unit": 24.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.15.7.05": {
+      "description": "Multitrip Relay",
+      "hrs_per_unit": 32.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "PROTECTION_STANDARD",
+      "profile_name": "Protection Standard",
+      "profile_status": "Pending"
+    },
+    "4.1.2.15.7.06": {
+      "description": "Line Differential Relay",
+      "hrs_per_unit": 64.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "PROTECTION_STANDARD",
+      "profile_name": "Protection Standard",
+      "profile_status": "Pending"
+    },
+    "4.1.2.15.7.07": {
+      "description": "Transformer Differential Relay",
+      "hrs_per_unit": 32.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "PROTECTION_STANDARD",
+      "profile_name": "Protection Standard",
+      "profile_status": "Pending"
+    },
+    "4.1.2.15.7.08": {
+      "description": "Distance Relay",
+      "hrs_per_unit": 32.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "PROTECTION_STANDARD",
+      "profile_name": "Protection Standard",
+      "profile_status": "Pending"
+    },
+    "4.1.2.16.7.01": {
+      "description": "Busbar Protection Panel (Including all mounted equipment and cable terminations)",
+      "hrs_per_unit": 48.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.16.7.02": {
+      "description": "Feeder & Bus Section CB Protection & Control Panel (Including all mounted equipment and cable terminations)",
+      "hrs_per_unit": 32.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.16.7.03": {
+      "description": "Transformer CB's Differential Protection & Control Panel (Including all mounted equipment and cable terminations)",
+      "hrs_per_unit": 64.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.16.7.04": {
+      "description": "AC Distribution Panel (Including all mounted equipment and cable terminations)",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "PROTECTION_STANDARD",
+      "profile_name": "Protection Standard",
+      "profile_status": "Pending"
+    },
+    "4.1.2.16.7.05": {
+      "description": "DC Distribution Panel (Including all mounted equipment and cable terminations)",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "PROTECTION_STANDARD",
+      "profile_name": "Protection Standard",
+      "profile_status": "Pending"
+    },
+    "4.1.2.16.7.06": {
+      "description": "VT Change Over Panel (Including all mounted equipment and cable terminations)",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.16.7.07": {
+      "description": "Remedial Action Scheme Panel (Including all mounted equipment and cable terminations)",
+      "hrs_per_unit": 48.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.16.7.08": {
+      "description": "Battery Isolation Panel",
+      "hrs_per_unit": 2.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "PROTECTION_STANDARD",
+      "profile_name": "Protection Standard",
+      "profile_status": "Pending"
+    },
+    "4.1.2.17.7.01": {
+      "description": "SCADA Cable",
+      "hrs_per_unit": 0.0533,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.17.7.02": {
+      "description": "Control and Protection Cable",
+      "hrs_per_unit": 0.0533,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_INSTRUMENT",
+      "profile_name": "HV Plant \u2014 Instrument",
+      "profile_status": "Pending"
+    },
+    "4.1.2.17.7.03": {
+      "description": "LV Power/Light Cable (Switchyard Light/Power)",
+      "hrs_per_unit": 0.08,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.17.7.04": {
+      "description": "LV Heavy Power Cable (Mains/Submains)",
+      "hrs_per_unit": 0.08,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.18.7.01": {
+      "description": "Outdoor Switchyard Flood lights",
+      "hrs_per_unit": 1.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.18.7.02": {
+      "description": "Switchyard General Power Points -15A Single Phase Industrial Outlet (IP 65)",
+      "hrs_per_unit": 1.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.2.18.7.03": {
+      "description": "Switchyard General Power Points - 32A Three Phase Industrial Outlet- 5 Pin (IP 65)",
+      "hrs_per_unit": 1.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "HV_PLANT_OUTDOOR",
+      "profile_name": "HV Plant \u2014 Outdoor",
+      "profile_status": "Pending"
+    },
+    "4.1.3.01.7.01": {
+      "description": "Industrial Router 8340",
+      "hrs_per_unit": 8.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.3.01.7.02": {
+      "description": "Industrial Ethernet Switch 9320",
+      "hrs_per_unit": 8.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.3.01.7.03": {
+      "description": "Industrial Router 1101",
+      "hrs_per_unit": 8.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.3.01.7.04": {
+      "description": "Industrial Ethernet Switch IE3500",
+      "hrs_per_unit": 8.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.3.02.7.01": {
+      "description": "Duplexers",
+      "hrs_per_unit": 8.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.3.02.7.02": {
+      "description": "Ethernet Radio Units Aprisa SR+",
+      "hrs_per_unit": 8.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.3.03.7.01": {
+      "description": "Audio Bridge",
+      "hrs_per_unit": 8.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.3.03.7.02": {
+      "description": "GV1/TSOIP",
+      "hrs_per_unit": 8.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.3.03.7.03": {
+      "description": "Desktop UHF Radio",
+      "hrs_per_unit": 8.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.3.03.7.04": {
+      "description": "UHF Base Radio",
+      "hrs_per_unit": 8.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.3.03.7.05": {
+      "description": "UHF Link Radio",
+      "hrs_per_unit": 8.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.3.04.7.01": {
+      "description": "Microwave Radio Equipment",
+      "hrs_per_unit": 64.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.3.05.7.01": {
+      "description": "Protection Scheme Number (PSN) testing and commissioning",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.3.05.7.02": {
+      "description": "Control Scheme Number (CSN) testing and commissioning",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.4.01.7.01": {
+      "description": "Underground Fibre 48 Core c/w rodent deterrent (MOQ 2000m)",
+      "hrs_per_unit": 0.016,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.4.01.7.02": {
+      "description": "Underground Fibre 96 Core c/w rodent deterrent (MOQ 2000m)",
+      "hrs_per_unit": 0.016,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.4.01.7.03": {
+      "description": "SMF OPGW 48 Core",
+      "hrs_per_unit": 0.024,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.4.01.7.04": {
+      "description": "SMF OPGW 96 Core",
+      "hrs_per_unit": 0.024,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.4.01.7.05": {
+      "description": "ADSS 48 Core",
+      "hrs_per_unit": 0.024,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.4.01.7.06": {
+      "description": "ADSS 96 Core",
+      "hrs_per_unit": 0.024,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Telecomms Technician",
+      "profile_id": "COMMS_STANDARD",
+      "profile_name": "Communications",
+      "profile_status": "Pending"
+    },
+    "4.1.5.01.7.01": {
+      "description": "\u226566kV Cable",
+      "hrs_per_unit": 0.64,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": null,
+      "profile_name": null,
+      "profile_status": null
+    },
+    "4.1.5.01.7.02": {
+      "description": "<66kV Cable",
+      "hrs_per_unit": 0.32,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": null,
+      "profile_name": null,
+      "profile_status": null
+    },
+    "4.1.6.01.7.01": {
+      "description": "Metering/PQM Panel (Including all mounted equipment and cable terminations)",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Metering Technician - Zone Substation",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.01.7.02": {
+      "description": "Statistical Meter",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Metering Technician - Zone Substation",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.01.7.03": {
+      "description": "Revenue Meter",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Metering Technician - Zone Substation",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.01.7.04": {
+      "description": "Check Meter",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Metering Technician - Zone Substation",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.01.7.05": {
+      "description": "Combined Statistical / Power Quality Meter(PQM)",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Metering Technician - Zone Substation",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.01.7.06": {
+      "description": "Power Quality Meter(PQM)",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "Metering Technician - Zone Substation",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.02.7.01": {
+      "description": "SCADA RTU Cubicle (Panel: SCADA Team)",
+      "hrs_per_unit": NaN,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.02.7.02": {
+      "description": "SCADA RTU Cubicle (Panel: ZS Team)",
+      "hrs_per_unit": NaN,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.02.7.03": {
+      "description": "SCADA RTU CPU",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.02.7.04": {
+      "description": "SCADA Panel Internal Wiring & Miscellaneous items",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.03.7.01": {
+      "description": "Transducer",
+      "hrs_per_unit": 1.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.04.7.01": {
+      "description": "Advantech HMI Touchscreen",
+      "hrs_per_unit": 2.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.04.7.02": {
+      "description": "Alstom Battery Alarm Relay",
+      "hrs_per_unit": 2.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.04.7.03": {
+      "description": "Voltage Blocking Relay 239",
+      "hrs_per_unit": 2.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.04.7.04": {
+      "description": "TPE 25 Tap position encoder",
+      "hrs_per_unit": 4.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.04.7.05": {
+      "description": "DC/DC Converter",
+      "hrs_per_unit": 2.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.04.7.06": {
+      "description": "Aux Relay / Surge Filter / Test CB",
+      "hrs_per_unit": 2.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Specialist Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.05.7.01": {
+      "description": "11kV FI Plant complete 1 O/P transmitter, 1 coupling cell",
+      "hrs_per_unit": 80.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.05.7.02": {
+      "description": "22kV FI Plant complete 1 O/P transmitter, 1 coupling cell",
+      "hrs_per_unit": 80.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.05.7.03": {
+      "description": "33kV FI Plant complete 1 O/P transmitter, 1 coupling cell",
+      "hrs_per_unit": 80.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.05.7.04": {
+      "description": "66kV FI Plant complete 1 O/P transmitter, 1 coupling cell",
+      "hrs_per_unit": 120.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.05.7.05": {
+      "description": "Swistec Transmitter",
+      "hrs_per_unit": 40.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.05.7.06": {
+      "description": "Landis and Gyr Transmitter",
+      "hrs_per_unit": 40.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.05.7.07": {
+      "description": "11kV FI Coupling Cell",
+      "hrs_per_unit": 80.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.05.7.08": {
+      "description": "22kV FI Coupling Cell",
+      "hrs_per_unit": 80.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.05.7.09": {
+      "description": "33kV FI Coupling Cell",
+      "hrs_per_unit": 80.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.05.7.10": {
+      "description": "66kV FI Coupling Cell",
+      "hrs_per_unit": 120.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.05.7.11": {
+      "description": "Local Controller",
+      "hrs_per_unit": 16.0,
+      "ee_labour_rate": 139.26,
+      "resource_type": "ZS Electrical Technician",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.06.7.01": {
+      "description": "Miscellaneous works (Type 1)",
+      "hrs_per_unit": NaN,
+      "ee_labour_rate": 0.0,
+      "resource_type": "Contractor",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.06.7.02": {
+      "description": "Miscellaneous works (Type 2)",
+      "hrs_per_unit": NaN,
+      "ee_labour_rate": 0.0,
+      "resource_type": "Contractor",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.06.7.03": {
+      "description": "Miscellaneous works (Type 3)",
+      "hrs_per_unit": NaN,
+      "ee_labour_rate": 0.0,
+      "resource_type": "Contractor",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.06.7.04": {
+      "description": "Miscellaneous works (Type 4)",
+      "hrs_per_unit": NaN,
+      "ee_labour_rate": 0.0,
+      "resource_type": "Contractor",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.06.7.05": {
+      "description": "Miscellaneous works (Type 5)",
+      "hrs_per_unit": NaN,
+      "ee_labour_rate": 0.0,
+      "resource_type": "Contractor",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.06.7.06": {
+      "description": "Miscellaneous works (Type 6)",
+      "hrs_per_unit": NaN,
+      "ee_labour_rate": 0.0,
+      "resource_type": "Contractor",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.06.7.07": {
+      "description": "Miscellaneous works (Type 7)",
+      "hrs_per_unit": NaN,
+      "ee_labour_rate": 0.0,
+      "resource_type": "Contractor",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.06.7.08": {
+      "description": "Miscellaneous works (Type 8)",
+      "hrs_per_unit": NaN,
+      "ee_labour_rate": 0.0,
+      "resource_type": "Contractor",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.06.7.09": {
+      "description": "Miscellaneous works (Type 9)",
+      "hrs_per_unit": NaN,
+      "ee_labour_rate": 0.0,
+      "resource_type": "Contractor",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    },
+    "4.1.6.06.7.10": {
+      "description": "Miscellaneous works (Type 10)",
+      "hrs_per_unit": NaN,
+      "ee_labour_rate": 0.0,
+      "resource_type": "Contractor",
+      "profile_id": "SCADA_RTC",
+      "profile_name": "SCADA RTC",
+      "profile_status": "Confirmed"
+    }
+  }
+}
