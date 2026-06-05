@@ -960,7 +960,7 @@ function WBSManager({ equipSel, setEquipSel }) {
   const tabs=[
     {id:"items",label:"📋 WBS Items",count:wbs.length},
     {id:"rates",label:"💲 Resource Rates",count:rates.length},
-    {id:"catalogue",label:"🔧 Equipment Catalogue",count:equipSelectedCount>0?`${equipSelectedCount} sel`:null},
+    {id:"catalogue",label:"🔧 Equipment Catalogue",count:null},
     {id:"scaling",label:"📐 Comm Scaling",count:WBS_PROFILES.length},
     {id:"people",label:"👥 People & Roles",count:people.filter(p=>p.active).length},
   ];
@@ -1186,29 +1186,49 @@ const TYPE_COLORS = {
 
 // ── EQUIPMENT SCREEN (Estimation Tool tab) ───────────────────────
 // Shows ONLY items selected for this investment — procurement report view
-function EquipmentScreen({ equipSel, setEquipSel, isCommercial, inv }) {
-  const { equipment, loading } = useData();
+function EquipmentScreen({ lines, setLines, isCommercial, inv }) {
+  const { supply, loading } = useData();
   const ANS_mat = isCommercial ? (1 + ANS_MAT) : 1;
 
-  const selected = useMemo(()=>
-    equipment.filter(e => parseFloat(equipSel[e.id]||"0") > 0)
-  ,[equipment, equipSel]);
+  // Classify supply item into equipment type
+  const classifyItem = (item) => {
+    const wbs  = item.wbs_code || "";
+    const l2   = wbs.split(".").slice(0,2).join(".");
+    const l3   = wbs.split(".").slice(0,3).join(".");
+    const desc = (item.description||"").toLowerCase();
+    if (wbs.startsWith("3.5") || desc.includes("scada") || desc.includes("md303") || desc.includes("md100"))
+      return "SCADA";
+    if (l3==="3.2.1" || l3==="3.2.2" || l3==="3.2.3" ||
+        desc.includes("router") || desc.includes("switch") || desc.includes("radio") ||
+        desc.includes("fibre") || desc.includes("comms"))
+      return "COMMS";
+    if (item.pce_price > 0)
+      return item.lead_time_weeks > 20 ? "LLT" : "PCE";
+    return null;
+  };
+
+  // Supply items with quantities that are classifiable as equipment
+  const selected = useMemo(()=>{
+    return supply
+      .filter(s => parseFloat(lines[s.wbs_code]?.qty||"0") > 0)
+      .map(s => ({...s, equipType: classifyItem(s)}))
+      .filter(s => s.equipType !== null);
+  },[supply, lines]);
 
   const selByType = useMemo(()=>{
-    const m = {};
-    ["PCE","LLT","SCADA","COMMS"].forEach(t => {
-      m[t] = selected.filter(e => e.type === t);
-    });
+    const m = {"LLT":[],"PCE":[],"SCADA":[],"COMMS":[]};
+    selected.forEach(s => { if(m[s.equipType]) m[s.equipType].push(s); });
     return m;
   },[selected]);
 
-  const grandTotal     = selected.reduce((a,e)=>a + parseFloat(equipSel[e.id]||"0")*e.price, 0);
-  const grandTotalComm = selected.reduce((a,e)=>a + parseFloat(equipSel[e.id]||"0")*e.price*ANS_mat, 0);
-  const lltItems       = selected.filter(e=>e.is_llt);
+  const getPrice = (s) => parseFloat(lines[s.wbs_code]?.mats||"") || s.pce_price || 0;
+  const grandTotal     = selected.reduce((a,s)=> a + parseFloat(lines[s.wbs_code]?.qty||"0") * getPrice(s), 0);
+  const grandTotalComm = grandTotal * ANS_mat;
+  const lltItems       = selected.filter(s=>s.equipType==="LLT");
 
   if (loading) return (
     <div className="flex-1 flex items-center justify-center text-gray-400">
-      <div className="text-center"><div className="text-2xl animate-spin mb-2">⟳</div><div>Loading catalogue…</div></div>
+      <div className="text-center"><div className="text-2xl animate-spin mb-2">⟳</div><div>Loading…</div></div>
     </div>
   );
 
@@ -1216,8 +1236,8 @@ function EquipmentScreen({ equipSel, setEquipSel, isCommercial, inv }) {
     <div className="flex-1 flex items-center justify-center bg-gray-50">
       <div className="text-center text-gray-400">
         <div className="text-5xl mb-4">📦</div>
-        <div className="text-sm font-semibold text-gray-500">No equipment selected for this investment</div>
-        <div className="text-xs mt-2 text-gray-400">Go to <span className="font-semibold">WBS Manager → Equipment Catalogue</span> to browse and select items</div>
+        <div className="text-sm font-semibold text-gray-500">No equipment items selected yet</div>
+        <div className="text-xs mt-2 text-gray-400">Enter quantities for PCE, SCADA or Comms items in the Estimation tab — they will appear here automatically</div>
       </div>
     </div>
   );
@@ -1257,8 +1277,8 @@ function EquipmentScreen({ equipSel, setEquipSel, isCommercial, inv }) {
           const items = selByType[type];
           if (!items?.length) return null;
           const tc = TYPE_COLORS[type];
-          const typeTotal     = items.reduce((a,e)=>a + parseFloat(equipSel[e.id]||"0")*e.price, 0);
-          const typeTotalComm = items.reduce((a,e)=>a + parseFloat(equipSel[e.id]||"0")*e.price*ANS_mat, 0);
+          const typeTotal     = items.reduce((a,s)=> a + parseFloat(lines[s.wbs_code]?.qty||"0") * getPrice(s), 0);
+          const typeTotalComm = typeTotal * ANS_mat;
           return (
             <div key={type} className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2.5 border-b"
@@ -1281,71 +1301,62 @@ function EquipmentScreen({ equipSel, setEquipSel, isCommercial, inv }) {
                   <tr>
                     <th className="text-left px-3 py-2 font-semibold text-gray-500 w-32">WBS Code</th>
                     <th className="text-left px-3 py-2 font-semibold text-gray-500">Description</th>
-                    <th className="text-left px-3 py-2 font-semibold text-gray-500 w-28">Category</th>
-                    <th className="text-left px-3 py-2 font-semibold text-gray-500 w-36">Make / Part No.</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-500 w-28">Make / Model</th>
                     {type==="PCE"||type==="LLT" ? <th className="text-left px-3 py-2 font-semibold text-gray-500 w-24">Contract No.</th> : null}
                     {type==="PCE"||type==="LLT" ? <th className="text-center px-3 py-2 font-semibold text-red-600 w-20">Lead Time</th> : null}
                     <th className="text-right px-3 py-2 font-semibold text-gray-500 w-24">Unit Price</th>
                     <th className="text-center px-3 py-2 font-semibold text-orange-700 w-14">Qty</th>
                     <th className="text-right px-3 py-2 font-semibold text-teal-700 w-24">Line Total</th>
                     {isCommercial && <th className="text-right px-3 py-2 font-semibold text-orange-700 w-24">Commercial</th>}
-                    <th className="w-8 px-2"/>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map(item => {
-                    const qty    = parseFloat(equipSel[item.id]||"0");
-                    const lt     = item.line_total ?? qty * item.price;
+                    const qty    = parseFloat(lines[item.wbs_code]?.qty||"0");
+                    const price  = getPrice(item);
+                    const lt     = qty * price;
                     const ltComm = lt * ANS_mat;
+                    // Look up matching equipment record for make/model/contract
                     return (
-                      <tr key={item.id} className="border-b hover:bg-gray-50">
-                        <td className="px-3 py-2 font-mono text-blue-600 whitespace-nowrap">{item.wbs_code||<span className="text-gray-300 italic">TBA</span>}</td>
-                        <td className="px-3 py-2 text-gray-800">
-                          <div className="font-medium">{item.description}</div>
-                          {item.comments && <div className="text-gray-400 text-xs mt-0.5 truncate max-w-xs">{item.comments}</div>}
-                        </td>
-                        <td className="px-3 py-2 text-gray-500">{item.category}</td>
-                        <td className="px-3 py-2 text-gray-500 font-mono text-xs">{item.make_model}</td>
-                        {type==="PCE"||type==="LLT" ? <td className="px-3 py-2 text-gray-500 font-mono text-xs">{item.contract_no}</td> : null}
+                      <tr key={item.wbs_code} className="border-b hover:bg-gray-50">
+                        <td className="px-3 py-2 font-mono text-blue-600 whitespace-nowrap">{item.wbs_code}</td>
+                        <td className="px-3 py-2 text-gray-800 font-medium max-w-xs truncate">{item.description}</td>
+                        <td className="px-3 py-2 text-gray-500 text-xs font-mono truncate">{item.make||item.model||""}</td>
+                        {type==="PCE"||type==="LLT" ? <td className="px-3 py-2 text-gray-500 font-mono text-xs">{item.contract_no||""}</td> : null}
                         {type==="PCE"||type==="LLT" ? (
                           <td className="px-3 py-2 text-center">
                             {item.lead_time_weeks > 0 && (
-                              <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${item.is_llt?"bg-red-100 text-red-700":"bg-gray-100 text-gray-500"}`}>
+                              <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${item.lead_time_weeks>20?"bg-red-100 text-red-700":"bg-gray-100 text-gray-500"}`}>
                                 {item.lead_time_weeks}w
                               </span>
                             )}
                           </td>
                         ) : null}
                         <td className="px-3 py-2 text-right font-medium text-gray-800">
-                          {item.price>0 ? fmt(item.price) : <span className="text-orange-500">POA</span>}
+                          {price > 0 ? fmt(price) : <span className="text-orange-500">POA</span>}
                         </td>
                         <td className="px-3 py-2 text-center font-bold text-orange-700">{qty}</td>
                         <td className="px-3 py-2 text-right font-bold text-teal-700">
-                          {item.price>0 ? fmt(lt) : <span className="text-orange-500">POA</span>}
+                          {price > 0 ? fmt(lt) : <span className="text-orange-500">POA</span>}
                         </td>
                         {isCommercial && (
                           <td className="px-3 py-2 text-right font-bold text-orange-700">
-                            {item.price>0 ? fmt(ltComm) : <span className="text-orange-500">POA</span>}
+                            {price > 0 ? fmt(ltComm) : <span className="text-orange-500">POA</span>}
                           </td>
                         )}
-                        <td className="px-2 py-2 text-center">
-                          <button onClick={()=>setEquipSel(p=>({...p,[item.id]:"0"}))}
-                            className="text-red-300 hover:text-red-600 text-xs" title="Remove from investment">✕</button>
-                        </td>
                       </tr>
                     );
                   })}
                 </tbody>
                 <tfoot className="bg-gray-50 border-t border-gray-200">
                   <tr>
-                    <td colSpan={type==="PCE"||type==="LLT" ? 6 : 4} className="px-3 py-1.5"/>
+                    <td colSpan={type==="PCE"||type==="LLT" ? 5 : 3} className="px-3 py-1.5"/>
                     <td className="px-3 py-1.5 text-right text-xs font-bold text-gray-600">Subtotal</td>
                     <td className="px-3 py-1.5 text-center text-xs font-bold text-orange-700">
-                      {items.reduce((a,e)=>a+parseFloat(equipSel[e.id]||"0"),0)}
+                      {items.reduce((a,s)=>a+parseFloat(lines[s.wbs_code]?.qty||"0"),0)}
                     </td>
                     <td className="px-3 py-1.5 text-right text-xs font-bold text-teal-700">{fmt(typeTotal)}</td>
                     {isCommercial && <td className="px-3 py-1.5 text-right text-xs font-bold text-orange-700">{fmt(typeTotalComm)}</td>}
-                    <td/>
                   </tr>
                 </tfoot>
               </table>
@@ -1850,7 +1861,7 @@ export default function App() {
                     <EstimationScreen isCommercial={isCommercial} lines={lines} setLines={setLines}/>
                   </div>
                 )}
-                {estTab==="equipment" && <EquipmentScreen equipSel={equipSel} setEquipSel={setEquipSel} isCommercial={isCommercial} inv={inv}/>}
+                {estTab==="equipment" && <EquipmentScreen lines={lines} setLines={setLines} isCommercial={isCommercial} inv={inv}/>}
                 {estTab==="review"    && <ReviewLines lines={lines} isCommercial={isCommercial}/>}
                 {estTab==="summary"   && <SummaryScreen inv={inv} lines={lines} isCommercial={isCommercial} equipSel={equipSel} onSave={saveInvestment} lastSaved={lastSaved}/>}
               </div>
