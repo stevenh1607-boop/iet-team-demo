@@ -366,6 +366,13 @@ function CommissioningScreen({ lines, setLines, isCommercial }) {
   const { supply, commLookup, commProfiles } = useData();
   const [selectedGroup, setSelectedGroup] = useState(null);
 
+  // Auto-select first group when groups become available
+  useEffect(()=>{
+    const keys = Object.keys(groups).sort();
+    if (keys.length > 0 && !selectedGroup) setSelectedGroup(keys[0]);
+    if (selectedGroup && !groups[selectedGroup] && keys.length > 0) setSelectedGroup(keys[0]);
+  },[groups]);
+
   const EE_RATE = 139.26;
 
   // Derive commission totals from supply lines
@@ -423,7 +430,7 @@ function CommissioningScreen({ lines, setLines, isCommercial }) {
   );
 
   return (
-    <div className="flex flex-1 overflow-hidden">
+    <div className="flex flex-1 overflow-hidden w-full">
       {/* LEFT — group nav */}
       <div className="w-60 bg-gray-900 flex flex-col flex-shrink-0 overflow-hidden">
         <div className="bg-teal-800 text-white px-3 py-2 flex-shrink-0">
@@ -2411,7 +2418,11 @@ export default function App() {
                     <EstimationScreen isCommercial={isCommercial} lines={lines} setLines={setLines}/>
                   </div>
                 )}
-                {estTab==="commissioning" && <CommissioningScreen lines={lines} setLines={setLines} isCommercial={isCommercial}/>}
+                {estTab==="commissioning" && (
+                  <div className="flex flex-1 overflow-hidden">
+                    <CommissioningScreen lines={lines} setLines={setLines} isCommercial={isCommercial}/>
+                  </div>
+                )}
                 {estTab==="equipment"    && <EquipmentScreen lines={lines} setLines={setLines} isCommercial={isCommercial} inv={inv}/>}
                 {estTab==="review"    && <ReviewLines lines={lines} isCommercial={isCommercial}/>}
                 {estTab==="summary"   && <SummaryScreen inv={inv} lines={lines} isCommercial={isCommercial} equipSel={equipSel} onSave={saveInvestment} lastSaved={lastSaved}/>}
