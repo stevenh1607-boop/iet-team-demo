@@ -951,15 +951,18 @@ function ReviewLines({ lines, isCommercial }) {
 
 // ── SUMMARY SCREEN ───────────────────────────────────────────────
 function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }) {
-  const { supply, commLookup, commProfiles } = useData();
+  const { supply, wbs: wbsMaster, commLookup, commProfiles } = useData();
   const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
+  const [openNodes, setOpenNodes] = useState({}); // {wbs_code: bool}
 
-  // Phase 1-3, 5 rollups from entered supply items
+  const toggleNode = (code) => setOpenNodes(p=>({...p,[code]:!p[code]}));
+
+  // Phase 1-3, 5 rollups
   const phaseNames = {"1":"Planning","2":"Design","3":"Construction","4":"Commissioning","5":"M&C"};
   const byPhase = {};
   entered.forEach(item=>{
     const ph=item.wbs_code.split(".")[0];
-    if(ph==="4") return; // Phase 4 is derived separately
+    if(ph==="4") return;
     if(!byPhase[ph]) byPhase[ph]={eeInt:0,comm:0,installHrs:0,commHrs:0,lines:0};
     const ln=lines[item.wbs_code]||{};
     const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial);
@@ -968,136 +971,204 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
     byPhase[ph].lines++;
   });
 
-  // Phase 4 — derived from commission_wbs links with economy-of-scale scaling
+  // Phase 4 derived
   const commTotals = {};
   entered.forEach(item=>{
-    if(!item.commission_wbs || !commLookup[item.commission_wbs]) return;
-    const qty = parseFloat(lines[item.wbs_code]?.qty||"0");
-    const factor = parseFloat(lines[item.wbs_code]?.factor||"1");
-    const commWbs = item.commission_wbs;
-    if(!commTotals[commWbs]) commTotals[commWbs] = { qty:0, ...commLookup[commWbs] };
-    commTotals[commWbs].qty += qty * factor;
+    if(!item.commission_wbs||!commLookup[item.commission_wbs]) return;
+    const qty=parseFloat(lines[item.wbs_code]?.qty||"0");
+    const factor=parseFloat(lines[item.wbs_code]?.factor||"1");
+    const cw=item.commission_wbs;
+    if(!commTotals[cw]) commTotals[cw]={qty:0,...commLookup[cw]};
+    commTotals[cw].qty+=qty*factor;
   });
-
-  const eeRate = 139.26;
-  const phase4 = Object.entries(commTotals).reduce((a,[wbs,ct])=>{
-    if(ct.qty <= 0) return a;
-    const scale   = getScaleFactor(commProfiles, ct.profile_id, ct.qty);
-    const baseHrs = ct.qty * (ct.hrs_per_unit||0);
-    const ovrd    = lines[`comm_ovrd_${wbs}`]?.qty;
-    const hrs     = ovrd !== undefined && ovrd !== "" ? (parseFloat(ovrd)||0) : baseHrs * scale;
-    const rate    = ct.ee_labour_rate || eeRate;
-    const cost    = hrs * rate;
-    return { commHrs:a.commHrs+hrs, eeInt:a.eeInt+cost, comm:a.comm+cost*(1+ANS_LAB), lines:a.lines+1 };
+  const eeRate=139.26;
+  const phase4=Object.entries(commTotals).reduce((a,[wbs,ct])=>{
+    if(ct.qty<=0) return a;
+    const scale=getScaleFactor(commProfiles,ct.profile_id,ct.qty);
+    const baseHrs=ct.qty*(ct.hrs_per_unit||0);
+    const ovrd=lines[`comm_ovrd_${wbs}`]?.qty;
+    const hrs=ovrd!==undefined&&ovrd!==""?(parseFloat(ovrd)||0):baseHrs*scale;
+    const rate=ct.ee_labour_rate||eeRate;
+    const cost=hrs*rate;
+    return {commHrs:a.commHrs+hrs,eeInt:a.eeInt+cost,comm:a.comm+cost*(1+ANS_LAB),lines:a.lines+1};
   },{commHrs:0,eeInt:0,comm:0,lines:0});
-
-  if(phase4.commHrs > 0) byPhase["4"] = {...phase4, installHrs:0};
+  if(phase4.commHrs>0) byPhase["4"]={...phase4,installHrs:0};
 
   const grandEE   = Object.values(byPhase).reduce((a,p)=>a+p.eeInt,0);
   const grandComm = Object.values(byPhase).reduce((a,p)=>a+p.comm,0);
-  const contPct = parseFloat(isCommercial?inv.contComm:inv.contInt)||10;
-  const contAmt = (isCommercial?grandComm:grandEE) * contPct/100;
-  const totalWithCont = (isCommercial?grandComm:grandEE) + contAmt;
+  const contPct   = parseFloat(isCommercial?inv.contComm:inv.contInt)||10;
+  const contAmt   = (isCommercial?grandComm:grandEE)*contPct/100;
+  const totalWithCont = (isCommercial?grandComm:grandEE)+contAmt;
+
+  // Build WBS tree down to L5 for each entered supply item
+  // Build a lookup: wbs_code -> {eeInt, comm, installHrs, commHrs, qty, lines}
+  const nodeRollup = useMemo(()=>{
+    const m = {};
+    const accum = (code, vals) => {
+      const parts = code.split('.');
+      for (let d=1; d<=parts.length; d++) {
+        const ancestor = parts.slice(0,d).join('.');
+        if (!m[ancestor]) m[ancestor]={eeInt:0,comm:0,installHrs:0,commHrs:0,lines:0};
+        m[ancestor].eeInt      += vals.eeInt;
+        m[ancestor].comm       += vals.comm;
+        m[ancestor].installHrs += vals.installHrs;
+        m[ancestor].commHrs    += vals.commHrs;
+        m[ancestor].lines      += 1;
+      }
+    };
+    entered.forEach(item=>{
+      const ln=lines[item.wbs_code]||{};
+      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial);
+      accum(item.wbs_code, c);
+    });
+    return m;
+  },[entered, lines, isCommercial]);
+
+  // WBS description lookup
+  const descMap = useMemo(()=>{
+    const m={};
+    wbsMaster.forEach(r=>{ m[r.wbs_code]=r.description; });
+    return m;
+  },[wbsMaster]);
+
+  // Tree node renderer — L1 to L5 (L6 is item level, shown inline)
+  const renderWBSNode = (code, depth=1) => {
+    const roll = nodeRollup[code];
+    if (!roll || roll.lines===0) return null;
+    const desc  = descMap[code] || code;
+    const isOpen = !!openNodes[code];
+    const isLeaf = depth >= 5;
+
+    // Find children at next depth
+    const childCodes = depth < 5 ? Object.keys(nodeRollup).filter(k => {
+      const parts = k.split('.');
+      return parts.length === depth+1 && k.startsWith(code+'.');
+    }).sort() : [];
+
+    const indent = depth * 16;
+    const bgColors = ["","bg-blue-50","bg-indigo-50","bg-gray-50","bg-white","bg-white"];
+    const textColors = ["","text-blue-900","text-indigo-800","text-gray-800","text-gray-700","text-gray-600"];
+    const fontWeights = ["","font-bold","font-bold","font-semibold","font-medium","font-normal"];
+
+    return (
+      <div key={code}>
+        <div
+          onClick={()=>!isLeaf && childCodes.length>0 && toggleNode(code)}
+          className={`grid items-center border-b text-xs cursor-pointer hover:bg-yellow-50 ${bgColors[depth]||"bg-white"}
+            ${depth<=2?"border-b-gray-300 border-b-2":"border-b-gray-100"}`}
+          style={{gridTemplateColumns:"1fr 80px 80px 90px 90px",paddingLeft:`${indent}px`}}>
+          <div className={`py-1.5 pr-2 flex items-center gap-1 ${textColors[depth]||"text-gray-600"}`}>
+            {!isLeaf && childCodes.length>0 && (
+              <span className="text-gray-400 w-3 flex-shrink-0">{isOpen?"▾":"▸"}</span>
+            )}
+            {(isLeaf || childCodes.length===0) && <span className="w-3 flex-shrink-0"/>}
+            <span className="font-mono text-gray-400 text-xs flex-shrink-0">{code}</span>
+            <span className={`truncate ${fontWeights[depth]||""}`}>{desc}</span>
+          </div>
+          <div className={`py-1.5 text-center text-purple-700 ${depth<=2?"font-bold":"font-medium"}`}>{roll.installHrs>0?fmtHrs(roll.installHrs):"—"}</div>
+          <div className={`py-1.5 text-center text-teal-700 ${depth<=2?"font-bold":"font-medium"}`}>{roll.commHrs>0?fmtHrs(roll.commHrs):"—"}</div>
+          <div className={`py-1.5 text-right pr-2 text-blue-800 ${depth<=2?"font-bold":"font-medium"}`}>{fmt(roll.eeInt)}</div>
+          <div className={`py-1.5 text-right pr-2 text-orange-700 ${depth<=2?"font-bold":"font-medium"}`}>{fmt(roll.comm)}</div>
+        </div>
+        {isOpen && !isLeaf && childCodes.map(child=>renderWBSNode(child, depth+1))}
+      </div>
+    );
+  };
+
+  // Phase-level entries (L1) with their children
+  const phaseNodes = useMemo(()=>{
+    return Object.keys(nodeRollup).filter(k=>k.split('.').length===1).sort();
+  },[nodeRollup]);
 
   return (
     <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
-      <div className="max-w-4xl mx-auto space-y-4">
+      <div className="max-w-6xl mx-auto space-y-4">
 
         {/* Investment header */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-start justify-between">
             <div>
               <div className="text-lg font-bold text-gray-900">{inv.name||"Unnamed Investment"}</div>
-              <div className="text-xs text-gray-400 mt-0.5">
-                {inv.number} · {inv.estClass} · Rev {inv.revision} · {inv.type}
-              </div>
+              <div className="text-xs text-gray-400 mt-0.5">{inv.number} · {inv.estClass} · Rev {inv.revision} · {inv.type}</div>
             </div>
             <div className="flex items-center gap-3">
               {lastSaved && <span className="text-xs text-green-600">✓ Saved {lastSaved}</span>}
-              <button onClick={onSave}
-                className="bg-green-700 hover:bg-green-600 text-white text-xs px-4 py-2 rounded font-semibold shadow">
-                💾 Save Investment
-              </button>
-              <button className="bg-blue-700 hover:bg-blue-600 text-white text-xs px-4 py-2 rounded font-semibold shadow">
-                ☁️ Export Copperleaf CSV
-              </button>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-3 text-center border-t border-gray-100 pt-3">
-            <div>
-              <div className="text-xs text-gray-500 mb-0.5">Estimator</div>
-              <div className="text-sm font-semibold text-gray-800">{inv.estimatedBy}</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500 mb-0.5">Reviewer</div>
-              <div className="text-sm font-semibold text-gray-800">{inv.reviewedBy}</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500 mb-0.5">Complexity / New Tech</div>
-              <div className="text-sm font-semibold text-gray-800">{inv.complexity} / {inv.newTech}</div>
+              <button onClick={onSave} className="bg-green-700 hover:bg-green-600 text-white text-xs px-4 py-2 rounded font-semibold shadow">💾 Save Investment</button>
+              <button className="bg-blue-700 hover:bg-blue-600 text-white text-xs px-4 py-2 rounded font-semibold shadow">☁️ Export Copperleaf CSV</button>
             </div>
           </div>
         </div>
 
-        {/* Phase rollup table */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-          <div className="bg-blue-800 text-white text-xs font-bold px-4 py-2 uppercase tracking-wide">
-            Cost Summary by Phase
-          </div>
-          <table className="w-full text-xs">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-4 py-2 font-semibold text-gray-500">Phase</th>
-                <th className="text-center px-4 py-2 font-semibold text-gray-500">Lines</th>
-                <th className="text-right px-4 py-2 font-semibold text-purple-600">Install Hrs</th>
-                <th className="text-right px-4 py-2 font-semibold text-teal-600">Comm Hrs</th>
-                <th className="text-right px-4 py-2 font-semibold text-blue-700">EE Internal</th>
-                <th className="text-right px-4 py-2 font-semibold text-orange-700">Commercial</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(byPhase).map(([ph,p])=>(
-                <tr key={ph} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-2 font-semibold text-gray-800">
-                    Phase {ph} — {phaseNames[ph]||ph}
-                    {ph==="4" && <span className="ml-2 text-xs font-normal text-teal-600 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">auto-derived from supply links</span>}
-                  </td>
-                  <td className="px-4 py-2 text-center text-gray-500">{p.lines}</td>
-                  <td className="px-4 py-2 text-right text-purple-700 font-medium">{fmtHrs(p.installHrs)}</td>
-                  <td className="px-4 py-2 text-right text-teal-700 font-medium">{fmtHrs(p.commHrs)}</td>
-                  <td className="px-4 py-2 text-right text-blue-800 font-bold">{fmt(p.eeInt)}</td>
-                  <td className="px-4 py-2 text-right text-orange-700 font-bold">{fmt(p.comm)}</td>
-                </tr>
-              ))}
-              {Object.keys(byPhase).length===0 && (
-                <tr><td colSpan={6} className="px-4 py-6 text-center text-gray-400">No lines entered yet</td></tr>
-              )}
-            </tbody>
-            {grandEE>0 && (
-              <tfoot className="bg-gray-50 border-t-2 border-gray-300">
-                <tr>
-                  <td className="px-4 py-2 font-bold text-gray-700">Base Total</td>
-                  <td className="px-4 py-2 text-center font-bold text-gray-700">{entered.length}</td>
-                  <td colSpan={2}/>
-                  <td className="px-4 py-2 text-right font-bold text-blue-900 text-sm">{fmt(grandEE)}</td>
-                  <td className="px-4 py-2 text-right font-bold text-orange-800 text-sm">{fmt(grandComm)}</td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-2 text-gray-500">Contingency ({contPct}%)</td>
-                  <td colSpan={4}/>
-                  <td className="px-4 py-2 text-right text-orange-600 font-medium">{fmt(contAmt)}</td>
-                </tr>
-                <tr className="bg-orange-50">
-                  <td className="px-4 py-2 font-bold text-orange-900 text-sm">TOTAL (incl. contingency)</td>
-                  <td colSpan={4}/>
-                  <td className="px-4 py-2 text-right font-bold text-orange-900 text-base">{fmt(totalWithCont)}</td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
+        {/* Phase summary cards */}
+        <div className="grid grid-cols-5 gap-2">
+          {Object.entries(byPhase).map(([ph,p])=>(
+            <div key={ph} className="bg-white rounded-lg border border-gray-200 p-3 text-center shadow-sm">
+              <div className="text-xs font-bold text-gray-500 mb-1">Phase {ph} — {phaseNames[ph]||ph}</div>
+              {ph==="4" && <div className="text-xs text-teal-600 mb-1">auto-derived</div>}
+              <div className="text-sm font-bold text-blue-800">{fmt(p.eeInt)}</div>
+              {isCommercial && <div className="text-xs font-bold text-orange-700">{fmt(p.comm)}</div>}
+              <div className="text-xs text-purple-600 mt-1">{fmtHrs(p.installHrs+p.commHrs)}</div>
+            </div>
+          ))}
+          {Object.keys(byPhase).length===0 && (
+            <div className="col-span-5 bg-white rounded-lg border border-gray-200 p-6 text-center text-gray-400">No lines entered yet</div>
+          )}
         </div>
 
-        {/* ANS Margin note for commercial */}
+        {/* WBS Cost Tree — default all closed, expandable to L5 */}
+        {phaseNodes.length > 0 && (
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 bg-blue-800 text-white">
+              <div className="font-bold text-sm">WBS Cost Breakdown</div>
+              <div className="flex items-center gap-2">
+                <button onClick={()=>setOpenNodes({})} className="text-xs bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded">Collapse All</button>
+                <button onClick={()=>{
+                  const all={};
+                  Object.keys(nodeRollup).filter(k=>k.split('.').length<5).forEach(k=>{all[k]=true;});
+                  setOpenNodes(all);
+                }} className="text-xs bg-blue-700 hover:bg-blue-600 px-2 py-1 rounded">Expand All</button>
+              </div>
+            </div>
+            {/* Column headers */}
+            <div className="grid border-b bg-gray-50 text-xs font-semibold text-gray-500"
+              style={{gridTemplateColumns:"1fr 80px 80px 90px 90px"}}>
+              <div className="px-3 py-2">WBS / Description</div>
+              <div className="py-2 text-center text-purple-600">Install Hrs</div>
+              <div className="py-2 text-center text-teal-600">Comm Hrs</div>
+              <div className="py-2 text-right pr-2 text-blue-700">EE Internal</div>
+              <div className="py-2 text-right pr-2 text-orange-700">Commercial</div>
+            </div>
+            {/* Phase nodes — all closed by default */}
+            {phaseNodes.map(ph => renderWBSNode(ph, 1))}
+            {/* Grand total footer */}
+            <div className="grid border-t-2 border-gray-300 bg-gray-50 text-xs font-bold"
+              style={{gridTemplateColumns:"1fr 80px 80px 90px 90px"}}>
+              <div className="px-3 py-2 text-gray-700">Total (excl. contingency)</div>
+              <div className="py-2 text-center text-purple-700">{Object.values(nodeRollup).filter((_,i)=>Object.keys(nodeRollup)[i].split('.').length===1).reduce((a,v)=>a+v.installHrs,0)>0?fmtHrs(Object.entries(nodeRollup).filter(([k])=>k.split('.').length===1).reduce((a,[,v])=>a+v.installHrs,0)):"—"}</div>
+              <div className="py-2 text-center text-teal-700">—</div>
+              <div className="py-2 text-right pr-2 text-blue-900 text-sm">{fmt(grandEE)}</div>
+              <div className="py-2 text-right pr-2 text-orange-800 text-sm">{fmt(grandComm)}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Contingency + Grand total */}
+        {grandEE>0 && (
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+            <div className="grid text-xs border-b" style={{gridTemplateColumns:"1fr 90px 90px"}}>
+              <div className="px-4 py-2 text-gray-500">Contingency ({contPct}%)</div>
+              <div className="py-2 text-right pr-4 text-blue-600 font-medium">{fmt(contAmt * (grandEE/grandComm||1))}</div>
+              <div className="py-2 text-right pr-4 text-orange-600 font-medium">{fmt(contAmt)}</div>
+            </div>
+            <div className="grid text-sm font-bold bg-orange-50" style={{gridTemplateColumns:"1fr 90px 90px"}}>
+              <div className="px-4 py-3 text-orange-900">TOTAL (incl. contingency)</div>
+              <div className="py-3 text-right pr-4 text-blue-900">{fmt(grandEE+grandEE*contPct/100)}</div>
+              <div className="py-3 text-right pr-4 text-orange-900 text-base">{fmt(totalWithCont)}</div>
+            </div>
+          </div>
+        )}
+
+        {/* ANS note */}
         {inv.type==="Commercially Funded" && grandComm>0 && (
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-xs text-orange-800">
             <span className="font-bold">ANS Margins applied:</span> Labour ×{fmtPct(ANS_LAB)} · Materials ×{fmtPct(ANS_MAT)} · Contractor ×{fmtPct(ANS_CON)}
@@ -1298,6 +1369,241 @@ function WBSVirtualList({ rows, managerMode=false, editingWbs=null, editVals={},
             })}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+
+// ── RATES EDITOR ────────────────────────────────────────────────
+function RatesEditor({ rates, managerMode, onUnlock }) {
+  const [localRates, setLocalRates] = useState(null);
+  const [editingRow,  setEditingRow]  = useState(null);
+  const [editVals,    setEditVals]    = useState({});
+  const display = localRates || rates;
+
+  const startEdit = (r) => {
+    setEditingRow(r.resource_type);
+    setEditVals({
+      ee_internal_rate:    r.ee_internal_rate,
+      ee_commercial_rate:  r.ee_commercial_rate,
+      ans_margin_pct_labour: r.ans_margin_pct_labour,
+      aer_code:            r.aer_code || "",
+      erp_code:            r.erp_code || "",
+      uom:                 r.uom || "Hour",
+    });
+  };
+  const saveEdit = (resource_type) => {
+    const base = localRates || rates;
+    setLocalRates(base.map(r => r.resource_type === resource_type ? {
+      ...r,
+      ee_internal_rate:    parseFloat(editVals.ee_internal_rate)    || r.ee_internal_rate,
+      ee_commercial_rate:  parseFloat(editVals.ee_commercial_rate)  || r.ee_commercial_rate,
+      ans_margin_pct_labour: parseFloat(editVals.ans_margin_pct_labour) || r.ans_margin_pct_labour,
+      aer_code: editVals.aer_code,
+      erp_code: editVals.erp_code,
+      uom:      editVals.uom,
+    } : r));
+    setEditingRow(null);
+  };
+
+  const cols = ["Resource Type","AER Code","ERP Code","EE Internal $/hr","EE Commercial $/hr","ANS Margin %","UOM",""];
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="bg-white border-b px-4 py-2 flex items-center gap-3 flex-shrink-0">
+        <span className="text-xs text-gray-500">{display.length} resource types</span>
+        <div className="flex-1"/>
+        {managerMode ? (
+          <span className="text-xs bg-orange-100 text-orange-700 px-3 py-1.5 rounded font-semibold flex items-center gap-1.5">🔓 Manager Mode — click row to edit</span>
+        ) : (
+          <button onClick={onUnlock} className="text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 px-3 py-1.5 rounded flex items-center gap-1.5">🔒 Manager Mode</button>
+        )}
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        <table className="w-full text-xs">
+          <thead className="bg-gray-50 border-b sticky top-0 z-10">
+            <tr>{cols.map(h=><th key={h} className="text-left px-3 py-2 font-semibold text-gray-500 whitespace-nowrap">{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {display.map(r => {
+              const isEd = editingRow === r.resource_type;
+              return (
+                <tr key={r.resource_type} className={`border-b ${isEd?"bg-blue-50":"hover:bg-gray-50"}`}>
+                  <td className="px-3 py-1.5 font-medium text-gray-800 max-w-xs">
+                    <div className="truncate">{r.resource_type}</div>
+                  </td>
+                  <td className="px-3 py-1.5">
+                    {isEd ? <input value={editVals.aer_code} onChange={e=>setEditVals(p=>({...p,aer_code:e.target.value}))}
+                      className="w-20 border border-blue-300 rounded px-1 py-0.5 text-xs font-mono focus:outline-none"/> : <span className="font-mono text-blue-700">{r.aer_code}</span>}
+                  </td>
+                  <td className="px-3 py-1.5">
+                    {isEd ? <input value={editVals.erp_code} onChange={e=>setEditVals(p=>({...p,erp_code:e.target.value}))}
+                      className="w-24 border border-blue-300 rounded px-1 py-0.5 text-xs focus:outline-none"/> : <span className="text-gray-500">{r.erp_code}</span>}
+                  </td>
+                  <td className="px-3 py-1.5 text-right">
+                    {isEd ? <input type="number" value={editVals.ee_internal_rate} onChange={e=>setEditVals(p=>({...p,ee_internal_rate:e.target.value}))}
+                      className="w-20 border border-green-300 bg-green-50 rounded px-1 py-0.5 text-xs text-right focus:outline-none"/> : <span className="font-medium text-blue-900">${r.ee_internal_rate?.toFixed(2)}</span>}
+                  </td>
+                  <td className="px-3 py-1.5 text-right">
+                    {isEd ? <input type="number" value={editVals.ee_commercial_rate} onChange={e=>setEditVals(p=>({...p,ee_commercial_rate:e.target.value}))}
+                      className="w-20 border border-orange-300 bg-orange-50 rounded px-1 py-0.5 text-xs text-right focus:outline-none"/> : <span className="font-medium text-orange-700">${r.ee_commercial_rate?.toFixed(2)}</span>}
+                  </td>
+                  <td className="px-3 py-1.5 text-right">
+                    {isEd ? <input type="number" step="0.001" value={(editVals.ans_margin_pct_labour*100).toFixed(1)} onChange={e=>setEditVals(p=>({...p,ans_margin_pct_labour:parseFloat(e.target.value)/100}))}
+                      className="w-16 border border-teal-300 bg-teal-50 rounded px-1 py-0.5 text-xs text-right focus:outline-none"/> : <span className="text-teal-700">{r.ans_margin_pct_labour!=null?(r.ans_margin_pct_labour*100).toFixed(1)+"%":"—"}</span>}
+                  </td>
+                  <td className="px-3 py-1.5">
+                    {isEd ? <input value={editVals.uom} onChange={e=>setEditVals(p=>({...p,uom:e.target.value}))}
+                      className="w-16 border border-gray-300 rounded px-1 py-0.5 text-xs focus:outline-none"/> : <span className="text-gray-500">{r.uom}</span>}
+                  </td>
+                  <td className="px-3 py-1.5 text-center whitespace-nowrap">
+                    {managerMode && (isEd ? (
+                      <div className="flex gap-1">
+                        <button onClick={()=>saveEdit(r.resource_type)} className="text-green-600 hover:text-green-800 font-bold text-xs">✓</button>
+                        <button onClick={()=>setEditingRow(null)} className="text-gray-400 hover:text-gray-600 text-xs">✕</button>
+                      </div>
+                    ) : <button onClick={()=>startEdit(r)} className="text-blue-400 hover:text-blue-700 text-xs">Edit</button>)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+
+// ── SCALING EDITOR ───────────────────────────────────────────────
+function ScalingEditor({ managerMode, onUnlock }) {
+  const { commProfiles: ctxProfiles, commLookup } = useData();
+  const [localProfiles, setLocalProfiles] = useState(null);
+  const profiles = localProfiles || ctxProfiles;
+
+  const PROFILE_STATUS = ["Confirmed","Pending","Draft"];
+  const SC = {Confirmed:"bg-green-100 text-green-700", Pending:"bg-yellow-100 text-yellow-700", Draft:"bg-gray-100 text-gray-500"};
+  const FC = f => f>=1?"text-green-600":f>=0.90?"text-blue-600":f>=0.85?"text-yellow-600":f>=0.80?"text-orange-600":"text-red-600";
+
+  const updateTier = (profileId, tierIdx, field, val) => {
+    const base = localProfiles || ctxProfiles;
+    setLocalProfiles({...base, [profileId]: {
+      ...base[profileId],
+      tiers: base[profileId].tiers.map((t,i) => i===tierIdx ? {...t, [field]: val} : t)
+    }});
+  };
+  const addTier = (profileId) => {
+    const base = localProfiles || ctxProfiles;
+    const tiers = base[profileId].tiers;
+    const last  = tiers[tiers.length-1];
+    setLocalProfiles({...base, [profileId]: {
+      ...base[profileId],
+      tiers: [...tiers, { qty_from: (last.qty_to||last.qty_from)+1, qty_to: null, scale: last.scale }]
+    }});
+  };
+  const removeTier = (profileId, tierIdx) => {
+    const base = localProfiles || ctxProfiles;
+    if (base[profileId].tiers.length <= 1) return;
+    setLocalProfiles({...base, [profileId]: {
+      ...base[profileId],
+      tiers: base[profileId].tiers.filter((_,i)=>i!==tierIdx)
+    }});
+  };
+  const updateStatus = (profileId, status) => {
+    const base = localProfiles || ctxProfiles;
+    setLocalProfiles({...base, [profileId]: {...base[profileId], status}});
+  };
+
+  // Count items using each profile
+  const profileCounts = {};
+  Object.values(commLookup).forEach(item => {
+    if (item.profile_id) profileCounts[item.profile_id] = (profileCounts[item.profile_id]||0)+1;
+  });
+
+  if (!Object.keys(profiles).length) return (
+    <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">Loading scaling profiles…</div>
+  );
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="bg-white border-b px-4 py-2 flex items-center gap-3 flex-shrink-0">
+        <span className="text-xs text-gray-500">{Object.keys(profiles).length} profiles · Changes apply immediately to commissioning calculations</span>
+        <div className="flex-1"/>
+        {managerMode ? (
+          <span className="text-xs bg-orange-100 text-orange-700 px-3 py-1.5 rounded font-semibold flex items-center gap-1.5">🔓 Manager Mode — edit tiers below</span>
+        ) : (
+          <button onClick={onUnlock} className="text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 px-3 py-1.5 rounded flex items-center gap-1.5">🔒 Manager Mode</button>
+        )}
+      </div>
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="max-w-5xl mx-auto space-y-4">
+          {Object.entries(profiles).map(([profileId, profile])=>(
+            <div key={profileId} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b">
+                <div className="flex items-center gap-3">
+                  <span className="font-semibold text-sm text-gray-800">{profile.name}</span>
+                  <span className="text-xs text-gray-400 font-mono">{profileId}</span>
+                  {managerMode ? (
+                    <select value={profile.status||"Pending"} onChange={e=>updateStatus(profileId,e.target.value)}
+                      className={`text-xs px-2 py-0.5 rounded font-medium border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer ${SC[profile.status]||SC.Draft}`}>
+                      {PROFILE_STATUS.map(s=><option key={s}>{s}</option>)}
+                    </select>
+                  ) : (
+                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${SC[profile.status]||SC.Draft}`}>{profile.status||"Draft"}</span>
+                  )}
+                  <span className="text-xs text-gray-400">{profileCounts[profileId]||0} commission items use this profile</span>
+                </div>
+                {managerMode && (
+                  <button onClick={()=>addTier(profileId)}
+                    className="text-xs bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded">+ Add Tier</button>
+                )}
+              </div>
+              <div className="p-4">
+                <div className="flex items-center gap-1 flex-wrap">
+                  {profile.tiers.map((tier,i)=>(
+                    <div key={i} className={`relative border rounded-lg p-3 text-center min-w-[90px] ${managerMode?"border-blue-200 bg-blue-50":"border-gray-200 bg-gray-50"}`}>
+                      {managerMode && (
+                        <button onClick={()=>removeTier(profileId,i)}
+                          className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center leading-none hover:bg-red-700">×</button>
+                      )}
+                      <div className="text-xs text-gray-500 mb-2">Qty range</div>
+                      <div className="flex items-center justify-center gap-1 mb-2">
+                        {managerMode ? (
+                          <>
+                            <input type="number" min="1" value={tier.qty_from} onChange={e=>updateTier(profileId,i,'qty_from',parseFloat(e.target.value))}
+                              className="w-10 text-center border border-gray-300 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                            <span className="text-gray-400 text-xs">–</span>
+                            <input type="number" min="1" value={tier.qty_to??""} onChange={e=>updateTier(profileId,i,'qty_to',e.target.value?parseFloat(e.target.value):null)}
+                              placeholder="∞"
+                              className="w-10 text-center border border-gray-300 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                          </>
+                        ) : (
+                          <span className="text-xs font-medium text-gray-600">{tier.qty_from}{tier.qty_to?`–${tier.qty_to}`:"+∞"}</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500 mb-1">Scale %</div>
+                      {managerMode ? (
+                        <input type="number" min="1" max="100" step="1"
+                          value={Math.round(tier.scale*100)}
+                          onChange={e=>updateTier(profileId,i,'scale',parseFloat(e.target.value)/100)}
+                          className="w-16 text-center border border-gray-300 rounded px-1 py-1 text-sm font-bold focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                      ) : (
+                        <div className={`text-lg font-bold ${FC(tier.scale)}`}>{(tier.scale*100).toFixed(0)}%</div>
+                      )}
+                      {tier.scale < 1 && (
+                        <div className="text-xs text-gray-400 mt-1">save {((1-tier.scale)*100).toFixed(0)}%</div>
+                      )}
+                    </div>
+                  ))}
+                  {profile.tiers.length === 0 && (
+                    <div className="text-sm text-gray-400 italic px-4">No tiers — scale factor = 1.0 (no reduction)</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -1526,30 +1832,7 @@ function WBSManager({ equipSel, setEquipSel }) {
 
       {/* Resource Rates */}
       {tab==="rates"&&(
-        <div className="flex-1 overflow-y-auto">
-          <table className="w-full text-xs">
-            <thead className="bg-gray-50 border-b sticky top-0">
-              <tr>
-                {["Resource Type","AER Code","ERP Code","EE Internal $/hr","EE Commercial $/hr","ANS Margin %","UOM"].map(h=>(
-                  <th key={h} className="text-left px-3 py-2 font-semibold text-gray-500 whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rates.map(r=>(
-                <tr key={r.resource_type} className="border-b hover:bg-gray-50">
-                  <td className="px-3 py-1.5 font-medium text-gray-800">{r.resource_type}</td>
-                  <td className="px-3 py-1.5 font-mono text-blue-700">{r.aer_code}</td>
-                  <td className="px-3 py-1.5 text-gray-500">{r.erp_code}</td>
-                  <td className="px-3 py-1.5 text-right font-medium text-blue-900">${r.ee_internal_rate?.toFixed(2)}</td>
-                  <td className="px-3 py-1.5 text-right font-medium text-orange-700">${r.ee_commercial_rate?.toFixed(2)}</td>
-                  <td className="px-3 py-1.5 text-right text-teal-700">{r.ans_margin_pct_labour!=null?(r.ans_margin_pct_labour*100).toFixed(1)+"%":"—"}</td>
-                  <td className="px-3 py-1.5 text-gray-500">{r.uom}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <RatesEditor rates={rates} managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
       )}
 
       {/* Equipment Catalogue */}
@@ -1559,30 +1842,7 @@ function WBSManager({ equipSel, setEquipSel }) {
 
       {/* Commissioning Scaling */}
       {tab==="scaling"&&(
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="max-w-4xl mx-auto space-y-3">
-            {WBS_PROFILES.map(profile=>(
-              <div key={profile.id} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b">
-                  <div className="flex items-center gap-3">
-                    <span className="font-semibold text-sm text-gray-800">{profile.name}</span>
-                    <span className="text-xs text-gray-400 font-mono">{profile.id}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${WBS_ST[profile.status]}`}>{profile.status}</span>
-                  </div>
-                  <span className="text-xs text-gray-400">{profile.section}</span>
-                </div>
-                <div className="p-3 flex gap-2 flex-wrap">
-                  {profile.tiers.map((tier,i)=>(
-                    <div key={i} className="border border-gray-200 rounded p-2 text-center min-w-[72px] bg-gray-50">
-                      <div className="text-xs text-gray-500 mb-1">Qty {tier.f}{tier.t?`–${tier.t}`:"+"}</div>
-                      <div className={`text-sm font-bold ${WBS_FC(tier.s)}`}>{(tier.s*100).toFixed(0)}%</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <ScalingEditor managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
       )}
 
       {/* People & Roles */}
