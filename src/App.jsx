@@ -1196,7 +1196,7 @@ const CLASS_COLOR = {
   "Class 5":"bg-green-100 text-green-700",
 };
 
-function InvestmentHub({ onLoad }) {
+function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
   const [saved,       setSaved]       = useState([]);
   const [search,      setSearch]      = useState("");
   const [statusFilter,setStatusFilter]= useState("All");
@@ -1235,7 +1235,101 @@ function InvestmentHub({ onLoad }) {
     return Math.min(100, Math.round((s.linesCount / s.totalSupplyLines) * 100));
   };
 
-  // Unique values for filters
+  // ── PDF EXPORT via print iframe ──────────────────────────────
+  const exportPDF = (s) => {
+    const inv = s.inv;
+    const phaseNames = {"1":"Planning","2":"Design","3":"Construction","4":"Commissioning","5":"M&C"};
+    const comp = completion(s);
+    const sc = STATUS_CFG[s.status||"Draft"] || STATUS_CFG.Draft;
+
+    const phaseRows = Object.entries(s.phaseBreakdown||{}).sort().map(([ph,p])=>`
+      <tr>
+        <td style="padding:6px 10px;font-weight:600;color:#1e3a5f">Phase ${ph} — ${phaseNames[ph]||ph}</td>
+        <td style="padding:6px 10px;text-align:right;color:#7c3aed">${p.installHrs?Math.round(p.installHrs)+' hrs':'—'}</td>
+        <td style="padding:6px 10px;text-align:right;font-weight:700;color:#1e40af">$${Math.round(p.eeInt).toLocaleString('en-AU')}</td>
+        <td style="padding:6px 10px;text-align:right;font-weight:700;color:#c2410c">$${Math.round(p.comm).toLocaleString('en-AU')}</td>
+      </tr>`).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+    <title>IET Estimate — ${inv.name}</title>
+    <style>
+      body { font-family: Arial, sans-serif; font-size: 11px; color: #1f2937; margin: 0; padding: 20px; }
+      h1 { font-size: 18px; color: #1e3a5f; margin: 0 0 4px; }
+      .subtitle { color: #6b7280; font-size: 11px; margin-bottom: 16px; }
+      .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1e3a5f; padding-bottom: 12px; margin-bottom: 16px; }
+      .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 600; }
+      .status-draft { background:#f3f4f6;color:#6b7280; }
+      .status-approved { background:#d1fae5;color:#065f46; }
+      .status-review { background:#dbeafe;color:#1d4ed8; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+      th { background: #1e3a5f; color: white; padding: 6px 10px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+      td { border-bottom: 1px solid #e5e7eb; }
+      tr:nth-child(even) td { background: #f8fafc; }
+      .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+      .meta-box { border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; }
+      .meta-label { font-size: 9px; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.5px; margin-bottom: 2px; }
+      .meta-value { font-weight: 600; color: #1f2937; }
+      .total-box { background: #1e3a5f; color: white; padding: 10px 14px; border-radius: 6px; display: inline-block; margin: 4px; }
+      .total-label { font-size: 9px; opacity: 0.75; text-transform: uppercase; }
+      .total-value { font-size: 16px; font-weight: 700; }
+      .footer { margin-top: 24px; padding-top: 8px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 9px; }
+      @media print { body { padding: 10px; } }
+    </style></head><body>
+
+    <div class="header">
+      <div>
+        <h1>${inv.name||'Unnamed Investment'}</h1>
+        <div class="subtitle">${inv.number} &nbsp;·&nbsp; ${inv.type} &nbsp;·&nbsp; ${inv.estClass} Rev ${inv.revision}
+          &nbsp;·&nbsp; <span class="badge status-${(s.status||'Draft').toLowerCase().replace(' ','-')}">${s.status||'Draft'}</span>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:9px;color:#9ca3af">Essential Energy — IET Demo</div>
+        <div style="font-size:9px;color:#9ca3af">Generated ${new Date().toLocaleDateString('en-AU',{dateStyle:'long'})}</div>
+      </div>
+    </div>
+
+    <div class="meta-grid">
+      <div class="meta-box"><div class="meta-label">Estimator</div><div class="meta-value">${inv.estimatedBy}</div></div>
+      <div class="meta-box"><div class="meta-label">Reviewer</div><div class="meta-value">${inv.reviewedBy}</div></div>
+      <div class="meta-box"><div class="meta-label">Complexity / New Tech</div><div class="meta-value">${inv.complexity} / ${inv.newTech}</div></div>
+      <div class="meta-box"><div class="meta-label">Estimate Completion</div><div class="meta-value">${comp!==null?comp+'%':'—'} &nbsp;(${s.linesCount} of ${s.totalSupplyLines||'?'} lines)</div></div>
+    </div>
+
+    <h2 style="font-size:13px;color:#1e3a5f;margin:0 0 8px">Financial Summary</h2>
+    <div style="margin-bottom:16px">
+      <div class="total-box"><div class="total-label">EE Internal Total</div><div class="total-value">$${Math.round(s.totalEE).toLocaleString('en-AU')}</div></div>
+      <div class="total-box" style="background:#ea580c"><div class="total-label">Commercial Total</div><div class="total-value">$${Math.round(s.totalComm).toLocaleString('en-AU')}</div></div>
+      ${s.totalComm>s.totalEE?`<div class="total-box" style="background:#374151"><div class="total-label">ANS Uplift</div><div class="total-value">$${Math.round(s.totalComm-s.totalEE).toLocaleString('en-AU')}</div></div>`:''}
+    </div>
+
+    <h2 style="font-size:13px;color:#1e3a5f;margin:0 0 8px">Phase Breakdown</h2>
+    <table>
+      <thead><tr>
+        <th>Phase</th><th style="text-align:right">Install Hrs</th>
+        <th style="text-align:right">EE Internal</th><th style="text-align:right">Commercial</th>
+      </tr></thead>
+      <tbody>${phaseRows}</tbody>
+      <tfoot><tr style="font-weight:700;background:#f8fafc">
+        <td style="padding:8px 10px;border-top:2px solid #1e3a5f">Total</td>
+        <td style="padding:8px 10px;text-align:right;border-top:2px solid #1e3a5f">—</td>
+        <td style="padding:8px 10px;text-align:right;border-top:2px solid #1e3a5f;color:#1e40af">$${Math.round(s.totalEE).toLocaleString('en-AU')}</td>
+        <td style="padding:8px 10px;text-align:right;border-top:2px solid #1e3a5f;color:#c2410c">$${Math.round(s.totalComm).toLocaleString('en-AU')}</td>
+      </tr></tfoot>
+    </table>
+
+    <div class="footer">
+      IET Estimation Tool — Demo &nbsp;·&nbsp; Saved ${s.savedAt} &nbsp;·&nbsp; ${inv.number} Rev ${inv.revision}
+      &nbsp;·&nbsp; This estimate is ${s.status||'Draft'} and has not been formally approved.
+    </div>
+
+    <script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}</script>
+    </body></html>`;
+
+    const w = window.open('','_blank','width=900,height=700');
+    w.document.write(html);
+    w.document.close();
+  };
   const statuses  = ["All","Draft","In Review","Approved","On Hold","Rejected"];
   const classes   = ["All","Class 1","Class 2","Class 3","Class 4","Class 5"];
   const types     = ["All","Commercially Funded","Internally Funded"];
@@ -1284,6 +1378,10 @@ function InvestmentHub({ onLoad }) {
             <div className="text-xs text-gray-400">{filtered.length} of {saved.length} investments · Portfolio: {fmt(portTotals.comm)} commercial · {fmt(portTotals.ee)} EE internal</div>
           </div>
           <div className="flex-1"/>
+          <button onClick={onNew}
+            className="bg-orange-600 hover:bg-orange-500 text-white text-xs px-4 py-2 rounded font-bold flex items-center gap-1.5 shadow">
+            ＋ New Estimate
+          </button>
           <input value={search} onChange={e=>setSearch(e.target.value)}
             placeholder="Search name, number, estimator…"
             className="border border-gray-300 rounded px-2 py-1.5 text-xs w-64 focus:outline-none focus:ring-1 focus:ring-blue-400"/>
@@ -1524,7 +1622,8 @@ function InvestmentHub({ onLoad }) {
               📐 Open in Estimation Tool
             </button>
             <div className="flex gap-2">
-              <button className="flex-1 border border-gray-200 text-gray-600 text-xs py-1.5 rounded hover:bg-gray-50">📄 Export PDF</button>
+              <button onClick={()=>exportPDF(selected)}
+                className="flex-1 border border-gray-200 text-gray-600 text-xs py-1.5 rounded hover:bg-gray-50 hover:border-blue-400">📄 Export PDF</button>
               <button className="flex-1 border border-gray-200 text-gray-600 text-xs py-1.5 rounded hover:bg-gray-50">☁️ Copperleaf</button>
               <button onClick={()=>del(selected.id)}
                 className="border border-red-200 text-red-500 text-xs px-2 py-1.5 rounded hover:bg-red-50">✕</button>
@@ -2471,7 +2570,6 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
     return mt && mc && ms;
   }),[allItems, typeFilter, catFilter, search]);
 
-  const selectedCount = Object.values(equipSel).filter(q=>parseFloat(q)>0).length;
 
   const startEdit = (item) => {
     setEditing(item.id);
@@ -2517,7 +2615,7 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
       <div className="w-48 bg-white border-r flex flex-col flex-shrink-0 overflow-hidden">
         <div className="bg-teal-800 text-white px-3 py-2 flex-shrink-0">
           <div className="text-xs font-bold uppercase tracking-wide">Equipment Catalogue</div>
-          <div className="text-xs opacity-75 mt-0.5">{allItems.length} items · {selectedCount} selected</div>
+          <div className="text-xs opacity-75 mt-0.5">{allItems.length} items</div>
         </div>
         <div className="px-3 py-2 border-b flex-shrink-0">
           <div className="text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Type</div>
@@ -2640,19 +2738,16 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
                 <th className="text-left px-2 py-2 font-semibold text-gray-500 w-24">Contract</th>
                 <th className="text-center px-2 py-2 font-semibold text-red-600 w-16">Lead</th>
                 <th className="text-right px-2 py-2 font-semibold text-gray-500 w-24">Price</th>
-                <th className="text-center px-2 py-2 font-semibold text-orange-700 w-16">Qty</th>
                 <th className="text-center px-2 py-2 font-semibold text-gray-400 w-14">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((item, idx) => {
                 const isEd  = editing === item.id;
-                const qty   = equipSel[item.id]||"";
-                const hasQty = parseFloat(qty) > 0;
                 const tc    = TYPE_COLORS[item.type]||{badge:"bg-gray-100 text-gray-500",icon:"•"};
                 return (
                   <tr key={item.id}
-                    className={`border-b transition-colors ${hasQty?"bg-teal-50 border-l-4 border-l-teal-500":idx%2===0?"bg-white":"bg-gray-50"} hover:bg-teal-50`}>
+                    className={`border-b transition-colors ${idx%2===0?"bg-white":"bg-gray-50"} hover:bg-blue-50`}>
                     <td className="px-2 py-1.5">
                       <span className={`text-xs px-1 py-0.5 rounded font-medium ${tc.badge}`}>{tc.icon}</span>
                     </td>
@@ -2699,15 +2794,7 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
                         : item.price>0 ? fmt(item.price) : <span className="text-orange-500">POA</span>
                       }
                     </td>
-                    <td className="px-2 py-1.5">
-                      <div className="flex justify-center">
-                        <input type="number" min="0" value={qty}
-                          onChange={e=>setEquipSel(p=>({...p,[item.id]:e.target.value}))}
-                          placeholder="0"
-                          className={`w-14 text-center border rounded py-0.5 text-sm font-bold focus:outline-none focus:ring-1 focus:ring-teal-400
-                            ${hasQty?"border-teal-400 bg-teal-50 text-teal-800":"border-gray-300 text-gray-500"}`}/>
-                      </div>
-                    </td>
+
                     <td className="px-2 py-1.5 text-center">
                       {isEd
                         ? <div className="flex gap-1 justify-center">
@@ -2741,8 +2828,8 @@ const defaultInv = {
 };
 
 const APP_TABS = [
-  {id:"estimation", label:"⚡ Estimation Tool"},
   {id:"hub",        label:"🔍 Investment Hub"},
+  {id:"estimation", label:"⚡ Estimation Tool"},
   {id:"wbsmanager", label:"🗂 WBS Manager"},
 ];
 const EST_TABS = [
@@ -2754,7 +2841,7 @@ const EST_TABS = [
 ];
 
 export default function App() {
-  const [appTab,      setAppTab]      = useState("estimation");
+  const [appTab,      setAppTab]      = useState("hub");
   const [estTab,      setEstTab]      = useState("estimate");
   const [isCommercial,setIsComm]      = useState(false);
   const [inv,         setInv]         = useState(defaultInv);
@@ -2865,6 +2952,32 @@ export default function App() {
     setEstTab("summary");
   },[]);
 
+  const [pendingNew,    setPendingNew]    = useState(false); // waiting for save-prompt confirm
+
+  const newEstimate = useCallback(()=>{
+    // Check if current estimate has unsaved lines
+    const hasLines = Object.values(lines).some(l=>parseFloat(l.qty||"0")>0);
+    if (hasLines) {
+      setPendingNew(true); // triggers modal
+    } else {
+      setInv({...defaultInv, name:"", number:""});
+      setLines({});
+      setLastSaved(null);
+      setAppTab("estimation");
+      setEstTab("setup");
+    }
+  },[lines]);
+
+  const confirmNew = useCallback((save)=>{
+    if (save) saveInvestment();
+    setInv({...defaultInv, name:"", number:""});
+    setLines({});
+    setLastSaved(null);
+    setPendingNew(false);
+    setAppTab("estimation");
+    setEstTab("setup");
+  },[saveInvestment]);
+
   const equipSelected = Object.values(equipSel).filter(q=>parseFloat(q)>0).length;
   const linesEntered = Object.values(lines).filter(l=>parseFloat(l.qty)>0).length;
 
@@ -2946,8 +3059,40 @@ export default function App() {
             </>
           )}
           {appTab==="wbsmanager" && <WBSManager equipSel={equipSel} setEquipSel={setEquipSel}/>}
-          {appTab==="hub"        && <InvestmentHub onLoad={(s)=>{loadInvestment(s);setAppTab("estimation");}}/>}
+          {appTab==="hub"        && <InvestmentHub
+            onLoad={(s)=>{loadInvestment(s);}}
+            onNew={newEstimate}
+            currentInv={inv}
+            currentLines={lines}
+          />}
         </div>
+
+        {/* Save-before-new modal */}
+        {pendingNew && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-96">
+              <div className="text-lg font-bold text-gray-900 mb-1">Start new estimate?</div>
+              <div className="text-sm text-gray-500 mb-4">
+                You have unsaved quantities in <span className="font-semibold text-gray-800">{inv.name||"the current estimate"}</span>.
+                Do you want to save before starting a new one?
+              </div>
+              <div className="flex gap-2">
+                <button onClick={()=>confirmNew(true)}
+                  className="flex-1 bg-green-700 hover:bg-green-600 text-white text-sm py-2 rounded font-semibold">
+                  💾 Save then New
+                </button>
+                <button onClick={()=>confirmNew(false)}
+                  className="flex-1 bg-red-600 hover:bg-red-500 text-white text-sm py-2 rounded font-semibold">
+                  Discard & New
+                </button>
+                <button onClick={()=>setPendingNew(false)}
+                  className="px-4 border border-gray-200 text-gray-600 text-sm py-2 rounded hover:bg-gray-50">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DataCtx.Provider>
   );
