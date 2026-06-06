@@ -367,6 +367,8 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
   const [selectedL4, setSelectedL4]     = useState("3.1.3.04");
   const [selectedCommGroup, setSelectedCommGroup] = useState(null);
   const [expandedRows, setExpandedRows] = useState({});
+  const [deleteWbs,    setDeleteWbs]    = useState(null);
+  const [deleteStage,  setDeleteStage]  = useState(1);
   const [navSearch, setNavSearch]       = useState("");
 
   // Filter supply items for selected L4 group
@@ -705,13 +707,32 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                 {isExp && (
                   <div className="mx-3 mb-3 rounded-lg border border-blue-200 bg-white shadow-sm overflow-hidden">
                     <div className="bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 flex items-center justify-between">
-                      <span>Cost Detail — {item.description?.split(" - ")[0]}</span>
-                      <span className="text-blue-200 font-normal">
-                        {isContr
-                          ? `Contractor · Install: ${item.resource_install||item.resource_main||"—"} · Comm: ${item.resource_comm||"—"}`
-                          : `${item.resource_main||"EE"} · Install: ${item.resource_install||item.resource_main||"—"} · Comm: ${item.resource_comm||"—"}`
-                        }
-                        {" · "}Std: {item.install_hrs_per}h install · {item.comm_hrs_per}h comm · {fmt(item.ee_labour_rate)}/hr
+                      <span className="flex items-center gap-2">
+                        Cost Detail — {item.description?.split(" - ")[0]}
+                        {item.comments && (
+                          <span className="relative group">
+                            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-400 text-white text-xs cursor-help hover:bg-white hover:text-blue-700 font-bold">i</span>
+                            <span className="invisible group-hover:visible absolute left-0 top-6 z-50 w-80 bg-gray-900 text-white text-xs font-normal rounded-lg shadow-xl p-3 leading-relaxed">
+                              <span className="block font-bold text-blue-300 mb-1">Database & Scope Notes</span>
+                              {item.comments}
+                            </span>
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-3">
+                        <span className="text-blue-200 font-normal">
+                          {isContr
+                            ? `Contractor · Install: ${item.resource_install||item.resource_main||"—"} · Comm: ${item.resource_comm||"—"}`
+                            : `${item.resource_main||"EE"} · Install: ${item.resource_install||item.resource_main||"—"} · Comm: ${item.resource_comm||"—"}`
+                          }
+                          {" · "}Std: {item.install_hrs_per}h install · {item.comm_hrs_per}h comm · {fmt(item.ee_labour_rate)}/hr
+                        </span>
+                        {hasQty && (
+                          <button onClick={()=>setDeleteWbs(item.wbs_code)}
+                            className="text-red-200 hover:text-white hover:bg-red-500 rounded px-1.5 py-0.5 text-xs" title="Delete this line">
+                            🗑 Delete line
+                          </button>
+                        )}
                       </span>
                     </div>
                     <div className="p-3 grid gap-3">
@@ -848,11 +869,50 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
       </div>
         </>
       )}
+
+      {/* Delete line — double confirm */}
+      {deleteWbs && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={()=>{setDeleteWbs(null);setDeleteStage(1);}}>
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-96" onClick={e=>e.stopPropagation()}>
+            {deleteStage===1 ? (
+              <>
+                <div className="text-3xl text-center mb-2">⚠️</div>
+                <div className="text-lg font-bold text-gray-900 text-center mb-1">Delete this estimate line?</div>
+                <div className="text-sm text-gray-500 text-center mb-1 font-mono">{deleteWbs}</div>
+                <div className="text-xs text-gray-400 text-center mb-4">
+                  {supply.find(s=>s.wbs_code===deleteWbs)?.description}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={()=>{setDeleteWbs(null);setDeleteStage(1);}}
+                    className="flex-1 border border-gray-200 text-gray-600 text-sm py-2 rounded hover:bg-gray-50">Cancel</button>
+                  <button onClick={()=>setDeleteStage(2)}
+                    className="flex-1 bg-red-500 hover:bg-red-600 text-white text-sm py-2 rounded font-semibold">Delete</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-3xl text-center mb-2">🛑</div>
+                <div className="text-lg font-bold text-red-700 text-center mb-1">Are you absolutely sure?</div>
+                <div className="text-sm text-gray-500 text-center mb-4">
+                  This will permanently remove the quantity and all overrides for this line. This cannot be undone.
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={()=>{setDeleteWbs(null);setDeleteStage(1);}}
+                    className="flex-1 border border-gray-200 text-gray-600 text-sm py-2 rounded hover:bg-gray-50">Keep line</button>
+                  <button onClick={()=>{
+                    setLines(p=>{ const n={...p}; delete n[deleteWbs]; return n; });
+                    setDeleteWbs(null); setDeleteStage(1);
+                  }}
+                    className="flex-1 bg-red-700 hover:bg-red-800 text-white text-sm py-2 rounded font-bold">Yes, delete permanently</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-// ── REVIEW LINES SCREEN ─────────────────────────────────────────
 function ReviewLines({ lines, isCommercial }) {
   const { supply } = useData();
   const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
@@ -1000,8 +1060,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
   const contAmt   = (isCommercial?grandComm:grandEE)*contPct/100;
   const totalWithCont = (isCommercial?grandComm:grandEE)+contAmt;
 
-  // Build WBS tree down to L5 for each entered supply item
-  // Build a lookup: wbs_code -> {eeInt, comm, installHrs, commHrs, qty, lines}
+  // Build WBS tree down to L5 for each entered supply item + Phase 4 commission
   const nodeRollup = useMemo(()=>{
     const m = {};
     const accum = (code, vals) => {
@@ -1021,15 +1080,27 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
       const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial);
       accum(item.wbs_code, c);
     });
+    // Phase 4 commission nodes — derived from commission links with scaling
+    Object.entries(commTotals).forEach(([commWbs, ct])=>{
+      if (ct.qty <= 0) return;
+      const scale   = getScaleFactor(commProfiles, ct.profile_id, ct.qty);
+      const baseHrs = ct.qty * (ct.hrs_per_unit||0);
+      const ovrd    = lines[`comm_ovrd_${commWbs}`]?.qty;
+      const hrs     = (ovrd!==undefined&&ovrd!=="")?(parseFloat(ovrd)||0):baseHrs*scale;
+      const rate    = ct.ee_labour_rate || 139.26;
+      const cost    = hrs * rate;
+      accum(commWbs, { eeInt:cost, comm:cost*(1+ANS_LAB), installHrs:0, commHrs:hrs });
+    });
     return m;
-  },[entered, lines, isCommercial]);
+  },[entered, lines, isCommercial, commTotals, commProfiles]);
 
-  // WBS description lookup
+  // WBS description lookup (supply WBS + commission WBS)
   const descMap = useMemo(()=>{
     const m={};
     wbsMaster.forEach(r=>{ m[r.wbs_code]=r.description; });
+    Object.entries(commLookup).forEach(([wbs,d])=>{ if(!m[wbs]) m[wbs]=d.description; });
     return m;
-  },[wbsMaster]);
+  },[wbsMaster, commLookup]);
 
   // Tree node renderer — L1 to L5 (L6 is item level, shown inline)
   const renderWBSNode = (code, depth=1) => {
@@ -1056,7 +1127,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
           onClick={()=>!isLeaf && childCodes.length>0 && toggleNode(code)}
           className={`grid items-center border-b text-xs cursor-pointer hover:bg-yellow-50 ${bgColors[depth]||"bg-white"}
             ${depth<=2?"border-b-gray-300 border-b-2":"border-b-gray-100"}`}
-          style={{gridTemplateColumns:"1fr 80px 80px 90px 90px",paddingLeft:`${indent}px`}}>
+          style={{gridTemplateColumns: isCommercial?"1fr 80px 80px 90px 90px":"1fr 80px 80px 90px",paddingLeft:`${indent}px`}}>
           <div className={`py-1.5 pr-2 flex items-center gap-1 ${textColors[depth]||"text-gray-600"}`}>
             {!isLeaf && childCodes.length>0 && (
               <span className="text-gray-400 w-3 flex-shrink-0">{isOpen?"▾":"▸"}</span>
@@ -1068,7 +1139,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
           <div className={`py-1.5 text-center text-purple-700 ${depth<=2?"font-bold":"font-medium"}`}>{roll.installHrs>0?fmtHrs(roll.installHrs):"—"}</div>
           <div className={`py-1.5 text-center text-teal-700 ${depth<=2?"font-bold":"font-medium"}`}>{roll.commHrs>0?fmtHrs(roll.commHrs):"—"}</div>
           <div className={`py-1.5 text-right pr-2 text-blue-800 ${depth<=2?"font-bold":"font-medium"}`}>{fmt(roll.eeInt)}</div>
-          <div className={`py-1.5 text-right pr-2 text-orange-700 ${depth<=2?"font-bold":"font-medium"}`}>{fmt(roll.comm)}</div>
+          {isCommercial && <div className={`py-1.5 text-right pr-2 text-orange-700 ${depth<=2?"font-bold":"font-medium"}`}>{fmt(roll.comm)}</div>}
         </div>
         {isOpen && !isLeaf && childCodes.map(child=>renderWBSNode(child, depth+1))}
       </div>
@@ -1131,23 +1202,23 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
             </div>
             {/* Column headers */}
             <div className="grid border-b bg-gray-50 text-xs font-semibold text-gray-500"
-              style={{gridTemplateColumns:"1fr 80px 80px 90px 90px"}}>
+              style={{gridTemplateColumns: isCommercial?"1fr 80px 80px 90px 90px":"1fr 80px 80px 90px"}}>
               <div className="px-3 py-2">WBS / Description</div>
               <div className="py-2 text-center text-purple-600">Install Hrs</div>
               <div className="py-2 text-center text-teal-600">Comm Hrs</div>
               <div className="py-2 text-right pr-2 text-blue-700">EE Internal</div>
-              <div className="py-2 text-right pr-2 text-orange-700">Commercial</div>
+              {isCommercial && <div className="py-2 text-right pr-2 text-orange-700">Commercial</div>}
             </div>
             {/* Phase nodes — all closed by default */}
             {phaseNodes.map(ph => renderWBSNode(ph, 1))}
             {/* Grand total footer */}
             <div className="grid border-t-2 border-gray-300 bg-gray-50 text-xs font-bold"
-              style={{gridTemplateColumns:"1fr 80px 80px 90px 90px"}}>
+              style={{gridTemplateColumns: isCommercial?"1fr 80px 80px 90px 90px":"1fr 80px 80px 90px"}}>
               <div className="px-3 py-2 text-gray-700">Total (excl. contingency)</div>
-              <div className="py-2 text-center text-purple-700">{Object.values(nodeRollup).filter((_,i)=>Object.keys(nodeRollup)[i].split('.').length===1).reduce((a,v)=>a+v.installHrs,0)>0?fmtHrs(Object.entries(nodeRollup).filter(([k])=>k.split('.').length===1).reduce((a,[,v])=>a+v.installHrs,0)):"—"}</div>
-              <div className="py-2 text-center text-teal-700">—</div>
+              <div className="py-2 text-center text-purple-700">{Object.entries(nodeRollup).filter(([k])=>k.split('.').length===1).reduce((a,[,v])=>a+v.installHrs,0)>0?fmtHrs(Object.entries(nodeRollup).filter(([k])=>k.split('.').length===1).reduce((a,[,v])=>a+v.installHrs,0)):"—"}</div>
+              <div className="py-2 text-center text-teal-700">{Object.entries(nodeRollup).filter(([k])=>k.split('.').length===1).reduce((a,[,v])=>a+v.commHrs,0)>0?fmtHrs(Object.entries(nodeRollup).filter(([k])=>k.split('.').length===1).reduce((a,[,v])=>a+v.commHrs,0)):"—"}</div>
               <div className="py-2 text-right pr-2 text-blue-900 text-sm">{fmt(grandEE)}</div>
-              <div className="py-2 text-right pr-2 text-orange-800 text-sm">{fmt(grandComm)}</div>
+              {isCommercial && <div className="py-2 text-right pr-2 text-orange-800 text-sm">{fmt(grandComm)}</div>}
             </div>
           </div>
         )}
@@ -1155,15 +1226,15 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
         {/* Contingency + Grand total */}
         {grandEE>0 && (
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-            <div className="grid text-xs border-b" style={{gridTemplateColumns:"1fr 90px 90px"}}>
+            <div className="grid text-xs border-b" style={{gridTemplateColumns: isCommercial?"1fr 90px 90px":"1fr 90px"}}>
               <div className="px-4 py-2 text-gray-500">Contingency ({contPct}%)</div>
-              <div className="py-2 text-right pr-4 text-blue-600 font-medium">{fmt(contAmt * (grandEE/grandComm||1))}</div>
-              <div className="py-2 text-right pr-4 text-orange-600 font-medium">{fmt(contAmt)}</div>
+              <div className="py-2 text-right pr-4 text-blue-600 font-medium">{fmt(grandEE*contPct/100)}</div>
+              {isCommercial && <div className="py-2 text-right pr-4 text-orange-600 font-medium">{fmt(contAmt)}</div>}
             </div>
-            <div className="grid text-sm font-bold bg-orange-50" style={{gridTemplateColumns:"1fr 90px 90px"}}>
+            <div className="grid text-sm font-bold bg-orange-50" style={{gridTemplateColumns: isCommercial?"1fr 90px 90px":"1fr 90px"}}>
               <div className="px-4 py-3 text-orange-900">TOTAL (incl. contingency)</div>
               <div className="py-3 text-right pr-4 text-blue-900">{fmt(grandEE+grandEE*contPct/100)}</div>
-              <div className="py-3 text-right pr-4 text-orange-900 text-base">{fmt(totalWithCont)}</div>
+              {isCommercial && <div className="py-3 text-right pr-4 text-orange-900 text-base">{fmt(totalWithCont)}</div>}
             </div>
           </div>
         )}
@@ -2843,9 +2914,10 @@ const EST_TABS = [
 export default function App() {
   const [appTab,      setAppTab]      = useState("hub");
   const [estTab,      setEstTab]      = useState("estimate");
-  const [isCommercial,setIsComm]      = useState(false);
   const [inv,         setInv]         = useState(defaultInv);
   const [lines,       setLines]       = useState({});
+  // Commercial rates only apply to Commercially Funded investments
+  const isCommercial = inv.type === "Commercially Funded";
   const [lastSaved,   setLastSaved]   = useState(null);
 
   // Live data
@@ -3030,12 +3102,9 @@ export default function App() {
                 ))}
                 <div className="flex-1"/>
                 <div className="flex items-center gap-3 pb-1">
-                  <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-                    <input type="checkbox" checked={isCommercial} onChange={e=>setIsComm(e.target.checked)} className="accent-orange-500"/>
-                    <span className={isCommercial?"text-orange-600 font-semibold":"text-gray-500"}>
-                      {isCommercial?"Commercial Rates":"EE Internal Rates"}
-                    </span>
-                  </label>
+                  <span className={`text-xs font-semibold ${isCommercial?"text-orange-600":"text-blue-600"}`}>
+                    {isCommercial?"Commercial + ANS Rates":"EE Internal Rates only"}
+                  </span>
                   <span className="text-xs text-gray-400">{inv.estimatedBy}</span>
                   <span className={`text-xs font-bold px-2 py-0.5 rounded ${
                     inv.type==="Commercially Funded"?"bg-orange-100 text-orange-700":"bg-blue-100 text-blue-700"}`}>
