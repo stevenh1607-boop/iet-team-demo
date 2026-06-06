@@ -1181,67 +1181,364 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
 }
 
 // ── SAVED INVESTMENTS SCREEN ─────────────────────────────────────
-function SavedInvestments({ onLoad }) {
-  const [saved, setSaved] = useState([]);
-  useEffect(()=>{
+// ── INVESTMENT HUB ───────────────────────────────────────────────
+// Manager / senior stakeholder view — read-only portfolio overview
+const STATUS_CFG = {
+  "Draft":      { bg:"bg-gray-100",     text:"text-gray-600",   dot:"bg-gray-400"   },
+  "In Review":  { bg:"bg-blue-100",     text:"text-blue-700",   dot:"bg-blue-500"   },
+  "Approved":   { bg:"bg-green-100",    text:"text-green-700",  dot:"bg-green-500"  },
+  "On Hold":    { bg:"bg-yellow-100",   text:"text-yellow-700", dot:"bg-yellow-500" },
+  "Rejected":   { bg:"bg-red-100",      text:"text-red-700",    dot:"bg-red-500"    },
+};
+const CLASS_COLOR = {
+  "Class 1":"bg-red-100 text-red-700","Class 2":"bg-orange-100 text-orange-700",
+  "Class 3":"bg-yellow-100 text-yellow-700","Class 4":"bg-blue-100 text-blue-700",
+  "Class 5":"bg-green-100 text-green-700",
+};
+
+function InvestmentHub({ onLoad }) {
+  const [saved,       setSaved]       = useState([]);
+  const [search,      setSearch]      = useState("");
+  const [statusFilter,setStatusFilter]= useState("All");
+  const [classFilter, setClassFilter] = useState("All");
+  const [typeFilter,  setTypeFilter]  = useState("All");
+  const [sortBy,      setSortBy]      = useState("savedAt");
+  const [sortDir,     setSortDir]     = useState("desc");
+  const [selected,    setSelected]    = useState(null);
+  const [editStatus,  setEditStatus]  = useState(null); // id of investment being status-edited
+
+  // Load from localStorage on mount and on focus
+  const load = () => {
     try {
       const raw = localStorage.getItem("iet_investments");
-      if(raw) setSaved(JSON.parse(raw));
+      if (raw) setSaved(JSON.parse(raw));
     } catch(e){}
-  },[]);
+  };
+  useEffect(()=>{ load(); window.addEventListener("focus",load); return ()=>window.removeEventListener("focus",load); },[]);
 
+  const updateStatus = (id, newStatus) => {
+    const updated = saved.map(s=>s.id===id ? {...s,status:newStatus} : s);
+    setSaved(updated);
+    localStorage.setItem("iet_investments", JSON.stringify(updated));
+    setEditStatus(null);
+  };
   const del = (id) => {
     const updated = saved.filter(s=>s.id!==id);
     setSaved(updated);
     localStorage.setItem("iet_investments", JSON.stringify(updated));
+    if (selected?.id===id) setSelected(null);
   };
 
+  // Completion %: lines entered / total supply lines for that investment
+  const completion = (s) => {
+    if (!s.totalSupplyLines || s.totalSupplyLines===0) return null;
+    return Math.min(100, Math.round((s.linesCount / s.totalSupplyLines) * 100));
+  };
+
+  // Unique values for filters
+  const statuses  = ["All","Draft","In Review","Approved","On Hold","Rejected"];
+  const classes   = ["All","Class 1","Class 2","Class 3","Class 4","Class 5"];
+  const types     = ["All","Commercially Funded","Internally Funded"];
+
+  // Filter + sort
+  const filtered = saved.filter(s=>{
+    const ms = !search || s.inv.name?.toLowerCase().includes(search.toLowerCase())
+      || s.inv.number?.toLowerCase().includes(search.toLowerCase())
+      || s.inv.estimatedBy?.toLowerCase().includes(search.toLowerCase());
+    const ss = statusFilter==="All" || (s.status||"Draft")===statusFilter;
+    const cs = classFilter==="All"  || s.inv.estClass===classFilter;
+    const ts = typeFilter==="All"   || s.inv.type===typeFilter;
+    return ms && ss && cs && ts;
+  }).sort((a,b)=>{
+    let av,bv;
+    if (sortBy==="name")      { av=a.inv.name;      bv=b.inv.name; }
+    else if (sortBy==="comm") { av=a.totalComm;     bv=b.totalComm; }
+    else if (sortBy==="ee")   { av=a.totalEE;       bv=b.totalEE; }
+    else if (sortBy==="comp") { av=completion(a)||0; bv=completion(b)||0; }
+    else { av=a.savedAtISO||a.savedAt; bv=b.savedAtISO||b.savedAt; }
+    return sortDir==="asc" ? (av>bv?1:-1) : (av<bv?1:-1);
+  });
+
+  // Portfolio totals
+  const portTotals = filtered.reduce((a,s)=>({
+    ee:a.ee+s.totalEE, comm:a.comm+s.totalComm, count:a.count+1,
+  }),{ee:0,comm:0,count:0});
+
+  const SortBtn = ({col,label}) => (
+    <button onClick={()=>{ if(sortBy===col) setSortDir(d=>d==="asc"?"desc":"asc"); else{setSortBy(col);setSortDir("desc");} }}
+      className={`flex items-center gap-0.5 ${sortBy===col?"text-blue-600 font-bold":"text-gray-500 hover:text-gray-700"}`}>
+      {label}{sortBy===col&&<span className="text-xs">{sortDir==="asc"?"↑":"↓"}</span>}
+    </button>
+  );
+
   return (
-    <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-4">
+    <div className="flex flex-1 overflow-hidden bg-gray-50">
+
+      {/* LEFT — filters + list */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+
+        {/* Header bar */}
+        <div className="bg-white border-b px-4 py-3 flex items-center gap-3 flex-shrink-0">
           <div>
-            <div className="text-base font-bold text-gray-900">Saved Investments</div>
-            <div className="text-xs text-gray-500">Stored in browser localStorage · {saved.length} investment{saved.length!==1?"s":""}</div>
+            <div className="text-base font-bold text-gray-900">Investment Hub</div>
+            <div className="text-xs text-gray-400">{filtered.length} of {saved.length} investments · Portfolio: {fmt(portTotals.comm)} commercial · {fmt(portTotals.ee)} EE internal</div>
+          </div>
+          <div className="flex-1"/>
+          <input value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Search name, number, estimator…"
+            className="border border-gray-300 rounded px-2 py-1.5 text-xs w-64 focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+          {search && <button onClick={()=>setSearch("")} className="text-xs text-gray-400 hover:text-gray-600">✕</button>}
+        </div>
+
+        {/* Filter bar */}
+        <div className="bg-white border-b px-4 py-2 flex items-center gap-4 flex-shrink-0">
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-500 font-semibold">Status</span>
+            <div className="flex border border-gray-200 rounded overflow-hidden">
+              {statuses.map(s=>(
+                <button key={s} onClick={()=>setStatusFilter(s)}
+                  className={`text-xs px-2.5 py-1 transition-colors ${statusFilter===s?"bg-blue-700 text-white":"text-gray-600 hover:bg-gray-50"}`}>{s}</button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-500 font-semibold">Class</span>
+            <div className="flex border border-gray-200 rounded overflow-hidden">
+              {classes.map(c=>(
+                <button key={c} onClick={()=>setClassFilter(c)}
+                  className={`text-xs px-2 py-1 transition-colors ${classFilter===c?"bg-blue-700 text-white":"text-gray-600 hover:bg-gray-50"}`}>{c==="All"?"All":c.replace("Class ","C")}</button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-500 font-semibold">Type</span>
+            <div className="flex border border-gray-200 rounded overflow-hidden">
+              {types.map(t=>(
+                <button key={t} onClick={()=>setTypeFilter(t)}
+                  className={`text-xs px-2.5 py-1 transition-colors ${typeFilter===t?"bg-blue-700 text-white":"text-gray-600 hover:bg-gray-50"}`}>{t==="All"?"All":t==="Commercially Funded"?"Commercial":"Internal"}</button>
+              ))}
+            </div>
           </div>
         </div>
-        {saved.length===0 ? (
-          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
-            <div className="text-3xl mb-2">💾</div>
-            <div className="text-sm font-semibold">No saved investments yet</div>
-            <div className="text-xs mt-1">Use the Summary tab to save an investment</div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {saved.map(s=>(
-              <div key={s.id} className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 flex items-center justify-between">
-                <div>
-                  <div className="font-semibold text-gray-900">{s.inv.name||"Unnamed"}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">
-                    {s.inv.number} · {s.inv.estClass} · Rev {s.inv.revision} · {s.inv.type}
-                  </div>
-                  <div className="text-xs text-gray-400 mt-0.5">
-                    Saved: {s.savedAt} · {s.linesCount} line{s.linesCount!==1?"s":""} ·
-                    EE: {fmt(s.totalEE)} · Commercial: {fmt(s.totalComm)}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={()=>onLoad(s)}
-                    className="text-xs bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded font-semibold">
-                    Load
-                  </button>
-                  <button onClick={()=>del(s.id)}
-                    className="text-xs border border-red-200 text-red-500 hover:bg-red-50 px-3 py-1.5 rounded">
-                    Delete
-                  </button>
-                </div>
+
+        {/* Table */}
+        <div className="flex-1 overflow-y-auto">
+          {saved.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-center text-gray-400">
+              <div>
+                <div className="text-4xl mb-3">🔍</div>
+                <div className="text-sm font-semibold">No investments saved yet</div>
+                <div className="text-xs mt-1">Use the Estimation Tool → Summary tab to save investments</div>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-gray-400 text-sm">No investments match filters</div>
+          ) : (
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50 border-b sticky top-0 z-10">
+                <tr>
+                  <th className="text-left px-3 py-2 font-semibold"><SortBtn col="name" label="Investment"/></th>
+                  <th className="px-3 py-2 font-semibold text-gray-500 text-center">Status</th>
+                  <th className="px-3 py-2 font-semibold text-gray-500 text-center">Class</th>
+                  <th className="px-3 py-2 font-semibold text-gray-500 text-center">Rev</th>
+                  <th className="px-3 py-2 font-semibold text-gray-500 text-left">Estimator</th>
+                  <th className="px-3 py-2 font-semibold text-gray-500 text-left">Reviewer</th>
+                  <th className="px-3 py-2 font-semibold text-center"><SortBtn col="comp" label="Complete"/></th>
+                  <th className="px-3 py-2 font-semibold text-right"><SortBtn col="ee" label="EE Internal"/></th>
+                  <th className="px-3 py-2 font-semibold text-right"><SortBtn col="comm" label="Commercial"/></th>
+                  <th className="px-3 py-2 font-semibold text-gray-500 text-right"><SortBtn col="savedAt" label="Saved"/></th>
+                  <th className="px-3 py-2 w-16"/>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(s=>{
+                  const sc    = STATUS_CFG[s.status||"Draft"] || STATUS_CFG.Draft;
+                  const cc    = CLASS_COLOR[s.inv.estClass]   || "bg-gray-100 text-gray-500";
+                  const comp  = completion(s);
+                  const isSel = selected?.id===s.id;
+                  return (
+                    <tr key={s.id}
+                      onClick={()=>setSelected(isSel?null:s)}
+                      className={`border-b cursor-pointer transition-colors ${isSel?"bg-blue-50 border-l-4 border-l-blue-500":"hover:bg-gray-50"}`}>
+                      <td className="px-3 py-2">
+                        <div className={`font-semibold truncate max-w-[200px] ${isSel?"text-blue-800":"text-gray-900"}`}>{s.inv.name||"Unnamed"}</div>
+                        <div className="text-gray-400 font-mono">{s.inv.number} · {s.inv.type==="Commercially Funded"?"Commercial":"Internal"}</div>
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        {editStatus===s.id ? (
+                          <select autoFocus value={s.status||"Draft"} onChange={e=>updateStatus(s.id,e.target.value)}
+                            onBlur={()=>setEditStatus(null)}
+                            className="text-xs border border-gray-300 rounded px-1 py-0.5 bg-white focus:outline-none">
+                            {["Draft","In Review","Approved","On Hold","Rejected"].map(st=><option key={st}>{st}</option>)}
+                          </select>
+                        ) : (
+                          <span onClick={e=>{e.stopPropagation();setEditStatus(s.id);}}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 ${sc.bg} ${sc.text}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sc.dot}`}/>
+                            {s.status||"Draft"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${cc}`}>{s.inv.estClass}</span>
+                      </td>
+                      <td className="px-3 py-2 text-center text-gray-500 font-mono">{s.inv.revision}</td>
+                      <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{s.inv.estimatedBy}</td>
+                      <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{s.inv.reviewedBy}</td>
+                      <td className="px-3 py-2 text-center">
+                        {comp !== null ? (
+                          <div className="flex items-center gap-1.5 justify-center">
+                            <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                              <div className={`h-1.5 rounded-full ${comp>=75?"bg-green-500":comp>=50?"bg-blue-500":comp>=25?"bg-yellow-500":"bg-red-400"}`}
+                                style={{width:`${comp}%`}}/>
+                            </div>
+                            <span className={`font-mono font-bold ${comp>=75?"text-green-600":comp>=50?"text-blue-600":comp>=25?"text-yellow-600":"text-red-500"}`}>
+                              {comp}%
+                            </span>
+                          </div>
+                        ) : <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-3 py-2 text-right font-bold text-blue-800">{fmt(s.totalEE)}</td>
+                      <td className="px-3 py-2 text-right font-bold text-orange-700">{fmt(s.totalComm)}</td>
+                      <td className="px-3 py-2 text-right text-gray-400 whitespace-nowrap">{s.savedAt}</td>
+                      <td className="px-3 py-2 text-center">
+                        <div className="flex gap-1 justify-center" onClick={e=>e.stopPropagation()}>
+                          <button onClick={()=>onLoad(s)}
+                            className="text-xs bg-blue-700 hover:bg-blue-600 text-white px-2 py-1 rounded font-semibold">Open</button>
+                          <button onClick={()=>del(s.id)}
+                            className="text-xs border border-red-200 text-red-400 hover:bg-red-50 px-1.5 py-1 rounded">✕</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              {/* Portfolio footer */}
+              {filtered.length > 1 && (
+                <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+                  <tr>
+                    <td className="px-3 py-2 font-bold text-gray-700" colSpan={6}>Portfolio Total ({filtered.length} investments)</td>
+                    <td className="px-3 py-2 text-center text-gray-500">
+                      {Math.round(filtered.reduce((a,s)=>a+(completion(s)||0),0)/filtered.length)}% avg
+                    </td>
+                    <td className="px-3 py-2 text-right font-bold text-blue-900">{fmt(portTotals.ee)}</td>
+                    <td className="px-3 py-2 text-right font-bold text-orange-800">{fmt(portTotals.comm)}</td>
+                    <td colSpan={2}/>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          )}
+        </div>
       </div>
+
+      {/* RIGHT — detail panel */}
+      {selected && (
+        <div className="w-80 bg-white border-l flex flex-col overflow-hidden flex-shrink-0">
+          <div className="bg-blue-900 text-white px-4 py-3 flex items-start justify-between flex-shrink-0">
+            <div>
+              <div className="font-bold text-sm leading-tight">{selected.inv.name}</div>
+              <div className="text-blue-300 text-xs mt-0.5">{selected.inv.number}</div>
+            </div>
+            <button onClick={()=>setSelected(null)} className="text-blue-400 hover:text-white text-sm ml-2">✕</button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {/* Key info */}
+            <div className="p-3 space-y-2 border-b">
+              {[
+                ["Status",      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_CFG[selected.status||"Draft"]?.bg} ${STATUS_CFG[selected.status||"Draft"]?.text}`}>{selected.status||"Draft"}</span>],
+                ["Estimate Class", <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${CLASS_COLOR[selected.inv.estClass]||""}`}>{selected.inv.estClass}</span>],
+                ["Revision",    selected.inv.revision],
+                ["Type",        selected.inv.type],
+                ["Complexity",  selected.inv.complexity],
+                ["New Tech",    selected.inv.newTech],
+                ["Estimator",   selected.inv.estimatedBy],
+                ["Reviewer",    selected.inv.reviewedBy],
+                ["Saved",       selected.savedAt],
+                ["Lines entered", `${selected.linesCount} of ${selected.totalSupplyLines||"?"} supply lines`],
+              ].map(([label,val])=>(
+                <div key={label} className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-gray-400 flex-shrink-0">{label}</span>
+                  <span className="text-xs font-semibold text-gray-800 text-right">{val}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Completion bar */}
+            {completion(selected) !== null && (
+              <div className="px-3 py-3 border-b">
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-gray-500 font-semibold">Estimate Completion</span>
+                  <span className="font-bold text-blue-700">{completion(selected)}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className={`h-3 rounded-full transition-all ${completion(selected)>=75?"bg-green-500":completion(selected)>=50?"bg-blue-500":completion(selected)>=25?"bg-yellow-500":"bg-red-400"}`}
+                    style={{width:`${completion(selected)}%`}}/>
+                </div>
+                <div className="text-xs text-gray-400 mt-1">{selected.linesCount} of {selected.totalSupplyLines} lines</div>
+              </div>
+            )}
+
+            {/* Financials */}
+            <div className="px-3 py-3 border-b space-y-2">
+              <div className="text-xs font-bold text-gray-600 uppercase tracking-wide">Financials</div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500">EE Internal</span>
+                <span className="text-xs font-bold text-blue-800">{fmt(selected.totalEE)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-xs text-gray-500">Commercial Total</span>
+                <span className="text-xs font-bold text-orange-700">{fmt(selected.totalComm)}</span>
+              </div>
+              {selected.totalComm > 0 && selected.totalEE > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-xs text-gray-500">ANS Uplift</span>
+                  <span className="text-xs font-medium text-gray-600">{fmt(selected.totalComm - selected.totalEE)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Phase breakdown */}
+            {selected.phaseBreakdown && Object.keys(selected.phaseBreakdown).length>0 && (
+              <div className="px-3 py-3 border-b">
+                <div className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">Phase Breakdown</div>
+                {Object.entries(selected.phaseBreakdown).sort().map(([ph,p])=>(
+                  <div key={ph} className="flex items-center gap-2 mb-1">
+                    <span className="text-xs text-gray-400 w-20 flex-shrink-0">Phase {ph}</span>
+                    <div className="flex-1 bg-gray-100 rounded h-1.5">
+                      <div className="h-1.5 rounded bg-blue-500"
+                        style={{width:`${selected.totalEE>0?Math.round(p.eeInt/selected.totalEE*100):0}%`}}/>
+                    </div>
+                    <span className="text-xs font-medium text-blue-800 w-20 text-right">{fmt(p.eeInt)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="border-t p-3 space-y-2 flex-shrink-0">
+            <button onClick={()=>onLoad(selected)}
+              className="w-full bg-blue-700 hover:bg-blue-600 text-white text-xs py-2 rounded font-semibold">
+              📐 Open in Estimation Tool
+            </button>
+            <div className="flex gap-2">
+              <button className="flex-1 border border-gray-200 text-gray-600 text-xs py-1.5 rounded hover:bg-gray-50">📄 Export PDF</button>
+              <button className="flex-1 border border-gray-200 text-gray-600 text-xs py-1.5 rounded hover:bg-gray-50">☁️ Copperleaf</button>
+              <button onClick={()=>del(selected.id)}
+                className="border border-red-200 text-red-500 text-xs px-2 py-1.5 rounded hover:bg-red-50">✕</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+// ── OLD SAVED INVESTMENTS (now replaced by hub) ──
+function SavedInvestments({ onLoad }) {
+  return <InvestmentHub onLoad={onLoad}/>;
 }
 
 // ── WBS MANAGER ──────────────────────────────────────────────────
@@ -2445,8 +2742,8 @@ const defaultInv = {
 
 const APP_TABS = [
   {id:"estimation", label:"⚡ Estimation Tool"},
+  {id:"hub",        label:"🔍 Investment Hub"},
   {id:"wbsmanager", label:"🗂 WBS Manager"},
-  {id:"saved",      label:"💾 Saved Investments"},
 ];
 const EST_TABS = [
   {id:"setup",    label:"⚙️ Investment Setup"},
@@ -2534,14 +2831,23 @@ export default function App() {
     const totals = entered.reduce((a,item)=>{
       const ln=lines[item.wbs_code]||{};
       const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial);
-      return {eeInt:a.eeInt+c.eeInt,comm:a.comm+c.comm};
-    },{eeInt:0,comm:0});
+      const ph=item.wbs_code.split(".")[0];
+      const bp={...a.byPhase};
+      if(!bp[ph]) bp[ph]={eeInt:0,comm:0};
+      bp[ph].eeInt+=c.eeInt; bp[ph].comm+=c.comm;
+      return {eeInt:a.eeInt+c.eeInt,comm:a.comm+c.comm,installHrs:a.installHrs+c.installHrs,byPhase:bp};
+    },{eeInt:0,comm:0,installHrs:0,byPhase:{}});
 
     const record = {
       id: Date.now(),
       savedAt: new Date().toLocaleString("en-AU",{dateStyle:"short",timeStyle:"short"}),
+      savedAtISO: new Date().toISOString(),
+      status: "Draft",
       inv, lines, linesCount:entered.length,
+      totalSupplyLines: supply.filter(s=>s.scope==="Supply"||s.scope==="Supply & Install").length,
       totalEE:Math.round(totals.eeInt), totalComm:Math.round(totals.comm),
+      totalInstallHrs: Math.round(totals.installHrs||0),
+      phaseBreakdown: totals.byPhase||{},
     };
     try {
       const existing = JSON.parse(localStorage.getItem("iet_investments")||"[]");
@@ -2640,7 +2946,7 @@ export default function App() {
             </>
           )}
           {appTab==="wbsmanager" && <WBSManager equipSel={equipSel} setEquipSel={setEquipSel}/>}
-          {appTab==="saved"      && <SavedInvestments onLoad={loadInvestment}/>}
+          {appTab==="hub"        && <InvestmentHub onLoad={(s)=>{loadInvestment(s);setAppTab("estimation");}}/>}
         </div>
       </div>
     </DataCtx.Provider>
