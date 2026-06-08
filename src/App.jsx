@@ -128,7 +128,7 @@ function generateCopperleafCSV(inv, lines, supply, commLookup, commProfiles, esc
     const costByResource = {};
     items.forEach(item => {
       const ln = lines[item.wbs_code] || {};
-      const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial);
+      const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd);
       const isContr = (ln.delivery||item.delivery_method||"") === "Contractor Delivered";
       const res = isContr ? "Contractor" : (item.resource_main || "ZS Electrical Technician");
       if (!costByResource[res]) costByResource[res] = {hours:0, dollars:0};
@@ -366,7 +366,7 @@ const RESOURCE_TYPES = [
 ];
 const MAT_BURDEN = 0.0752;
 
-function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvrd, plantCostVal, materialsCostOvrd, isCommercial) {
+function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvrd, plantCostVal, materialsCostOvrd, isCommercial, resourceOvrd) {
   const q   = parseFloat(qty)   || 0;
   const f   = parseFloat(factor)|| 1;
   const isContr = (delivery || item.delivery_method || "EE Delivered") === "Contractor Delivered";
@@ -376,6 +376,8 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
   const commHrsPU = item.comm_hrs_per || 0;
   const installHrs = q * f * instHrsPU;
   const commHrs    = q * commHrsPU;
+  // Use resourceOvrd if set (Main Resource Code override for non-linked items)
+  const effectiveResource = resourceOvrd || item.resource_main || "";
   const eeRate     = item.ee_labour_rate || 246.95;
   const contrRate  = (contractorRateOvrd !== "" && contractorRateOvrd != null)
     ? (parseFloat(contractorRateOvrd) || 0)
@@ -394,7 +396,8 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
   const comm   = eeLabCost*(1+ANS_LAB) + contrCost*(1+ANS_CON) + plantFact + equipCost*(1+ANS_MAT);
   return { q, f, isContr, installHrs, commHrs, eeLabHrs, eeLabCost,
            contrCost, plantFact, equipCost, matBurden, eeInt, comm,
-           instHrsOverridden: installHrsOvrd !== "" && installHrsOvrd != null, instHrsPU };
+           instHrsOverridden: installHrsOvrd !== "" && installHrsOvrd != null, instHrsPU,
+           effectiveResource };
 }
 
 // ── SHARED UI ───────────────────────────────────────────────────
@@ -731,7 +734,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
 
   const calcItem = useCallback((item)=>{
     const ln = getLine(item.wbs_code);
-    return calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial);
+    return calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd);
   },[lines, isCommercial]);
 
   const groupTotals = useMemo(()=>items.reduce((a,it)=>{
@@ -1076,26 +1079,64 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                           </select>
                         </div>
                         <div>
-                          <label className="text-xs text-gray-500 block mb-0.5">Install Resource Code</label>
-                          <select
-                            value={(resourceOvrd[item.install_wbs]?.install) || item.resource_install || "ZS Electrical Technician"}
-                            onChange={e=>setResourceOvrd(item.install_wbs, "install", e.target.value)}
-                            disabled={!item.install_wbs}
-                            className="text-xs border border-indigo-300 bg-indigo-50 rounded px-1.5 py-1 bg-white w-full focus:outline-none focus:ring-1 focus:ring-indigo-400 disabled:bg-gray-100 disabled:text-gray-400">
-                            {RESOURCE_TYPES.map(r=><option key={r}>{r}</option>)}
-                          </select>
-                          {item.install_wbs && <div className="text-xs text-indigo-400 mt-0.5">↳ {item.install_wbs}</div>}
+                          {/* If item has no install_wbs, show Main Resource dropdown instead —
+                              allows the estimator to correct the resource driving costs for
+                              EE Delivered items that aren't part of a supply chain */}
+                          {item.install_wbs ? (
+                            <>
+                              <label className="text-xs text-gray-500 block mb-0.5">Install Resource Code</label>
+                              <select
+                                value={(resourceOvrd[item.install_wbs]?.install) || item.resource_install || "ZS Electrical Technician"}
+                                onChange={e=>setResourceOvrd(item.install_wbs, "install", e.target.value)}
+                                className="text-xs border border-indigo-300 bg-indigo-50 rounded px-1.5 py-1 bg-white w-full focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                {RESOURCE_TYPES.map(r=><option key={r}>{r}</option>)}
+                              </select>
+                              <div className="text-xs text-indigo-400 mt-0.5">↳ {item.install_wbs}</div>
+                            </>
+                          ) : (
+                            <>
+                              <label className="text-xs text-gray-500 block mb-0.5">
+                                Main Resource Code
+                                <span className="ml-1 text-gray-400 font-normal">(this item)</span>
+                              </label>
+                              <select
+                                value={ln.resourceOvrd || item.resource_main || "ZS Electrical Technician"}
+                                onChange={e=>updLine(item.wbs_code, "resourceOvrd", e.target.value)}
+                                disabled={delivery === "Contractor Delivered"}
+                                className="text-xs border border-indigo-300 bg-indigo-50 rounded px-1.5 py-1 bg-white w-full focus:outline-none focus:ring-1 focus:ring-indigo-400 disabled:bg-gray-100 disabled:text-gray-400">
+                                {RESOURCE_TYPES.map(r=><option key={r}>{r}</option>)}
+                              </select>
+                              {delivery !== "Contractor Delivered" && (
+                                <div className="text-xs text-indigo-400 mt-0.5">
+                                  {ln.resourceOvrd && ln.resourceOvrd !== item.resource_main
+                                    ? `↳ overriding: ${item.resource_main}`
+                                    : `↳ default: ${item.resource_main}`}
+                                </div>
+                              )}
+                            </>
+                          )}
                         </div>
                         <div>
-                          <label className="text-xs text-gray-500 block mb-0.5">Commission Resource Code</label>
-                          <select
-                            value={(resourceOvrd[item.commission_wbs]?.comm) || item.resource_comm || "ZS Specialist Technician"}
-                            onChange={e=>setResourceOvrd(item.commission_wbs, "comm", e.target.value)}
-                            disabled={!item.commission_wbs}
-                            className="text-xs border border-teal-300 bg-teal-50 rounded px-1.5 py-1 bg-white w-full focus:outline-none focus:ring-1 focus:ring-teal-400 disabled:bg-gray-100 disabled:text-gray-400">
-                            {RESOURCE_TYPES.map(r=><option key={r}>{r}</option>)}
-                          </select>
-                          {item.commission_wbs && <div className="text-xs text-teal-500 mt-0.5">↳ {item.commission_wbs}</div>}
+                          {item.commission_wbs ? (
+                            <>
+                              <label className="text-xs text-gray-500 block mb-0.5">Commission Resource Code</label>
+                              <select
+                                value={(resourceOvrd[item.commission_wbs]?.comm) || item.resource_comm || "ZS Specialist Technician"}
+                                onChange={e=>setResourceOvrd(item.commission_wbs, "comm", e.target.value)}
+                                className="text-xs border border-teal-300 bg-teal-50 rounded px-1.5 py-1 bg-white w-full focus:outline-none focus:ring-1 focus:ring-teal-400">
+                                {RESOURCE_TYPES.map(r=><option key={r}>{r}</option>)}
+                              </select>
+                              <div className="text-xs text-teal-500 mt-0.5">↳ {item.commission_wbs}</div>
+                            </>
+                          ) : (
+                            <>
+                              <label className="text-xs text-gray-500 block mb-0.5">Commission Resource Code</label>
+                              <select disabled className="text-xs border rounded px-1.5 py-1 w-full bg-gray-100 text-gray-400">
+                                <option>— no commission link</option>
+                              </select>
+                              <div className="text-xs text-gray-400 mt-0.5">No commission scope linked</div>
+                            </>
+                          )}
                         </div>
                         <div>
                           <label className="text-xs text-gray-500 block mb-0.5">Install Hrs/Unit Override</label>
@@ -1232,7 +1273,7 @@ function ReviewLines({ lines, isCommercial }) {
   const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
   const totals = entered.reduce((a,item)=>{
     const ln=lines[item.wbs_code]||{};
-    const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial);
+    const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd);
     return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs+c.commHrs,eeInt:a.eeInt+c.eeInt,comm:a.comm+c.comm};
   },{installHrs:0,commHrs:0,eeInt:0,comm:0});
 
@@ -1301,7 +1342,7 @@ function ReviewLines({ lines, isCommercial }) {
               <tbody>
                 {items.map(item=>{
                   const ln=lines[item.wbs_code]||{};
-                  const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial);
+                  const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd);
                   return (
                     <tr key={item.wbs_code} className="border-b hover:bg-gray-50">
                       <td className="px-3 py-2 font-mono text-blue-600 whitespace-nowrap">{item.wbs_code}</td>
@@ -1341,7 +1382,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
     if(ph==="4") return;
     if(!byPhase[ph]) byPhase[ph]={eeInt:0,comm:0,installHrs:0,commHrs:0,lines:0,eeLabCost:0,contrCost:0,matCost:0};
     const ln=lines[item.wbs_code]||{};
-    const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial);
+    const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd);
     byPhase[ph].eeInt+=c.eeInt; byPhase[ph].comm+=c.comm;
     byPhase[ph].installHrs+=c.installHrs; byPhase[ph].commHrs+=c.commHrs;
     byPhase[ph].lines++;
@@ -1445,7 +1486,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
     };
     entered.forEach(item=>{
       const ln=lines[item.wbs_code]||{};
-      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial);
+      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd);
       accum(item.wbs_code, c);
     });
     // Phase 4 commission nodes — derived from commission links with scaling
@@ -4063,7 +4104,7 @@ export default function App() {
     const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
     const totals = entered.reduce((a,item)=>{
       const ln=lines[item.wbs_code]||{};
-      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial);
+      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd);
       const ph=item.wbs_code.split(".")[0];
       const bp={...a.byPhase};
       if(!bp[ph]) bp[ph]={eeInt:0,comm:0};
