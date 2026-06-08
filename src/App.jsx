@@ -9,7 +9,7 @@ import { useState, useMemo, useEffect, useCallback, createContext, useContext, u
 const BASE = import.meta.env.BASE_URL || "/";
 
 // ── DATA CONTEXT ────────────────────────────────────────────────
-const DataCtx = createContext({ wbs:[], rates:[], supply:[], equipment:[], equipLookup:{}, commLookup:{}, commProfiles:{}, escRates:null, resourceCodes:{}, loading:true, error:null });
+const DataCtx = createContext({ wbs:[], rates:[], supply:[], equipment:[], equipLookup:{}, commLookup:{}, commProfiles:{}, escRates:null, resourceCodes:{}, invMats:[], matAssemblies:[], loading:true, error:null });
 
 // ── COPPERLEAF CSV EXPORT ────────────────────────────────────────
 // Matches Sync_To_C55 macro structure exactly:
@@ -387,8 +387,9 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
     ? parseFloat(materialsCostOvrd) || 0 : null;
   const pce        = item.pce_price || 0;
   const equipCost  = q * (matOvrd !== null ? matOvrd : pce);
-  const eeLabHrs   = isContr ? 0 : q * f * instHrsPU;
-  const eeLabCost  = eeLabHrs * eeRate;
+  const isWAFHA    = (effectiveResource === "Work Away From Home");
+  const eeLabHrs   = isContr ? 0 : (isWAFHA ? 0 : q * f * instHrsPU);
+  const eeLabCost  = isContr ? 0 : (isWAFHA ? q * f * eeRate : eeLabHrs * eeRate);
   const contrCost  = isContr ? q * f * contrRate : 0;
   const plantFact  = plant * f;
   const matBurden  = isCommercial ? 0 : equipCost * MAT_BURDEN;
@@ -571,6 +572,50 @@ function InvestmentSetup({ inv, onChange }) {
           </div>
         </Card>
 
+        {/* Invoicing Milestones Card */}
+        <Card>
+          <SectionHeader color="orange" title="Invoicing Milestones" subtitle="Milestone payment schedule (incoming money) — must sum to 100%" />
+          <div className="p-4 bg-white space-y-2">
+            <div className="grid grid-cols-12 gap-1 text-[10px] text-gray-400 font-semibold uppercase tracking-wide px-0.5 mb-1">
+              <span className="col-span-7">Stage Description</span>
+              <span className="col-span-2">Month #</span>
+              <span className="col-span-2">% of Total</span>
+              <span className="col-span-1"/>
+            </div>
+            {(inv.milestones||[]).map((m,i)=>(
+              <div key={i} className="grid grid-cols-12 gap-1 items-center">
+                <input value={m.stage} placeholder={`Milestone ${i+1} description`}
+                  onChange={e=>{const ms=[...(inv.milestones||[])];ms[i]={...ms[i],stage:e.target.value};upd("milestones",ms);}}
+                  className="col-span-7 border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400"/>
+                <input type="number" min="1" value={m.month} placeholder="4"
+                  onChange={e=>{const ms=[...(inv.milestones||[])];ms[i]={...ms[i],month:e.target.value};upd("milestones",ms);}}
+                  className="col-span-2 border border-gray-200 rounded px-1.5 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-orange-400"/>
+                <div className="col-span-2 flex items-center gap-0.5">
+                  <input type="number" min="0" max="100" value={m.pct} placeholder="0"
+                    onChange={e=>{const ms=[...(inv.milestones||[])];ms[i]={...ms[i],pct:e.target.value};upd("milestones",ms);}}
+                    className="w-full border border-gray-200 rounded px-1.5 py-1 text-xs text-right focus:outline-none focus:ring-1 focus:ring-orange-400"/>
+                  <span className="text-xs text-gray-400 flex-shrink-0">%</span>
+                </div>
+                <button onClick={()=>upd("milestones",(inv.milestones||[]).filter((_,j)=>j!==i))}
+                  className="col-span-1 text-red-400 hover:text-red-600 text-xs text-center">✕</button>
+              </div>
+            ))}
+            <div className="flex items-center justify-between pt-1">
+              {(()=>{const tot=(inv.milestones||[]).reduce((s,m)=>s+parseFloat(m.pct||0),0);return(
+                <span className="text-xs">
+                  <span className="text-gray-500">Total: </span>
+                  <span className={Math.abs(tot-100)<0.01?"font-bold text-green-600":"font-bold text-amber-600"}>{tot}%</span>
+                  {Math.abs(tot-100)>0.01&&<span className="text-amber-500 ml-2">⚠ must sum to 100%</span>}
+                  {Math.abs(tot-100)<0.01&&<span className="text-green-600 ml-2">✓ feeds into cash flow chart</span>}
+                </span>
+              );})()}
+              {(inv.milestones||[]).length < 10 &&
+                <button onClick={()=>upd("milestones",[...(inv.milestones||[]),{stage:"",month:"",pct:"0"}])}
+                  className="text-xs text-blue-600 hover:underline">+ Add milestone</button>}
+            </div>
+          </div>
+        </Card>
+
         <div className="flex justify-end gap-3 pb-4">
           <button className="px-6 py-2 text-xs bg-blue-700 hover:bg-blue-600 text-white rounded font-semibold shadow">
             Save Investment Setup →
@@ -696,6 +741,139 @@ function WBSNavTree({ wbs, supply, activePhase, setActivePhase, selectedL4, onSe
 
 
 // ── ESTIMATION SCREEN ────────────────────────────────────────────
+// ── INVENTORY & ASSEMBLY LOOKUP PANEL ────────────────────────────
+// Searchable lookup for Inventory Materials and Material Assemblies
+// shown as a collapsible drawer in the cost detail panel
+function InvMatsLookup({ wbsCode }) {
+  const { invMats, matAssemblies } = useData();
+  const [open,    setOpen]    = useState(false);
+  const [tab,     setTab]     = useState("assembly"); // "assembly" | "inventory"
+  const [search,  setSearch]  = useState("");
+
+  // Find assembly matching this WBS code
+  const matchAssembly = matAssemblies.find(a => a.wbs_code === wbsCode);
+
+  const filteredInv = useMemo(() => {
+    if (!search.trim()) return invMats.slice(0, 50);
+    const q = search.toLowerCase();
+    return invMats.filter(i =>
+      (i.description||"").toLowerCase().includes(q) ||
+      (i.item_number||"").toLowerCase().includes(q) ||
+      (i.category||"").toLowerCase().includes(q)
+    ).slice(0, 80);
+  }, [invMats, search]);
+
+  const fmtP = v => v > 0 ? `$${v.toFixed(2)}` : "—";
+
+  return (
+    <div className="border-t border-gray-100 mt-2">
+      <button onClick={()=>setOpen(o=>!o)}
+        className="flex items-center gap-1.5 text-xs text-blue-700 hover:text-blue-900 py-1.5 font-medium w-full">
+        <span>{open ? "▾" : "▸"}</span>
+        <span>📦 Inventory Materials & Assemblies Lookup</span>
+        {matchAssembly && <span className="bg-blue-100 text-blue-700 rounded px-1.5 py-0.5 text-[10px] ml-1">Assembly available</span>}
+      </button>
+
+      {open && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-2">
+          {/* Tabs */}
+          <div className="flex border-b border-gray-200 bg-white">
+            {[
+              {id:"assembly", label:`🔧 Assembly${matchAssembly?" (matched)":""}`},
+              {id:"inventory", label:"📋 Inventory Materials"},
+            ].map(t=>(
+              <button key={t.id} onClick={()=>setTab(t.id)}
+                className={`text-xs px-3 py-2 font-medium border-b-2 transition-colors ${tab===t.id?"border-blue-600 text-blue-700":"border-transparent text-gray-500 hover:text-gray-700"}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {tab==="assembly" && (
+            <div className="p-3">
+              {matchAssembly ? (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <div className="text-xs font-bold text-gray-800">{matchAssembly.description}</div>
+                      <div className="text-[10px] text-gray-400">{matchAssembly.wbs_code} · Ref: {matchAssembly.reference||"—"}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-blue-700">{matchAssembly.total_cost ? `$${matchAssembly.total_cost.toFixed(2)}` : "—"}</div>
+                      <div className="text-[10px] text-gray-400">total assembly cost</div>
+                    </div>
+                  </div>
+                  <table className="w-full text-[10px] border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="text-left px-2 py-1">Description</th>
+                        <th className="text-left px-2 py-1">Inv Code</th>
+                        <th className="text-right px-2 py-1">Qty</th>
+                        <th className="text-left px-2 py-1">UOM</th>
+                        <th className="text-right px-2 py-1">Unit Rate</th>
+                        <th className="text-right px-2 py-1">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {matchAssembly.components.map((c,i)=>(
+                        <tr key={i} className={i%2===0?"bg-white":"bg-gray-50"}>
+                          <td className="px-2 py-0.5 text-gray-700">{c.description}</td>
+                          <td className="px-2 py-0.5 font-mono text-gray-400">{c.inv_code||"—"}</td>
+                          <td className="px-2 py-0.5 text-right">{c.qty}</td>
+                          <td className="px-2 py-0.5 text-gray-400">{c.uom}</td>
+                          <td className="px-2 py-0.5 text-right">{c.unit_price ? `$${c.unit_price.toFixed(2)}` : "—"}</td>
+                          <td className="px-2 py-0.5 text-right font-semibold">{c.total ? `$${c.total.toFixed(2)}` : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              ) : (
+                <div className="text-xs text-gray-400 py-4 text-center">No pre-built assembly found for WBS {wbsCode}</div>
+              )}
+            </div>
+          )}
+
+          {tab==="inventory" && (
+            <div className="p-2">
+              <input value={search} onChange={e=>setSearch(e.target.value)}
+                placeholder="Search inventory by description, item number or category…"
+                className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs mb-2 focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+              <div className="max-h-48 overflow-y-auto">
+                <table className="w-full text-[10px] border-collapse">
+                  <thead className="sticky top-0 bg-gray-100">
+                    <tr>
+                      <th className="text-left px-2 py-1">Item #</th>
+                      <th className="text-left px-2 py-1">Description</th>
+                      <th className="text-left px-2 py-1">Category</th>
+                      <th className="text-left px-2 py-1">UOM</th>
+                      <th className="text-right px-2 py-1">Last Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredInv.map((item,i)=>(
+                      <tr key={i} className={i%2===0?"bg-white":"bg-gray-50"}>
+                        <td className="px-2 py-0.5 font-mono text-gray-500">{item.item_number}</td>
+                        <td className="px-2 py-0.5 text-gray-700">{item.description}</td>
+                        <td className="px-2 py-0.5 text-gray-400">{item.category}</td>
+                        <td className="px-2 py-0.5 text-gray-400">{item.uom}</td>
+                        <td className="px-2 py-0.5 text-right font-semibold text-blue-700">{fmtP(item.last_price)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {!search && invMats.length > 50 && (
+                  <div className="text-[10px] text-gray-400 text-center py-1">Showing 50 of {invMats.length} — search to filter</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EstimationScreen({ isCommercial, lines, setLines }) {
   const { wbs, supply, rates, loading, commLookup, commProfiles } = useData();
   const [activePhase, setActivePhase]   = useState(3);
@@ -1238,12 +1416,30 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                           </div>
                         )}
                       </div>
-                      <div className="border-t border-gray-100 pt-2">
-                        <label className="text-xs text-gray-500 block mb-1">Comments / Scope inclusions & exclusions</label>
-                        <textarea value={ln.comments||""} onChange={e=>updLine(item.wbs_code,"comments",e.target.value)}
-                          rows={2} placeholder="e.g. Includes conductor and insulators. Excludes foundation design."
-                          className="w-full text-xs border border-gray-200 rounded px-2 py-1 resize-none focus:outline-none focus:ring-1 focus:ring-blue-300"/>
+                      <div className="border-t border-gray-100 pt-2 space-y-2">
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">Drawing / Reference</label>
+                          <div className="flex gap-1.5 items-center">
+                            <input value={ln.drawing||""}
+                              onChange={e=>updLine(item.wbs_code,"drawing",e.target.value)}
+                              placeholder="Drawing no. or https://..."
+                              className="flex-1 text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-300"/>
+                            {(ln.drawing||"").startsWith("http") && (
+                              <a href={ln.drawing} target="_blank" rel="noopener noreferrer"
+                                className="flex-shrink-0 text-xs bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 rounded px-2 py-1 flex items-center gap-1 font-medium">
+                                🔗 Open
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">Comments / Scope inclusions & exclusions</label>
+                          <textarea value={ln.comments||""} onChange={e=>updLine(item.wbs_code,"comments",e.target.value)}
+                            rows={2} placeholder="e.g. Includes conductor and insulators. Excludes foundation design."
+                            className="w-full text-xs border border-gray-200 rounded px-2 py-1 resize-none focus:outline-none focus:ring-1 focus:ring-blue-300"/>
+                        </div>
                       </div>
+                      <InvMatsLookup wbsCode={item.wbs_code}/>
                     </div>
                   </div>
                 )}
@@ -1877,11 +2073,15 @@ function FinancialScreen({ inv, lines, isCommercial }) {
     const ws=weights.reduce((a,b)=>a+b,0)||1;
     const norm=weights.map(w=>w/ws);
 
-    // Milestone: 15% month 1, 35% at 40% construction, 50% at end construction
     const milestones = Array(total).fill(0);
-    milestones[0]=0.15;
-    milestones[Math.min(conStart+Math.floor(conDur*0.4),total-1)]=0.35;
-    milestones[Math.min(conStart+conDur-2,total-1)]=0.50;
+    const configMs=(inv.milestones||[]).filter(m=>parseFloat(m.pct||0)>0&&parseInt(m.month||0)>0);
+    if (configMs.length>0) {
+      configMs.forEach(m=>{const idx=Math.min(Math.max(0,parseInt(m.month)-1),total-1);milestones[idx]=(milestones[idx]||0)+parseFloat(m.pct)/100;});
+    } else {
+      milestones[0]=0.15;
+      milestones[Math.min(conStart+Math.floor(conDur*0.4),total-1)]=0.35;
+      milestones[Math.min(conStart+conDur-2,total-1)]=0.50;
+    }
 
     let cumC=0,cumE=0,cumM=0;
     return Array.from({length:total},(_,i)=>{
@@ -4824,6 +5024,13 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
 const defaultInv = {
   name:"Marulan 132kV 3-Way Switching Station", number:"10007569",
   wacs:"N/A", type:"Commercially Funded", estClass:"Class 4", revision:"A",
+  milestones:[
+    {stage:"Acceptance of offer and commencement of works", month:"1",  pct:"15"},
+    {stage:"Long lead-time equipment ordered",              month:"4",  pct:"35"},
+    {stage:"Design completed, sub-contract works awarded",  month:"10", pct:"45"},
+    {stage:"Construction works 100% completed",             month:"15", pct:"5"},
+    {stage:"",                                              month:"",   pct:"0"},
+  ],
   complexity:"High", newTech:"Moderate", estimatedBy:"Steven Hannigan",
   reviewedBy:"Daniel Lawrence", startMonth:"Jul", startYear:"2025",
   planStart:"1", planDur:"4", designStart:"1", designDur:"9",
@@ -4862,7 +5069,9 @@ export default function App() {
   const [commLookup,   setCommLookup]   = useState({}); // comm_wbs -> {hrs_per_unit, profile_id,...}
   const [commProfiles, setCommProfiles] = useState({}); // profile_id -> {tiers, name, status}
   const [escRates,     setEscRates]     = useState(null);
-  const [resourceCodes,setResourceCodes]= useState({}); // escalation rates by category
+  const [resourceCodes,setResourceCodes]= useState({});
+  const [invMats,      setInvMats]      = useState([]);
+  const [matAssemblies,setMatAssemblies]= useState([]);
   const [equipSel,    setEquipSel]    = useState({});
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
@@ -4877,8 +5086,10 @@ export default function App() {
       fetch(`${BASE}data/commission_scaling.json`).then(r=>{if(!r.ok)return {profiles:{},lookup:{}};return r.json();}).catch(()=>({profiles:{},lookup:{}})),
       fetch(`${BASE}data/escalation_rates.json`).then(r=>{if(!r.ok)return null;return r.json();}).catch(()=>null),
       fetch(`${BASE}data/resource_codes.json`).then(r=>{if(!r.ok)return {};return r.json();}).catch(()=>({})),
+      fetch(`${BASE}data/inventory_materials.json`).then(r=>{if(!r.ok)return [];return r.json();}).catch(()=>[]),
+      fetch(`${BASE}data/material_assemblies.json`).then(r=>{if(!r.ok)return [];return r.json();}).catch(()=>[]),
     ])
-    .then(([wbs,rates,supply,equip,lookup,commLookup,escRatesData,resourceCodesData])=>{
+    .then(([wbs,rates,supply,equip,lookup,commLookup,escRatesData,resourceCodesData,invMatsData,matAssData])=>{
       setWbsData(wbs.records||[]);
       setRatesData(rates.records||[]);
       setSupplyData(supply.items||[]);
@@ -4918,6 +5129,8 @@ export default function App() {
       setCommProfiles(commLookup.profiles || {});
       setEscRates(escRatesData);
       setResourceCodes(resourceCodesData || {});
+      setInvMats(Array.isArray(invMatsData) ? invMatsData : []);
+      setMatAssemblies(Array.isArray(matAssData) ? matAssData : []);
       setLoading(false);
     })
     .catch(err=>{setError(err.message);setLoading(false);});
@@ -4993,7 +5206,7 @@ export default function App() {
   const linesEntered = Object.values(lines).filter(l=>parseFloat(l.qty)>0).length;
 
   return (
-    <DataCtx.Provider value={{wbs:wbsData,rates:ratesData,supply:supplyData,equipment:equipData,equipLookup,commLookup,commProfiles,escRates,resourceCodes,loading,error}}>
+    <DataCtx.Provider value={{wbs:wbsData,rates:ratesData,supply:supplyData,equipment:equipData,equipLookup,commLookup,commProfiles,escRates,resourceCodes,invMats,matAssemblies,loading,error}}>
       <div className="flex flex-col h-screen font-sans text-sm select-none">
 
         {/* Top nav */}
