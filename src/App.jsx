@@ -92,7 +92,8 @@ function generateCopperleafCSV(inv, lines, supply, commLookup, commProfiles, esc
   const staticHeaders = [
     "Group Path","Group Description","Id","Row Type","Currency / Unit",
     "Spend Name","Currency / Unit Type","Is Unshiftable","Account Code",
-    "Resource Code","Labour Type"
+    "Resource Code","Labour Type",
+    "LLT Description","LLT Item","LLT Quantity","Make / Model","Stock/Contract number","Voltage"
   ];
   const allHeaders = [...staticHeaders, ...monthCols];
   const csvRows = [allHeaders];
@@ -164,7 +165,17 @@ function generateCopperleafCSV(inv, lines, supply, commLookup, commProfiles, esc
       if (source === "SCADA" || source === "Comms") {
         nonLLTTotal += totalMat;
       } else {
-        lltRows.push(totalMat);
+        // Store total cost plus equipment metadata for the LLT row
+        const eq = equipLookup ? equipLookup[item.wbs_code] : null;
+        lltRows.push({
+          totalMat,
+          desc: (eq?.description || item.description || "").substring(0, 100),
+          category: eq?.category || "",
+          qty: String(effQty),
+          makeModel: [eq?.make, eq?.model].filter(Boolean).join(" "),
+          contractNo: eq?.contract_no || "",
+          voltage: eq?.voltage || eq?.family || ""
+        });
       }
     });
 
@@ -179,13 +190,15 @@ function generateCopperleafCSV(inv, lines, supply, commLookup, commProfiles, esc
       csvRows.push(row);
     }
 
-    // One Materials (LLT) row per PCE item — no item name in Spend Name
-    lltRows.forEach(totalMat => {
+    // One Materials (LLT) row per PCE item — Spend Name is "Materials (LLT)", metadata in cols 11-16
+    lltRows.forEach(({ totalMat, desc, category, qty, makeModel, contractNo, voltage }) => {
       const perMonth = phMonths.length > 0 ? totalMat / phMonths.length : 0;
       const row = Array(allHeaders.length).fill("");
       row[0]=buildGroupPath(l1,l2,l3); row[1]=`${l3} - Group`; row[2]=l3;
       row[3]="Spend"; row[4]="Unit"; row[5]="Materials (LLT)"; row[6]="Dollar";
       row[7]="0"; row[8]=acct; row[9]="GMAT"; row[10]="";
+      row[11]=desc; row[12]=category; row[13]=qty;
+      row[14]=makeModel; row[15]=contractNo; row[16]=voltage;
       phMonths.forEach(m=>{ const ci=staticHeaders.length+(m-1); if(ci<row.length) row[ci]=perMonth.toFixed(2); });
       csvRows.push(row);
     });
