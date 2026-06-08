@@ -128,7 +128,7 @@ function generateCopperleafCSV(inv, lines, supply, commLookup, commProfiles, esc
     const costByResource = {};
     items.forEach(item => {
       const ln = lines[item.wbs_code] || {};
-      const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, ratesLookup);
+      const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, ratesLookup, pctBaseLookup[item.wbs_code] || 0);
       const isContr = (ln.delivery||item.delivery_method||"") === "Contractor Delivered";
       const res = isContr ? "Contractor" : (item.resource_main || "ZS Electrical Technician");
       if (!costByResource[res]) costByResource[res] = {hours:0, dollars:0};
@@ -366,7 +366,7 @@ const RESOURCE_TYPES = [
 ];
 const MAT_BURDEN = 0.0752;
 
-function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvrd, plantCostVal, materialsCostOvrd, isCommercial, resourceOvrd, ratesLookup) {
+function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvrd, plantCostVal, materialsCostOvrd, isCommercial, resourceOvrd, ratesLookup, pctBase) {
   const q   = parseFloat(qty)   || 0;
   const f   = parseFloat(factor)|| 1;
   const isContr = (delivery || item.delivery_method || "EE Delivered") === "Contractor Delivered";
@@ -386,9 +386,14 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
         : (ratesLookup["Work Away From Home"].ee_internal_rate   || 359.50))
     : (item.ee_labour_rate || 359.50);
   const eeRate     = isWAFHA ? wafhaRate : (item.ee_labour_rate || 246.95);
-  const contrRate  = (contractorRateOvrd !== "" && contractorRateOvrd != null)
-    ? (parseFloat(contractorRateOvrd) || 0)
-    : item.contractor_rate || 0;
+  // Percentage-of-total items: cost = pct × total non-prelim base for this L3 group
+  const isPctItem  = !!(item.pct_of_total);
+  const pctRate    = isPctItem ? ((pctBase || 0) * item.pct_of_total) : 0;
+  const contrRate  = isPctItem
+    ? pctRate   // derived from group total
+    : (contractorRateOvrd !== "" && contractorRateOvrd != null)
+      ? (parseFloat(contractorRateOvrd) || 0)
+      : item.contractor_rate || 0;
   const plant      = parseFloat(plantCostVal) || 0;
   const matOvrd    = (materialsCostOvrd !== "" && materialsCostOvrd != null)
     ? parseFloat(materialsCostOvrd) || 0 : null;
@@ -887,6 +892,35 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
     (rates||[]).forEach(r => { map[r.resource_type] = r; });
     return map;
   }, [rates]);
+
+  // Pre-compute L3 group base totals for percentage-of-total prelim items.
+  // For each L3 group, sum contractor costs of all non-prelim items.
+  // "ee" basis: sum EE labour costs of all non-prelim items.
+  const pctBaseLookup = useMemo(() => {
+    const groupContr = {}; // l3 → total contractor cost
+    const groupEE    = {}; // l3 → total EE labour cost
+    supply.forEach(item => {
+      if (item.pct_of_total) return; // skip the prelim items themselves
+      const ln  = lines[item.wbs_code] || {};
+      const qty = parseFloat(ln.qty || "0");
+      if (!qty) return;
+      const l3 = item.wbs_code.split(".").slice(0, 3).join(".");
+      const c  = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery,
+                          ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats,
+                          isCommercial, ln.resourceOvrd, ratesLookup, 0);
+      groupContr[l3] = (groupContr[l3] || 0) + (c.contrCost || 0);
+      groupEE[l3]    = (groupEE[l3]    || 0) + (c.eeLabCost || 0);
+    });
+    // Return lookup: wbs_code → pctBase value
+    const lookup = {};
+    supply.forEach(item => {
+      if (!item.pct_of_total) return;
+      const l3   = item.wbs_code.split(".").slice(0, 3).join(".");
+      const base = item.pct_basis === "ee" ? (groupEE[l3] || 0) : (groupContr[l3] || 0);
+      lookup[item.wbs_code] = base;
+    });
+    return lookup;
+  }, [supply, lines, isCommercial, ratesLookup]);
   const [activePhase, setActivePhase]   = useState(3);
   const [selectedL4, setSelectedL4]     = useState("3.1.3.04");
   const [selectedCommGroup, setSelectedCommGroup] = useState(null);
@@ -939,7 +973,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
 
   const calcItem = useCallback((item)=>{
     const ln = getLine(item.wbs_code);
-    return calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, ratesLookup);
+    return calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, ratesLookup, pctBaseLookup[item.wbs_code] || 0);
   },[lines, isCommercial]);
 
   const groupTotals = useMemo(()=>items.reduce((a,it)=>{
@@ -1379,11 +1413,24 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                         </div>
                         <div>
                           <label className="text-xs text-gray-500 block mb-0.5">Contractor Rate ($/unit)</label>
-                          <input type="number" min="0" value={ln.contrRate||""}
-                            placeholder={item.contractor_rate>0?String(Math.round(item.contractor_rate)):"0"}
-                            onChange={e=>updLine(item.wbs_code,"contrRate",e.target.value)}
-                            className="w-full text-xs border border-teal-300 bg-teal-50 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400"/>
-                          {item.contractor_rate>0&&<div className="text-xs text-amber-600 mt-0.5">Default: ${Math.round(item.contractor_rate).toLocaleString("en-AU")}</div>}
+                          {item.pct_of_total ? (
+                            // Percentage-of-total: auto-derived from L3 group total
+                            <>
+                              <div className="w-full text-xs border border-teal-200 bg-teal-50/50 rounded px-1.5 py-1 text-teal-800 font-semibold flex items-center justify-between">
+                                <span className="text-teal-600">{(item.pct_of_total*100).toFixed(0)}% of {item.pct_basis==="ee"?"EE labour":"contractor"} total</span>
+                                <span>= ${Math.round((pctBaseLookup[item.wbs_code]||0)*item.pct_of_total).toLocaleString("en-AU")}</span>
+                              </div>
+                              <div className="text-xs text-gray-400 mt-0.5">L3 {item.pct_basis==="ee"?"EE labour":"contractor"} base: ${Math.round(pctBaseLookup[item.wbs_code]||0).toLocaleString("en-AU")}</div>
+                            </>
+                          ) : (
+                            <>
+                              <input type="number" min="0" value={ln.contrRate||""}
+                                placeholder={item.contractor_rate>0?String(Math.round(item.contractor_rate)):"0"}
+                                onChange={e=>updLine(item.wbs_code,"contrRate",e.target.value)}
+                                className="w-full text-xs border border-teal-300 bg-teal-50 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400"/>
+                              {item.contractor_rate>0&&<div className="text-xs text-amber-600 mt-0.5">Default: ${Math.round(item.contractor_rate).toLocaleString("en-AU")}</div>}
+                            </>
+                          )}
                         </div>
                         {hasQty && (
                           <div className="text-xs text-gray-500">
@@ -1524,7 +1571,7 @@ function ReviewLines({ lines, isCommercial }) {
   const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
   const totals = entered.reduce((a,item)=>{
     const ln=lines[item.wbs_code]||{};
-    const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd);
+    const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
     return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs+c.commHrs,eeInt:a.eeInt+c.eeInt,comm:a.comm+c.comm};
   },{installHrs:0,commHrs:0,eeInt:0,comm:0});
 
@@ -1593,7 +1640,7 @@ function ReviewLines({ lines, isCommercial }) {
               <tbody>
                 {items.map(item=>{
                   const ln=lines[item.wbs_code]||{};
-                  const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd);
+                  const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
                   return (
                     <tr key={item.wbs_code} className="border-b hover:bg-gray-50">
                       <td className="px-3 py-2 font-mono text-blue-600 whitespace-nowrap">{item.wbs_code}</td>
@@ -1633,7 +1680,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
     if(ph==="4") return;
     if(!byPhase[ph]) byPhase[ph]={eeInt:0,comm:0,installHrs:0,commHrs:0,lines:0,eeLabCost:0,contrCost:0,matCost:0};
     const ln=lines[item.wbs_code]||{};
-    const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd);
+    const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
     byPhase[ph].eeInt+=c.eeInt; byPhase[ph].comm+=c.comm;
     byPhase[ph].installHrs+=c.installHrs; byPhase[ph].commHrs+=c.commHrs;
     byPhase[ph].lines++;
@@ -1737,7 +1784,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
     };
     entered.forEach(item=>{
       const ln=lines[item.wbs_code]||{};
-      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd);
+      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
       accum(item.wbs_code, c);
     });
     // Phase 4 commission nodes — derived from commission links with scaling
@@ -5152,7 +5199,7 @@ export default function App() {
     const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
     const totals = entered.reduce((a,item)=>{
       const ln=lines[item.wbs_code]||{};
-      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd);
+      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
       const ph=item.wbs_code.split(".")[0];
       const bp={...a.byPhase};
       if(!bp[ph]) bp[ph]={eeInt:0,comm:0};
