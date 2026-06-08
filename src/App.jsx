@@ -105,7 +105,11 @@ function generateCopperleafCSV(inv, lines, supply, commLookup, commProfiles, esc
 
   const writeGroupRow = (code, label) => {
     const row = Array(allHeaders.length).fill("");
-    row[0] = label; row[1] = label; row[2] = code; row[3] = "Group"; row[5] = label;
+    row[0] = label; // Group Path
+    row[1] = label; // Group Description
+    row[2] = code;  // Id
+    row[3] = "Group";
+    // row[5] (Spend Name) intentionally blank for GROUP rows — matches Spend_Template
     return row;
   };
 
