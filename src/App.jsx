@@ -128,7 +128,7 @@ function generateCopperleafCSV(inv, lines, supply, commLookup, commProfiles, esc
     const costByResource = {};
     items.forEach(item => {
       const ln = lines[item.wbs_code] || {};
-      const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd);
+      const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, ratesLookup);
       const isContr = (ln.delivery||item.delivery_method||"") === "Contractor Delivered";
       const res = isContr ? "Contractor" : (item.resource_main || "ZS Electrical Technician");
       if (!costByResource[res]) costByResource[res] = {hours:0, dollars:0};
@@ -366,7 +366,7 @@ const RESOURCE_TYPES = [
 ];
 const MAT_BURDEN = 0.0752;
 
-function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvrd, plantCostVal, materialsCostOvrd, isCommercial, resourceOvrd) {
+function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvrd, plantCostVal, materialsCostOvrd, isCommercial, resourceOvrd, ratesLookup) {
   const q   = parseFloat(qty)   || 0;
   const f   = parseFloat(factor)|| 1;
   const isContr = (delivery || item.delivery_method || "EE Delivered") === "Contractor Delivered";
@@ -378,7 +378,14 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
   const commHrs    = q * commHrsPU;
   // Use resourceOvrd if set (Main Resource Code override for non-linked items)
   const effectiveResource = resourceOvrd || item.resource_main || "";
-  const eeRate     = item.ee_labour_rate || 246.95;
+  const isWAFHA    = (effectiveResource === "Work Away From Home");
+  // WAFHA rate: use manager-edited rate from ratesLookup if available, else item rate, else workbook default
+  const wafhaRate  = ratesLookup?.["Work Away From Home"]
+    ? (isCommercial
+        ? (ratesLookup["Work Away From Home"].ee_commercial_rate || 345.83)
+        : (ratesLookup["Work Away From Home"].ee_internal_rate   || 359.50))
+    : (item.ee_labour_rate || 359.50);
+  const eeRate     = isWAFHA ? wafhaRate : (item.ee_labour_rate || 246.95);
   const contrRate  = (contractorRateOvrd !== "" && contractorRateOvrd != null)
     ? (parseFloat(contractorRateOvrd) || 0)
     : item.contractor_rate || 0;
@@ -387,7 +394,6 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
     ? parseFloat(materialsCostOvrd) || 0 : null;
   const pce        = item.pce_price || 0;
   const equipCost  = q * (matOvrd !== null ? matOvrd : pce);
-  const isWAFHA    = (effectiveResource === "Work Away From Home");
   const eeLabHrs   = isContr ? 0 : (isWAFHA ? 0 : q * f * instHrsPU);
   const eeLabCost  = isContr ? 0 : (isWAFHA ? q * f * eeRate : eeLabHrs * eeRate);
   const contrCost  = isContr ? q * f * contrRate : 0;
@@ -876,6 +882,11 @@ function InvMatsLookup({ wbsCode }) {
 
 function EstimationScreen({ isCommercial, lines, setLines }) {
   const { wbs, supply, rates, loading, commLookup, commProfiles } = useData();
+  const ratesLookup = useMemo(() => {
+    const map = {};
+    (rates||[]).forEach(r => { map[r.resource_type] = r; });
+    return map;
+  }, [rates]);
   const [activePhase, setActivePhase]   = useState(3);
   const [selectedL4, setSelectedL4]     = useState("3.1.3.04");
   const [selectedCommGroup, setSelectedCommGroup] = useState(null);
@@ -928,7 +939,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
 
   const calcItem = useCallback((item)=>{
     const ln = getLine(item.wbs_code);
-    return calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd);
+    return calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, ratesLookup);
   },[lines, isCommercial]);
 
   const groupTotals = useMemo(()=>items.reduce((a,it)=>{
