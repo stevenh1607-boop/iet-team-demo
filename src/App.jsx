@@ -2893,6 +2893,198 @@ function EscalationEditor({ managerMode, onUnlock }) {
   );
 }
 
+// ── SUPPLY ITEM RATES EDITOR ─────────────────────────────────────
+// Allows the estimation manager to view and maintain contractor rates,
+// EE labour rates, and EE unit hours for all supply items.
+// Items with missing rates are flagged in amber — these are known data gaps.
+function SupplyRatesEditor({ managerMode, onUnlock }) {
+  const { supply } = useData();
+
+  const [search,      setSearch]     = useState("");
+  const [gapOnly,     setGapOnly]    = useState(false);
+  const [phaseFilter, setPhaseFilter]= useState("All");
+  const [overrides,   setOverrides]  = useState({});  // {wbs_code: {contractor_rate, ee_labour_rate, ee_unit_hrs}}
+  const [editing,     setEditing]    = useState(null); // wbs_code being edited
+  const [editVals,    setEditVals]   = useState({});
+
+  // Merge overrides with supply data
+  const merged = useMemo(() => supply.map(s => ({
+    ...s,
+    ...(overrides[s.wbs_code] || {}),
+  })), [supply, overrides]);
+
+  const filtered = useMemo(() => merged.filter(s => {
+    const phase = s.wbs_code.split(".")[0];
+    const matchPhase  = phaseFilter === "All" || phase === phaseFilter;
+    const matchSearch = !search ||
+      s.wbs_code.toLowerCase().includes(search.toLowerCase()) ||
+      (s.description||"").toLowerCase().includes(search.toLowerCase());
+    const isContractor = (s.delivery_method||"").includes("Contractor");
+    const hasGap = isContractor
+      ? !(s.contractor_rate > 0)
+      : !(s.ee_unit_hrs > 0);
+    const matchGap = !gapOnly || hasGap;
+    return matchPhase && matchSearch && matchGap;
+  }), [merged, search, gapOnly, phaseFilter]);
+
+  const gapCount = useMemo(() => merged.filter(s => {
+    const isContractor = (s.delivery_method||"").includes("Contractor");
+    return isContractor ? !(s.contractor_rate > 0) : !(s.ee_unit_hrs > 0);
+  }).length, [merged]);
+
+  const startEdit = (s) => {
+    if (!managerMode) return;
+    setEditing(s.wbs_code);
+    setEditVals({
+      contractor_rate: s.contractor_rate || "",
+      ee_labour_rate:  s.ee_labour_rate  || "",
+      ee_unit_hrs:     s.ee_unit_hrs     || "",
+    });
+  };
+
+  const saveEdit = (wbs_code) => {
+    setOverrides(p => ({
+      ...p,
+      [wbs_code]: {
+        contractor_rate: editVals.contractor_rate !== "" ? parseFloat(editVals.contractor_rate) : null,
+        ee_labour_rate:  editVals.ee_labour_rate  !== "" ? parseFloat(editVals.ee_labour_rate)  : null,
+        ee_unit_hrs:     editVals.ee_unit_hrs     !== "" ? parseFloat(editVals.ee_unit_hrs)      : null,
+      }
+    }));
+    setEditing(null);
+  };
+
+  const phases = ["All","1","2","3","4","5"];
+  const phaseLabels = {"All":"All Phases","1":"1 - Planning","2":"2 - Design","3":"3 - Construction","4":"4 - Commissioning","5":"5 - Other"};
+  const fmtR = v => v > 0 ? "$"+Math.round(v).toLocaleString("en-AU") : "";
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Toolbar */}
+      <div className="bg-white border-b px-4 py-2 flex items-center gap-3 flex-shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 flex-1 min-w-48">
+          <input value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Search WBS code or description…"
+            className="flex-1 text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+        </div>
+        <select value={phaseFilter} onChange={e=>setPhaseFilter(e.target.value)}
+          className="text-xs border border-gray-200 rounded px-2 py-1.5 focus:outline-none">
+          {phases.map(p=><option key={p} value={p}>{phaseLabels[p]}</option>)}
+        </select>
+        <label className="flex items-center gap-1.5 text-xs text-amber-700 cursor-pointer select-none">
+          <input type="checkbox" checked={gapOnly} onChange={e=>setGapOnly(e.target.checked)}
+            className="accent-amber-500"/>
+          <span className="font-semibold">Show gaps only</span>
+          <span className="bg-amber-100 text-amber-700 border border-amber-300 rounded px-1.5 py-0.5 font-bold">{gapCount}</span>
+        </label>
+        <span className="text-xs text-gray-400">{filtered.length} items shown</span>
+        {managerMode
+          ? <span className="text-xs bg-orange-100 text-orange-700 px-3 py-1.5 rounded font-semibold flex items-center gap-1.5">🔓 Manager Mode — click row to edit</span>
+          : <button onClick={onUnlock} className="text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 px-3 py-1.5 rounded flex items-center gap-1.5">🔒 Manager Mode</button>
+        }
+      </div>
+
+      {/* Info banner */}
+      <div className="bg-amber-50 border-b border-amber-200 px-4 py-1.5 text-xs text-amber-800 flex-shrink-0 flex items-center gap-2">
+        <span>⚠️</span>
+        <span>Amber rows have missing rates — these are known data gaps from the source workbook. Enter values in Manager Mode to fill them. Changes apply to the current session only until exported to the database.</span>
+      </div>
+
+      {/* Table */}
+      <div className="flex-1 overflow-auto">
+        <table className="w-full text-xs border-collapse">
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-[#1e3a5f] text-white">
+              <th className="px-3 py-2 text-left font-semibold whitespace-nowrap">WBS Code</th>
+              <th className="px-3 py-2 text-left font-semibold">Description</th>
+              <th className="px-3 py-2 text-left font-semibold whitespace-nowrap">Delivery</th>
+              <th className="px-3 py-2 text-left font-semibold whitespace-nowrap">Resource</th>
+              <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Contractor Rate ($/unit)</th>
+              <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">EE Labour Rate ($/hr)</th>
+              <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">EE Unit Hrs</th>
+              <th className="px-3 py-2 text-center font-semibold whitespace-nowrap">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((s, i) => {
+              const isContractor = (s.delivery_method||"").includes("Contractor");
+              const hasGap = isContractor ? !(s.contractor_rate > 0) : !(s.ee_unit_hrs > 0);
+              const isEditing = editing === s.wbs_code;
+              const rowBg = isEditing ? "bg-blue-50 border-l-2 border-blue-500"
+                          : hasGap   ? (i%2===0?"bg-amber-50":"bg-amber-50/70")
+                          : (i%2===0 ? "bg-white" : "bg-gray-50");
+
+              if (isEditing) return (
+                <tr key={s.wbs_code} className={rowBg}>
+                  <td className="px-3 py-2 font-mono text-blue-800">{s.wbs_code}</td>
+                  <td className="px-3 py-2 text-gray-700">{s.description}</td>
+                  <td className="px-3 py-2 text-gray-500">{s.delivery_method}</td>
+                  <td className="px-3 py-2 text-gray-500">{s.resource_main}</td>
+                  <td className="px-2 py-1">
+                    <input type="number" min="0" value={editVals.contractor_rate}
+                      onChange={e=>setEditVals(p=>({...p,contractor_rate:e.target.value}))}
+                      placeholder="0"
+                      className="w-full border border-teal-400 rounded px-1.5 py-1 text-right focus:outline-none focus:ring-1 focus:ring-teal-500 bg-white"/>
+                  </td>
+                  <td className="px-2 py-1">
+                    <input type="number" min="0" value={editVals.ee_labour_rate}
+                      onChange={e=>setEditVals(p=>({...p,ee_labour_rate:e.target.value}))}
+                      placeholder="0"
+                      className="w-full border border-purple-400 rounded px-1.5 py-1 text-right focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white"/>
+                  </td>
+                  <td className="px-2 py-1">
+                    <input type="number" min="0" value={editVals.ee_unit_hrs}
+                      onChange={e=>setEditVals(p=>({...p,ee_unit_hrs:e.target.value}))}
+                      placeholder="0"
+                      className="w-full border border-indigo-400 rounded px-1.5 py-1 text-right focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"/>
+                  </td>
+                  <td className="px-2 py-1 text-center">
+                    <div className="flex gap-1 justify-center">
+                      <button onClick={()=>saveEdit(s.wbs_code)}
+                        className="bg-blue-700 hover:bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] font-semibold">Save</button>
+                      <button onClick={()=>setEditing(null)}
+                        className="border border-gray-300 text-gray-600 hover:bg-gray-50 px-2 py-0.5 rounded text-[10px]">Cancel</button>
+                    </div>
+                  </td>
+                </tr>
+              );
+
+              return (
+                <tr key={s.wbs_code}
+                  onClick={()=>startEdit(s)}
+                  className={`${rowBg} ${managerMode?"cursor-pointer hover:bg-blue-50/60":""} transition-colors`}>
+                  <td className="px-3 py-1.5 font-mono text-gray-700 whitespace-nowrap">{s.wbs_code}</td>
+                  <td className="px-3 py-1.5 text-gray-800 max-w-xs truncate" title={s.description}>{s.description}</td>
+                  <td className="px-3 py-1.5 text-gray-500 whitespace-nowrap">{s.delivery_method}</td>
+                  <td className="px-3 py-1.5 text-gray-500 whitespace-nowrap">{s.resource_main}</td>
+                  <td className={`px-3 py-1.5 text-right tabular-nums font-semibold ${s.contractor_rate>0?"text-teal-700":hasGap&&isContractor?"text-amber-500":"text-gray-300"}`}>
+                    {fmtR(s.contractor_rate) || (isContractor && hasGap ? "⚠ missing" : "—")}
+                  </td>
+                  <td className={`px-3 py-1.5 text-right tabular-nums ${s.ee_labour_rate>0?"text-purple-700":"text-gray-300"}`}>
+                    {fmtR(s.ee_labour_rate) || "—"}
+                  </td>
+                  <td className={`px-3 py-1.5 text-right tabular-nums font-semibold ${s.ee_unit_hrs>0?"text-indigo-700":!isContractor&&hasGap?"text-amber-500":"text-gray-300"}`}>
+                    {s.ee_unit_hrs > 0 ? s.ee_unit_hrs.toFixed(2)+" hrs" : (!isContractor && hasGap ? "⚠ missing" : "—")}
+                  </td>
+                  <td className="px-3 py-1.5 text-center">
+                    {hasGap
+                      ? <span className="bg-amber-100 text-amber-700 border border-amber-300 rounded px-1.5 py-0.5 text-[10px] font-semibold">GAP</span>
+                      : <span className="bg-green-100 text-green-700 border border-green-300 rounded px-1.5 py-0.5 text-[10px] font-semibold">OK</span>
+                    }
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {filtered.length === 0 && (
+          <div className="text-center text-gray-400 text-sm py-16">No items match your filters.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function WBSManager({ equipSel, setEquipSel }) {
   const {wbs:wbsCtx, rates, loading, error} = useData();
   const [tab,          setTab]         = useState("items");
@@ -2974,12 +3166,13 @@ function WBSManager({ equipSel, setEquipSel }) {
 
   const equipSelectedCount = Object.values(equipSel).filter(q=>parseFloat(q)>0).length;
   const tabs=[
-    {id:"items",     label:"📋 WBS Items",          count:wbs.length},
-    {id:"rates",     label:"💲 Resource Rates",      count:rates.length},
-    {id:"catalogue", label:"🔧 Equipment Catalogue", count:null},
-    {id:"escalation",label:"📈 Escalation Rates",    count:null},
-    {id:"scaling",   label:"📐 Comm Scaling",         count:WBS_PROFILES.length},
-    {id:"people",    label:"👥 People & Roles",       count:people.filter(p=>p.active).length},
+    {id:"items",      label:"📋 WBS Items",           count:wbs.length},
+    {id:"rates",      label:"💲 Resource Rates",       count:rates.length},
+    {id:"supplyrates",label:"🏷️ Supply Item Rates",    count:null},
+    {id:"catalogue",  label:"🔧 Equipment Catalogue",  count:null},
+    {id:"escalation", label:"📈 Escalation Rates",     count:null},
+    {id:"scaling",    label:"📐 Comm Scaling",          count:WBS_PROFILES.length},
+    {id:"people",     label:"👥 People & Roles",        count:people.filter(p=>p.active).length},
   ];
 
   return (
@@ -3164,6 +3357,11 @@ function WBSManager({ equipSel, setEquipSel }) {
       {/* Resource Rates */}
       {tab==="rates"&&(
         <RatesEditor rates={rates} managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
+      )}
+
+      {/* Supply Item Rates */}
+      {tab==="supplyrates"&&(
+        <SupplyRatesEditor managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
       )}
 
       {/* Equipment Catalogue */}
