@@ -1105,9 +1105,11 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                         </div>
                         <div>
                           <label className="text-xs text-gray-500 block mb-0.5">Contractor Rate ($/unit)</label>
-                          <input type="number" min="0" value={ln.contrRate||""} placeholder="0"
+                          <input type="number" min="0" value={ln.contrRate||""}
+                            placeholder={item.contractor_rate>0?String(Math.round(item.contractor_rate)):"0"}
                             onChange={e=>updLine(item.wbs_code,"contrRate",e.target.value)}
                             className="w-full text-xs border border-teal-300 bg-teal-50 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400"/>
+                          {item.contractor_rate>0&&<div className="text-xs text-amber-600 mt-0.5">Default: ${Math.round(item.contractor_rate).toLocaleString("en-AU")}</div>}
                         </div>
                         {hasQty && (
                           <div className="text-xs text-gray-500">
