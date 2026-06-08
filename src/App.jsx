@@ -1703,7 +1703,7 @@ function FinancialScreen({ inv, lines, isCommercial }) {
       const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery,
                          ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial);
       const isContr = (ln.delivery||item.delivery_method||"") === "Contractor Delivered";
-      if (isContr) { subCost += c.contrCost||0; subANS += (c.contrCost||0)*ANS_CONTR; }
+      if (isContr) { subCost += c.contrCost||0; subANS += (c.contrCost||0)*ANS_CON; }
       else          { eeCost  += c.eeCost||0;    eeANS  += (c.eeCost||0)*ANS_LAB; }
       matCost += c.matCost||0;
       matANS  += (c.matCost||0)*ANS_MAT;
