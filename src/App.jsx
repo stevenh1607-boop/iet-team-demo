@@ -4242,17 +4242,22 @@ function WBSItemEditor({ wbs, supply, rates, managerMode, onUnlock, loading }) {
   // Build rates lookup for resource options
   const resourceTypes = useMemo(()=> rates.map(r=>r.resource_type), [rates]);
 
-  const gapCount = useMemo(()=> displaySupply.filter(s=>{
-    const isC=(s.delivery_method||"").includes("Contractor");
-    return s.pct_of_total ? false : isC ? !(s.contractor_rate>0) : !(s.ee_unit_hrs>0);
-  }).length, [displaySupply]);
+  const gapCount = useMemo(()=> displaySupply.filter(s=>
+    !s.pct_of_total && !(
+      (s.contractor_rate > 0) || (s.ee_unit_hrs > 0) ||
+      (s.ee_labour_rate  > 0) || (s.pce_price   > 0) || (s.plant_cost > 0)
+    )
+  ).length, [displaySupply]);
 
   const filtered = useMemo(()=>{
     const q = search.toLowerCase();
     return displaySupply.filter(s=>{
       const phase = s.wbs_code.split(".")[0];
-      const isC   = (s.delivery_method||"").includes("Contractor");
-      const hasGap= s.pct_of_total ? false : isC ? !(s.contractor_rate>0) : !(s.ee_unit_hrs>0);
+      // GAP only when item has absolutely no pricing across all five cost fields
+      const hasGap = s.pct_of_total ? false : !(
+        (s.contractor_rate > 0) || (s.ee_unit_hrs > 0) ||
+        (s.ee_labour_rate  > 0) || (s.pce_price   > 0) || (s.plant_cost > 0)
+      );
       return (phaseFilter==="All" || phase===phaseFilter)
           && (scopeFilter==="All"  || (s.scope||"")===scopeFilter)
           && (!gapOnly || hasGap)
@@ -4481,7 +4486,11 @@ function WBSItemEditor({ wbs, supply, rates, managerMode, onUnlock, loading }) {
               {filtered.map((s, i) => {
                 const isC    = (s.delivery_method||"").includes("Contractor");
                 const isPct  = !!s.pct_of_total;
-                const hasGap = isPct ? false : isC ? !(s.contractor_rate>0) : !(s.ee_unit_hrs>0);
+                // GAP only when absolutely no pricing exists across all cost/rate fields
+                const hasGap = isPct ? false : !(
+                  (s.contractor_rate > 0) || (s.ee_unit_hrs > 0) ||
+                  (s.ee_labour_rate  > 0) || (s.pce_price   > 0) || (s.plant_cost > 0)
+                );
                 const isEd   = editing === s.wbs_code;
                 const rowBg  = isEd    ? "bg-blue-50"
                              : hasGap  ? (i%2===0?"bg-amber-50":"bg-amber-50/60")
@@ -4527,14 +4536,14 @@ function WBSItemEditor({ wbs, supply, rates, managerMode, onUnlock, loading }) {
                     <td className="px-2 py-1.5 text-gray-500 text-center">{s.uom}</td>
                     <td className={`px-2 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap ${
                       isPct ? "text-teal-600" : s.contractor_rate>0 ? "text-teal-700" : hasGap&&isC ? "text-amber-500" : "text-gray-300"}`}>
-                      {isPct ? `${(s.pct_of_total*100).toFixed(0)}% of L3` : (fmtR(s.contractor_rate) || (isC&&hasGap?"⚠ missing":"—"))}
+                      {isPct ? `${(s.pct_of_total*100).toFixed(0)}% of L3` : (fmtR(s.contractor_rate) || "—")}
                     </td>
                     <td className={`px-2 py-1.5 text-right tabular-nums whitespace-nowrap ${s.ee_labour_rate>0?"text-purple-700":"text-gray-300"}`}>
                       {fmtR(s.ee_labour_rate)||"—"}
                     </td>
                     <td className={`px-2 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap ${
                       s.ee_unit_hrs>0?"text-indigo-700":!isC&&!isPct&&hasGap?"text-amber-500":"text-gray-300"}`}>
-                      {fmtH(s.ee_unit_hrs)||((!isC&&!isPct&&hasGap)?"⚠ missing":"—")}
+                      {fmtH(s.ee_unit_hrs)||"—"}
                     </td>
                     <td className={`px-2 py-1.5 text-right tabular-nums whitespace-nowrap ${s.pce_price>0?"text-green-700":"text-gray-300"}`}>
                       {fmtR(s.pce_price)||"—"}
