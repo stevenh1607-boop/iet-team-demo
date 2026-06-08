@@ -709,6 +709,22 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
     if (!wbs) return;
     setResourceOvrdState(p=>({...p,[wbs]:{...p[wbs],[role]:val}}));
   };
+  // PIN lock for resource code + install hrs editing
+  const RESOURCE_PIN = "1607";
+  const [resourceUnlocked, setResourceUnlocked] = useState(false);
+  const [showResourcePin,  setShowResourcePin]  = useState(false);
+  const [resPinInput,      setResPinInput]      = useState("");
+  const [resPinError,      setResPinError]      = useState(false);
+  const resPinRef = useRef(null);
+  const tryResourceUnlock = () => {
+    if (resPinInput === RESOURCE_PIN) {
+      setResourceUnlocked(true); setShowResourcePin(false);
+      setResPinInput(""); setResPinError(false);
+    } else {
+      setResPinError(true); setResPinInput("");
+      setTimeout(()=>setResPinError(false), 2000);
+    }
+  };
   const [navSearch, setNavSearch]       = useState("");
 
   // Filter supply items for selected L4 group
@@ -829,6 +845,34 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
 
   return (
     <div className="flex flex-1 overflow-hidden">
+      {/* Resource Code PIN Modal */}
+      {showResourcePin && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={()=>{setShowResourcePin(false);setResPinInput("");}}>
+          <div className="bg-white rounded-xl shadow-xl p-6 w-72" onClick={e=>e.stopPropagation()}>
+            <div className="text-center mb-4">
+              <div className="text-3xl mb-2">🔐</div>
+              <div className="font-bold text-gray-900">Unlock Resource Codes</div>
+              <div className="text-xs text-gray-500 mt-1">Enter your manager PIN to edit resource codes and install hours</div>
+            </div>
+            <input
+              ref={resPinRef}
+              type="password" maxLength={8}
+              value={resPinInput} onChange={e=>setResPinInput(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&tryResourceUnlock()}
+              placeholder="PIN"
+              autoFocus
+              className={`w-full text-center text-2xl font-mono tracking-widest border-2 rounded-lg px-3 py-3 mb-3 focus:outline-none ${resPinError?"border-red-500 bg-red-50 animate-pulse":"border-gray-300 focus:border-blue-500"}`}
+            />
+            {resPinError && <div className="text-xs text-red-600 text-center mb-2">Incorrect PIN — try again</div>}
+            <div className="flex gap-2">
+              <button onClick={()=>{setShowResourcePin(false);setResPinInput("");}}
+                className="flex-1 text-xs border border-gray-200 text-gray-600 py-2 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={tryResourceUnlock}
+                className="flex-1 text-xs bg-blue-700 hover:bg-blue-600 text-white py-2 rounded-lg font-semibold">Unlock</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* LEFT — WBS Nav */}
       <WBSNavTree
         wbs={wbs} supply={supply}
