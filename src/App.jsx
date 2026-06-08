@@ -1835,7 +1835,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
           onClick={()=>!isLeaf && childCodes.length>0 && toggleNode(code)}
           className={`grid items-center border-b text-xs cursor-pointer hover:bg-yellow-50 ${bgColors[depth]||"bg-white"}
             ${depth<=2?"border-b-gray-300 border-b-2":"border-b-gray-100"}`}
-          style={{gridTemplateColumns: isCommercial?"1fr 80px 90px 90px":"1fr 80px 90px",paddingLeft:`${indent}px`}}>
+          style={{gridTemplateColumns: isCommercial?"1fr 80px 80px 90px 90px":"1fr 80px 80px 90px",paddingLeft:`${indent}px`}}>
           <div className={`py-1.5 pr-2 flex items-center gap-1 ${textColors[depth]||"text-gray-600"}`}>
             {!isLeaf && childCodes.length>0 && (
               <span className="text-gray-400 w-3 flex-shrink-0">{isOpen?"▾":"▸"}</span>
@@ -1845,6 +1845,10 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
             <span className={`truncate ${fontWeights[depth]||""}`}>{desc}</span>
           </div>
           <div className={`py-1.5 text-center text-purple-700 ${depth<=2?"font-bold":"font-medium"}`}>{roll.installHrs>0?fmtHrs(roll.installHrs):"—"}</div>
+          <div className="py-1.5 text-center text-teal-600">
+            {/* Comm hrs shown only at Phase 4 level via footer total */}
+            {code==="4"&&commGrandHrs>0?<span className="font-bold">{fmtHrs(commGrandHrs)}</span>:"—"}
+          </div>
           <div className={`py-1.5 text-right pr-2 text-blue-800 ${depth<=2?"font-bold":"font-medium"}`}>{fmt(roll.eeInt)}</div>
           {isCommercial && <div className={`py-1.5 text-right pr-2 text-orange-700 ${depth<=2?"font-bold":"font-medium"}`}>{fmt(roll.comm)}</div>}
         </div>
@@ -1917,9 +1921,10 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
             </div>
             {/* Column headers */}
             <div className="grid border-b bg-gray-50 text-xs font-semibold text-gray-500"
-              style={{gridTemplateColumns: isCommercial?"1fr 80px 90px 90px":"1fr 80px 90px"}}>
+              style={{gridTemplateColumns: isCommercial?"1fr 80px 80px 90px 90px":"1fr 80px 80px 90px"}}>
               <div className="px-3 py-2">WBS / Description</div>
               <div className="py-2 text-center text-purple-600">Install Hrs</div>
+              <div className="py-2 text-center text-teal-600 whitespace-nowrap">Comm Hrs<div className="text-[9px] font-normal text-gray-400">(Ph.4 derived)</div></div>
               <div className="py-2 text-right pr-2 text-blue-700">EE Internal</div>
               {isCommercial && <div className="py-2 text-right pr-2 text-orange-700">Commercial</div>}
             </div>
@@ -1927,9 +1932,10 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
             {phaseNodes.map(ph => renderWBSNode(ph, 1))}
             {/* Grand total footer */}
             <div className="grid border-t-2 border-gray-300 bg-gray-50 text-xs font-bold"
-              style={{gridTemplateColumns: isCommercial?"1fr 80px 90px 90px":"1fr 80px 90px"}}>
+              style={{gridTemplateColumns: isCommercial?"1fr 80px 80px 90px 90px":"1fr 80px 80px 90px"}}>
               <div className="px-3 py-2 text-gray-700">Total (excl. contingency)</div>
               <div className="py-2 text-center text-purple-700">{Object.entries(nodeRollup).filter(([k])=>k.split('.').length===1).reduce((a,[,v])=>a+v.installHrs,0)>0?fmtHrs(Object.entries(nodeRollup).filter(([k])=>k.split('.').length===1).reduce((a,[,v])=>a+v.installHrs,0)):"—"}</div>
+              <div className="py-2 text-center text-teal-700">{commGrandHrs>0?fmtHrs(commGrandHrs):"—"}</div>
               <div className="py-2 text-right pr-2 text-blue-900 text-sm">{fmt(grandEE)}</div>
               {isCommercial && <div className="py-2 text-right pr-2 text-orange-800 text-sm">{fmt(grandComm)}</div>}
             </div>
