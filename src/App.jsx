@@ -2052,7 +2052,522 @@ function FinancialScreen({ inv, lines, isCommercial }) {
   );
 }
 
+// ── TEMPLATE LIBRARY ─────────────────────────────────────────────
+// Pre-configured standard investment types for EE Zone Substation,
+// Subtransmission and Comms work. Each template pre-populates the
+// Investment Setup fields and seeds typical quantities into estimate lines.
+const IET_TEMPLATES = [
+  {
+    id: "tmpl_3way_132",
+    category: "Zone Substation",
+    name: "132kV 3-Way Switching Station",
+    description: "New greenfield 132kV outdoor switching station with 3 x 132kV circuit breaker bays, protection, SCADA and civil works.",
+    estClass: "Class 5",
+    type: "Commercially Funded",
+    complexity: "High",
+    icon: "⚡",
+    tags: ["132kV", "Switching Station", "Greenfield", "3-Way"],
+    inv: {
+      name: "132kV 3-Way Switching Station",
+      number: "",
+      estClass: "Class 5",
+      type: "Commercially Funded",
+      complexity: "High",
+      newTech: "No",
+      planDur: "4",
+      designDur: "9",
+      constrDur: "15",
+      designStart: "1",
+      constrStart: "6",
+      contingency: "20",
+      startMonth: "Jul",
+      startYear: "2025",
+    },
+    lines: {
+      "3.1.1.01.2.01": { qty: "1", factor: "1" },   // Site mobilisation
+      "3.1.1.14.2.02": { qty: "3", factor: "1" },   // CB Foundation 132kV x3
+      "3.1.1.14.2.05": { qty: "6", factor: "1" },   // Disconnector Foundation 132kV x6
+      "3.1.1.14.2.07": { qty: "3", factor: "1" },   // VT/CT Foundation 132kV x3
+      "3.1.1.14.2.15": { qty: "4", factor: "1" },   // Bus Support Structure Foundation 132kV
+      "3.1.1.12.1.02": { qty: "500", factor: "1" }, // Earthing conductor 95mm2
+      "3.1.3.02.1.01": { qty: "3", factor: "1" },   // 132kV Live Tank CB x3
+      "3.1.3.04.1.01": { qty: "6", factor: "1" },   // Disconnector 132kV x6
+      "3.1.3.05.1.01": { qty: "3", factor: "1" },   // CT 132kV x3
+      "3.1.3.06.1.01": { qty: "3", factor: "1" },   // VT 132kV x3
+      "3.1.3.13.1.01": { qty: "150", factor: "1" }, // Aluminium Rigid Bus
+      "3.1.3.19.1.01": { qty: "1", factor: "1" },   // Battery bank 110V
+      "3.1.3.21.1.01": { qty: "1", factor: "1" },   // Marshalling cubicle
+      "3.5.1.03.1.01": { qty: "1", factor: "1" },   // RTU cubicle
+    },
+  },
+  {
+    id: "tmpl_4way_132",
+    category: "Zone Substation",
+    name: "132kV 4-Way Switching Station",
+    description: "New greenfield 132kV outdoor switching station with 4 x 132kV circuit breaker bays, protection, SCADA and civil works.",
+    estClass: "Class 5",
+    type: "Commercially Funded",
+    complexity: "High",
+    icon: "⚡",
+    tags: ["132kV", "Switching Station", "Greenfield", "4-Way"],
+    inv: {
+      name: "132kV 4-Way Switching Station",
+      number: "",
+      estClass: "Class 5",
+      type: "Commercially Funded",
+      complexity: "High",
+      newTech: "No",
+      planDur: "4",
+      designDur: "9",
+      constrDur: "18",
+      designStart: "1",
+      constrStart: "6",
+      contingency: "20",
+      startMonth: "Jul",
+      startYear: "2025",
+    },
+    lines: {
+      "3.1.1.01.2.01": { qty: "1", factor: "1" },
+      "3.1.1.14.2.02": { qty: "4", factor: "1" },   // CB Foundation 132kV x4
+      "3.1.1.14.2.05": { qty: "8", factor: "1" },   // Disconnector Foundation 132kV x8
+      "3.1.1.14.2.07": { qty: "4", factor: "1" },
+      "3.1.1.14.2.15": { qty: "6", factor: "1" },
+      "3.1.1.12.1.02": { qty: "650", factor: "1" },
+      "3.1.3.02.1.01": { qty: "4", factor: "1" },   // 132kV CB x4
+      "3.1.3.04.1.01": { qty: "8", factor: "1" },   // Disconnector 132kV x8
+      "3.1.3.05.1.01": { qty: "4", factor: "1" },
+      "3.1.3.06.1.01": { qty: "4", factor: "1" },
+      "3.1.3.13.1.01": { qty: "200", factor: "1" },
+      "3.1.3.19.1.01": { qty: "1", factor: "1" },
+      "3.1.3.21.1.01": { qty: "2", factor: "1" },
+      "3.5.1.03.1.01": { qty: "1", factor: "1" },
+    },
+  },
+  {
+    id: "tmpl_66kv_feeder",
+    category: "Zone Substation",
+    name: "Add 66kV Feeder to Existing Substation",
+    description: "Addition of a new 66kV feeder bay to an existing zone substation, including CB, disconnectors, CT/VT, protection and SCADA modifications.",
+    estClass: "Class 5",
+    type: "Internally Funded",
+    complexity: "Medium",
+    icon: "🔌",
+    tags: ["66kV", "Feeder", "Extension", "Zone Substation"],
+    inv: {
+      name: "Add 66kV Feeder Bay",
+      number: "",
+      estClass: "Class 5",
+      type: "Internally Funded",
+      complexity: "Medium",
+      newTech: "No",
+      planDur: "3",
+      designDur: "6",
+      constrDur: "9",
+      designStart: "1",
+      constrStart: "5",
+      contingency: "15",
+      startMonth: "Jul",
+      startYear: "2025",
+    },
+    lines: {
+      "3.1.1.14.2.01": { qty: "1", factor: "1" },   // CB Foundation 33~66kV
+      "3.1.1.14.2.04": { qty: "2", factor: "1" },   // Disconnector Foundation 33~66kV x2
+      "3.1.1.12.1.02": { qty: "100", factor: "1" }, // Earthing conductor
+      "3.1.3.04.1.03": { qty: "2", factor: "1" },   // 66kV Disconnector x2
+      "3.1.3.13.1.01": { qty: "50", factor: "1" },  // Aluminium Rigid Bus
+      "3.1.3.19.1.01": { qty: "1", factor: "1" },   // Battery bank
+      "3.5.1.03.1.01": { qty: "1", factor: "1" },   // RTU cubicle
+    },
+  },
+  {
+    id: "tmpl_132kv_feeder",
+    category: "Zone Substation",
+    name: "Add 132kV Feeder to Existing Substation",
+    description: "Addition of a new 132kV feeder bay to an existing zone substation, including CB, disconnectors, CT/VT, foundations, protection and SCADA modifications.",
+    estClass: "Class 5",
+    type: "Internally Funded",
+    complexity: "Medium",
+    icon: "🔌",
+    tags: ["132kV", "Feeder", "Extension", "Zone Substation"],
+    inv: {
+      name: "Add 132kV Feeder Bay",
+      number: "",
+      estClass: "Class 5",
+      type: "Internally Funded",
+      complexity: "Medium",
+      newTech: "No",
+      planDur: "3",
+      designDur: "7",
+      constrDur: "10",
+      designStart: "1",
+      constrStart: "5",
+      contingency: "15",
+      startMonth: "Jul",
+      startYear: "2025",
+    },
+    lines: {
+      "3.1.1.14.2.02": { qty: "1", factor: "1" },
+      "3.1.1.14.2.05": { qty: "2", factor: "1" },
+      "3.1.1.14.2.07": { qty: "1", factor: "1" },
+      "3.1.1.12.1.02": { qty: "150", factor: "1" },
+      "3.1.3.02.1.01": { qty: "1", factor: "1" },   // 132kV CB
+      "3.1.3.04.1.01": { qty: "2", factor: "1" },   // 132kV Disconnector x2
+      "3.1.3.05.1.01": { qty: "1", factor: "1" },   // CT 132kV
+      "3.1.3.06.1.01": { qty: "1", factor: "1" },   // VT 132kV
+      "3.1.3.13.1.01": { qty: "60", factor: "1" },
+      "3.5.1.03.1.01": { qty: "1", factor: "1" },
+    },
+  },
+  {
+    id: "tmpl_power_transformer",
+    category: "Zone Substation",
+    name: "Replace / Install Power Transformer",
+    description: "Supply and install of a new 132/33kV or 66/11kV power transformer including bund, earthing, oil containment and SCADA integration.",
+    estClass: "Class 5",
+    type: "Internally Funded",
+    complexity: "Medium",
+    icon: "🔄",
+    tags: ["Transformer", "132kV", "66kV", "Replacement"],
+    inv: {
+      name: "Power Transformer Replacement",
+      number: "",
+      estClass: "Class 5",
+      type: "Internally Funded",
+      complexity: "Medium",
+      newTech: "No",
+      planDur: "3",
+      designDur: "6",
+      constrDur: "9",
+      designStart: "1",
+      constrStart: "5",
+      contingency: "15",
+      startMonth: "Jul",
+      startYear: "2025",
+    },
+    lines: {
+      "3.1.1.14.2.11": { qty: "1", factor: "1" },   // Transformer bund foundation ≤16MVA
+      "3.1.1.14.2.18": { qty: "1", factor: "1" },   // FI Plant bund and foundation
+      "3.1.1.12.1.16": { qty: "1", factor: "1" },   // Transformer earthing (new)
+      "3.1.3.07.1.01": { qty: "1", factor: "1" },   // Power transformer ≤8MVA
+      "3.5.1.03.1.01": { qty: "1", factor: "1" },   // RTU cubicle
+    },
+  },
+  {
+    id: "tmpl_protection_upgrade",
+    category: "Zone Substation",
+    name: "Protection & Control Upgrade",
+    description: "Upgrade of protection relays, marshalling cubicles and control wiring at an existing zone substation bay.",
+    estClass: "Class 5",
+    type: "Internally Funded",
+    complexity: "Medium",
+    icon: "🛡️",
+    tags: ["Protection", "Control", "Upgrade", "Zone Substation"],
+    inv: {
+      name: "Protection & Control Upgrade",
+      number: "",
+      estClass: "Class 5",
+      type: "Internally Funded",
+      complexity: "Medium",
+      newTech: "No",
+      planDur: "3",
+      designDur: "6",
+      constrDur: "6",
+      designStart: "1",
+      constrStart: "5",
+      contingency: "15",
+      startMonth: "Jul",
+      startYear: "2025",
+    },
+    lines: {
+      "3.1.3.20.1.01": { qty: "1", factor: "1" },   // Arc flash protection
+      "3.1.3.21.1.01": { qty: "2", factor: "1" },   // Marshalling cubicle x2
+      "3.5.1.03.1.01": { qty: "1", factor: "1" },   // RTU cubicle
+    },
+  },
+  {
+    id: "tmpl_battery_replacement",
+    category: "Zone Substation",
+    name: "DC Battery System Replacement",
+    description: "Replacement of 110V DC NiCd battery bank and charger at an existing zone substation.",
+    estClass: "Class 5",
+    type: "Internally Funded",
+    complexity: "Low",
+    icon: "🔋",
+    tags: ["Battery", "DC", "Replacement", "Zone Substation"],
+    inv: {
+      name: "DC Battery System Replacement",
+      number: "",
+      estClass: "Class 5",
+      type: "Internally Funded",
+      complexity: "Low",
+      newTech: "No",
+      planDur: "2",
+      designDur: "3",
+      constrDur: "3",
+      designStart: "1",
+      constrStart: "4",
+      contingency: "10",
+      startMonth: "Jul",
+      startYear: "2025",
+    },
+    lines: {
+      "3.1.3.19.1.01": { qty: "1", factor: "1" },   // Battery bank 110V NiCd
+    },
+  },
+  {
+    id: "tmpl_scada_upgrade",
+    category: "SCADA & Comms",
+    name: "SCADA RTU Upgrade",
+    description: "Replacement of existing SCADA RTU cubicle and associated configuration, testing and commissioning at a zone substation.",
+    estClass: "Class 5",
+    type: "Internally Funded",
+    complexity: "Low",
+    icon: "📡",
+    tags: ["SCADA", "RTU", "Upgrade"],
+    inv: {
+      name: "SCADA RTU Upgrade",
+      number: "",
+      estClass: "Class 5",
+      type: "Internally Funded",
+      complexity: "Low",
+      newTech: "No",
+      planDur: "2",
+      designDur: "4",
+      constrDur: "4",
+      designStart: "1",
+      constrStart: "4",
+      contingency: "10",
+      startMonth: "Jul",
+      startYear: "2025",
+    },
+    lines: {
+      "3.5.1.03.1.01": { qty: "1", factor: "1" },   // RTU cubicle
+      "3.5.1.02.1.01": { qty: "1", factor: "1" },   // Metering/PQM Panel
+    },
+  },
+  {
+    id: "tmpl_sm_cable",
+    category: "Subtransmission Mains",
+    name: "Subtransmission Cable — Underground",
+    description: "Installation of underground subtransmission cable route including trenching, conduit, cable and terminations.",
+    estClass: "Class 5",
+    type: "Commercially Funded",
+    complexity: "Medium",
+    icon: "🔶",
+    tags: ["Subtransmission", "Cable", "Underground"],
+    inv: {
+      name: "Subtransmission Underground Cable",
+      number: "",
+      estClass: "Class 5",
+      type: "Commercially Funded",
+      complexity: "Medium",
+      newTech: "No",
+      planDur: "3",
+      designDur: "6",
+      constrDur: "9",
+      designStart: "1",
+      constrStart: "5",
+      contingency: "20",
+      startMonth: "Jul",
+      startYear: "2025",
+    },
+    lines: {
+      "3.3.1.05.1.01": { qty: "500", factor: "1" }, // ≥66kV Cable
+      "3.3.1.06.1.01": { qty: "2", factor: "1" },   // 132kV cable terminations
+      "3.1.1.16.2.01": { qty: "200", factor: "1" }, // 50mm HD conduit
+    },
+  },
+];
+
+const CATEGORY_COLORS = {
+  "Zone Substation":      "bg-blue-100 text-blue-700 border border-blue-200",
+  "Subtransmission Mains":"bg-orange-100 text-orange-700 border border-orange-200",
+  "SCADA & Comms":        "bg-purple-100 text-purple-700 border border-purple-200",
+  "Distribution":         "bg-green-100 text-green-700 border border-green-200",
+};
+const COMPLEXITY_DOT = { "High":"bg-red-400", "Medium":"bg-yellow-400", "Low":"bg-green-400" };
+
+function TemplateLibrary({ onLoad, saved, setSaved }) {
+  const [search,      setSearch]      = useState("");
+  const [catFilter,   setCatFilter]   = useState("All");
+  const [selected,    setSelected]    = useState(null);
+  const [customName,  setCustomName]  = useState("");
+  const [customNum,   setCustomNum]   = useState("");
+  const [customClass, setCustomClass] = useState("");
+  const [customType,  setCustomType]  = useState("");
+
+  const categories = ["All", ...Array.from(new Set(IET_TEMPLATES.map(t=>t.category)))];
+
+  const filtered = IET_TEMPLATES.filter(t => {
+    const ms = !search ||
+      t.name.toLowerCase().includes(search.toLowerCase()) ||
+      t.description.toLowerCase().includes(search.toLowerCase()) ||
+      t.tags.some(tag=>tag.toLowerCase().includes(search.toLowerCase()));
+    const cs = catFilter==="All" || t.category===catFilter;
+    return ms && cs;
+  });
+
+  const openTemplate = (tmpl) => {
+    const inv = {
+      ...tmpl.inv,
+      name:     customName  || tmpl.inv.name,
+      number:   customNum   || "",
+      estClass: customClass || tmpl.inv.estClass,
+      type:     customType  || tmpl.inv.type,
+    };
+    const saveObj = {
+      id:         `inv_${Date.now()}`,
+      inv,
+      lines:      tmpl.lines,
+      status:     "Draft",
+      totalEE:    0,
+      totalComm:  0,
+      linesCount: Object.keys(tmpl.lines).length,
+      totalSupplyLines: Object.keys(tmpl.lines).length,
+      savedAt:    new Date().toLocaleString("en-AU",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}),
+      savedAtISO: new Date().toISOString(),
+      _fromTemplate: tmpl.id,
+    };
+    onLoad(saveObj);
+  };
+
+  return (
+    <div className="flex flex-1 overflow-hidden">
+      {/* Left — template list */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="bg-white border-b px-4 py-2 flex items-center gap-3 flex-shrink-0">
+          <input value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Search templates…"
+            className="flex-1 border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+          <div className="flex border border-gray-200 rounded overflow-hidden">
+            {categories.map(c=>(
+              <button key={c} onClick={()=>setCatFilter(c)}
+                className={`text-xs px-2.5 py-1 transition-colors ${catFilter===c?"bg-blue-700 text-white":"text-gray-600 hover:bg-gray-50"}`}>{c}</button>
+            ))}
+          </div>
+          <span className="text-xs text-gray-400">{filtered.length} templates</span>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 grid grid-cols-1 gap-3">
+          {filtered.map(tmpl=>(
+            <div key={tmpl.id}
+              onClick={()=>{ setSelected(tmpl); setCustomName(tmpl.inv.name); setCustomNum(""); setCustomClass(tmpl.inv.estClass); setCustomType(tmpl.inv.type); }}
+              className={`bg-white rounded-lg border-2 p-4 cursor-pointer transition-all ${selected?.id===tmpl.id?"border-blue-500 shadow-md":"border-gray-200 hover:border-blue-300 hover:shadow-sm"}`}>
+              <div className="flex items-start gap-3">
+                <span className="text-2xl flex-shrink-0">{tmpl.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className="font-semibold text-gray-900 text-sm">{tmpl.name}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${CATEGORY_COLORS[tmpl.category]||"bg-gray-100 text-gray-500"}`}>{tmpl.category}</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${CLASS_COLOR[tmpl.estClass]||"bg-gray-100 text-gray-500"}`}>{tmpl.inv.estClass}</span>
+                    <span className="flex items-center gap-1 text-[10px] text-gray-500">
+                      <span className={`w-1.5 h-1.5 rounded-full ${COMPLEXITY_DOT[tmpl.complexity]||"bg-gray-300"}`}/>
+                      {tmpl.complexity} complexity
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 leading-relaxed">{tmpl.description}</p>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {tmpl.tags.map(tag=>(
+                      <span key={tag} className="text-[10px] bg-gray-100 text-gray-500 rounded px-1.5 py-0.5">{tag}</span>
+                    ))}
+                  </div>
+                  <div className="text-[10px] text-gray-400 mt-2">
+                    {Object.keys(tmpl.lines).length} pre-populated scope lines · {tmpl.inv.planDur}m plan · {tmpl.inv.designDur}m design · {tmpl.inv.constrDur}m construction
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Right — detail + customise panel */}
+      {selected && (
+        <div className="w-80 bg-white border-l flex flex-col overflow-hidden flex-shrink-0">
+          <div className="bg-[#1e3a5f] text-white px-4 py-3 flex items-start justify-between flex-shrink-0">
+            <div>
+              <div className="font-bold text-sm leading-tight">{selected.name}</div>
+              <div className="text-blue-300 text-xs mt-0.5">{selected.category}</div>
+            </div>
+            <button onClick={()=>setSelected(null)} className="text-blue-400 hover:text-white text-sm ml-2">✕</button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div>
+              <div className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">Customise Before Opening</div>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-0.5">Investment Name</label>
+                  <input value={customName} onChange={e=>setCustomName(e.target.value)}
+                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-0.5">Investment Number</label>
+                  <input value={customNum} onChange={e=>setCustomNum(e.target.value)}
+                    placeholder="e.g. 10012345"
+                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-0.5">Estimate Class</label>
+                    <select value={customClass} onChange={e=>setCustomClass(e.target.value)}
+                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none">
+                      {["Class 5","Class 4","Class 3","Class 2","Class 1"].map(c=><option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-0.5">Funding Type</label>
+                    <select value={customType} onChange={e=>setCustomType(e.target.value)}
+                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none">
+                      <option>Commercially Funded</option>
+                      <option>Internally Funded</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">Pre-populated Scope</div>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {Object.entries(selected.lines).map(([wbs, ln])=>(
+                  <div key={wbs} className="flex items-center justify-between text-xs py-1 border-b border-gray-50">
+                    <span className="font-mono text-gray-500 text-[10px]">{wbs}</span>
+                    <span className="text-gray-700 font-semibold">Qty: {ln.qty}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[10px] text-gray-400 mt-2">All quantities are indicative and should be reviewed before estimating.</div>
+            </div>
+
+            <div>
+              <div className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">Default Timeline</div>
+              <div className="grid grid-cols-3 gap-1 text-center">
+                {[["Planning",selected.inv.planDur+"m"],["Design",selected.inv.designDur+"m"],["Construction",selected.inv.constrDur+"m"]].map(([label,val])=>(
+                  <div key={label} className="bg-gray-50 rounded p-2">
+                    <div className="text-[10px] text-gray-400">{label}</div>
+                    <div className="text-sm font-bold text-gray-700">{val}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[10px] text-gray-400 mt-1 text-center">Contingency: {selected.inv.contingency}%</div>
+            </div>
+          </div>
+
+          <div className="border-t p-3 flex-shrink-0">
+            <button onClick={()=>openTemplate(selected)}
+              className="w-full bg-blue-700 hover:bg-blue-600 text-white text-sm py-2.5 rounded-lg font-bold flex items-center justify-center gap-2">
+              {selected.icon} Open Template as New Estimate
+            </button>
+            <div className="text-[10px] text-gray-400 text-center mt-1.5">Opens in Estimation Tool · Save when ready to add to Portfolio</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
+  const [hubTab,      setHubTab]      = useState("portfolio");
   const [saved,       setSaved]       = useState([]);
   const [search,      setSearch]      = useState("");
   const [statusFilter,setStatusFilter]= useState("All");
@@ -2288,26 +2803,44 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
   );
 
   return (
-    <div className="flex flex-1 overflow-hidden bg-gray-50">
+    <div className="flex flex-col flex-1 overflow-hidden bg-gray-50">
 
-      {/* LEFT — filters + list */}
+      {/* Hub Tab Bar */}
+      <div className="bg-white border-b flex items-center px-4 gap-1 flex-shrink-0">
+        {[
+          {id:"portfolio", label:"📋 Portfolio"},
+          {id:"templates", label:"🏗️ Template Library"},
+        ].map(t=>(
+          <button key={t.id} onClick={()=>setHubTab(t.id)}
+            className={`text-xs px-4 py-2.5 font-semibold border-b-2 transition-colors ${hubTab===t.id?"border-blue-700 text-blue-700":"border-transparent text-gray-500 hover:text-gray-700"}`}>
+            {t.label}
+          </button>
+        ))}
+        <div className="flex-1"/>
+        <button onClick={()=>setShowImport(true)}
+          className="border border-gray-300 text-gray-600 hover:bg-gray-50 text-xs px-3 py-1.5 rounded font-semibold flex items-center gap-1.5 my-1.5">
+          📥 Import Estimate
+        </button>
+        <button onClick={onNew}
+          className="bg-orange-600 hover:bg-orange-500 text-white text-xs px-4 py-1.5 rounded font-bold flex items-center gap-1.5 shadow my-1.5 ml-2">
+          ＋ New Estimate
+        </button>
+      </div>
+
+      {/* Template Library tab */}
+      {hubTab==="templates" && <TemplateLibrary onLoad={onLoad} saved={saved} setSaved={setSaved}/>}
+
+      {/* Portfolio tab */}
+      {hubTab==="portfolio" && <div className="flex flex-1 overflow-hidden">
       <div className="flex-1 flex flex-col overflow-hidden">
 
         {/* Header bar */}
         <div className="bg-white border-b px-4 py-3 flex items-center gap-3 flex-shrink-0">
           <div>
-            <div className="text-base font-bold text-gray-900">Investment Hub</div>
+            <div className="text-base font-bold text-gray-900">Investment Portfolio</div>
             <div className="text-xs text-gray-400">{filtered.length} of {saved.length} investments · Portfolio: {fmt(portTotals.comm)} commercial · {fmt(portTotals.ee)} EE internal</div>
           </div>
           <div className="flex-1"/>
-          <button onClick={()=>setShowImport(true)}
-            className="border border-gray-300 text-gray-600 hover:bg-gray-50 text-xs px-3 py-2 rounded font-semibold flex items-center gap-1.5">
-            📥 Import Estimate
-          </button>
-          <button onClick={onNew}
-            className="bg-orange-600 hover:bg-orange-500 text-white text-xs px-4 py-2 rounded font-bold flex items-center gap-1.5 shadow">
-            ＋ New Estimate
-          </button>
           <input value={search} onChange={e=>setSearch(e.target.value)}
             placeholder="Search name, number, estimator…"
             className="border border-gray-300 rounded px-2 py-1.5 text-xs w-64 focus:outline-none focus:ring-1 focus:ring-blue-400"/>
@@ -2553,6 +3086,8 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
           </div>
         </div>
       )}
+      </div>}{/* end portfolio tab */}
+
       {/* ── CLONE / PROMOTE MODAL ── */}
       {showCloneModal && cloneSource && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={()=>setShowCloneModal(false)}>
