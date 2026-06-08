@@ -1114,7 +1114,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
             <div className="bg-teal-800 text-white px-4 py-2 flex items-center justify-between flex-shrink-0">
               <div>
                 <div className="font-bold text-sm">Phase 4 — Commissioning</div>
-                <div className="text-xs opacity-75">All items shown · Qty auto-derived from supply · Scale factor applied · Override hrs if needed</div>
+                <div className="text-xs opacity-75">All items shown · Qty auto-derived from supply (DIRECT items: enter qty manually) · Scale applied · Override hrs if needed</div>
               </div>
               <div className="text-right text-xs">
                 <div className="font-bold">{fmtHrs(commGrandHrs)} total hrs</div>
@@ -1146,42 +1146,59 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                       {hasActive && <span className="font-mono font-bold">{fmtHrs(group.totalHrs)}</span>}
                     </div>
                     {group.items.map(item => {
-                      const ovrdKey = `comm_ovrd_${item.wbs}`;
-                      const ovrd    = lines[ovrdKey]?.qty ?? "";
-                      const setOvrd = val => setLines(p=>({...p,[ovrdKey]:{qty:val,_commOvrd:true}}));
-                      const isOvrd  = ovrd !== "" && ovrd !== undefined;
+                      const ovrdKey    = `comm_ovrd_${item.wbs}`;
+                      const directKey  = `comm_direct_${item.wbs}`;
+                      const ovrd       = lines[ovrdKey]?.qty ?? "";
+                      const directQtyVal = lines[directKey]?.qty ?? "";
+                      const setOvrd    = val => setLines(p=>({...p,[ovrdKey]:{qty:val,_commOvrd:true}}));
+                      const setDirect  = val => setLines(p=>({...p,[directKey]:{qty:val,_commOvrd:true}}));
+                      const isOvrd     = ovrd !== "" && ovrd !== undefined;
                       const effectiveHrs = isOvrd ? (parseFloat(ovrd)||0) : item.scaledHrs;
-                      const cost    = effectiveHrs * (item.ee_labour_rate||139.26);
-                      const hasQty  = item.derivedQty > 0;
+                      const cost       = effectiveHrs * (item.ee_labour_rate||139.26);
+                      const hasQty     = item.derivedQty > 0;
                       return (
                         <div key={item.wbs}
                           className={`grid items-center px-3 py-1.5 border-b text-xs
-                            ${hasQty?"bg-teal-50":"bg-white hover:bg-gray-50"}
+                            ${hasQty||directQtyVal?"bg-teal-50":"bg-white hover:bg-gray-50"}
+                            ${item.isDirectEntry?"border-l-4 border-l-teal-400":""}
                             ${isOvrd?"border-l-4 border-l-orange-400":""}`}
                           style={{gridTemplateColumns:"1fr 52px 64px 52px 76px 76px 86px 64px"}}>
                           <div className="min-w-0 pr-1">
-                            <div className={`truncate font-medium ${hasQty?"text-teal-900":"text-gray-500"}`}>{item.description}</div>
+                            <div className={`truncate font-medium ${hasQty||directQtyVal?"text-teal-900":"text-gray-500"}`}>
+                              {item.description}
+                              {item.isDirectEntry && <span className="ml-1.5 text-[9px] bg-teal-100 text-teal-700 border border-teal-200 rounded px-1 font-semibold">DIRECT</span>}
+                            </div>
                             <div className="font-mono text-gray-400 text-xs">{item.wbs}{isOvrd&&<span className="ml-1 text-orange-500">⚡ override</span>}</div>
                           </div>
                           <div className="text-center text-gray-500">{item.hrs_per_unit||0}</div>
-                          <div className={`text-center font-bold ${hasQty?"text-orange-700":"text-gray-300"}`}>
-                            {hasQty ? item.derivedQty.toLocaleString('en-AU',{maximumFractionDigits:1}) : "—"}
+                          <div className="text-center font-bold">
+                            {item.isDirectEntry ? (
+                              <input type="number" min="0" step="1" value={directQtyVal}
+                                onChange={e=>setDirect(e.target.value)}
+                                placeholder="0"
+                                title="Enter quantity directly — hours = qty × hrs/unit"
+                                className="w-14 text-center border-2 border-teal-400 rounded py-0.5 text-xs font-bold bg-teal-50 text-teal-800 focus:outline-none focus:ring-1 focus:ring-teal-500"/>
+                            ) : (
+                              <span className={hasQty?"text-orange-700":"text-gray-300"}>
+                                {hasQty ? item.derivedQty.toLocaleString("en-AU",{maximumFractionDigits:1}) : "—"}
+                              </span>
+                            )}
                           </div>
                           <div className={`text-center font-bold ${hasQty&&item.scale<1?"text-blue-700":hasQty?"text-gray-400":"text-gray-200"}`}>
                             {fmtPct(item.scale)}
                           </div>
-                          <div className={`text-center font-bold ${hasQty?"text-teal-700":"text-gray-300"}`}>
-                            {hasQty ? fmtHrs(item.scaledHrs) : "—"}
+                          <div className={`text-center font-bold ${hasQty||directQtyVal?"text-teal-700":"text-gray-300"}`}>
+                            {(hasQty||directQtyVal) ? fmtHrs(item.scaledHrs) : "—"}
                           </div>
                           <div className="flex justify-center">
                             <input type="number" min="0" step="0.5" value={ovrd}
                               onChange={e=>setOvrd(e.target.value)}
-                              placeholder={hasQty?item.scaledHrs.toFixed(1):""}
+                              placeholder={(hasQty||directQtyVal)?item.scaledHrs.toFixed(1):""}
                               className={`w-16 text-center border rounded py-0.5 text-xs font-bold focus:outline-none focus:ring-1
                                 ${isOvrd?"border-orange-400 bg-orange-50 text-orange-800":"border-gray-200 text-gray-400"}`}/>
                           </div>
-                          <div className={`text-right font-bold ${hasQty?"text-blue-800":"text-gray-300"}`}>
-                            {hasQty ? fmt(cost) : "—"}
+                          <div className={`text-right font-bold ${hasQty||directQtyVal?"text-blue-800":"text-gray-300"}`}>
+                            {(hasQty||directQtyVal) ? fmt(cost) : "—"}
                           </div>
                           <div className="text-center">
                             {item.profile_id ? (
