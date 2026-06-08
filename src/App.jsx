@@ -4208,8 +4208,381 @@ function SupplyRatesEditor({ managerMode, onUnlock }) {
   );
 }
 
+// ══════════════════════════════════════════════════════════════════
+// WBS ITEM EDITOR — merged WBS Items + Supply Rates in one screen
+// Columns: WBS Code | Description | Scope | Delivery | Resource (main)
+//          Install Resource | Comm Resource | Resource Options
+//          Contractor Rate | EE Labour Rate | EE Unit Hrs | Materials Cost
+//          Plant Cost | UOM | Install WBS | Commission WBS | Status/Gap
+// Manager Mode (PIN-locked) enables inline editing of every field.
+// ══════════════════════════════════════════════════════════════════
+function WBSItemEditor({ wbs, supply, rates, managerMode, onUnlock, loading }) {
+  const [search,      setSearch]      = useState("");
+  const [phaseFilter, setPhaseFilter] = useState("All");
+  const [scopeFilter, setScopeFilter] = useState("All");
+  const [gapOnly,     setGapOnly]     = useState(false);
+  const [showAdd,     setShowAdd]     = useState(false);
+  const [editing,     setEditing]     = useState(null);
+  const [editVals,    setEditVals]    = useState({});
+  const [overrides,   setOverrides]   = useState({});
+  const [deleteCode,  setDeleteCode]  = useState(null);
+  const [deleteStage, setDeleteStage] = useState(0);
+
+  // New WBS item form state
+  const [newItem, setNewItem] = useState({
+    wbs_code:"", description:"", scope:"Supply", delivery_method:"Contractor Delivered",
+    resource_main:"Contractor - Electrical", resource_install:"", resource_comm:"",
+    resource_options:"", uom:"each",
+    contractor_rate:"", ee_labour_rate:"", ee_unit_hrs:"",
+    pce_price:"", plant_cost:"", install_wbs:"", commission_wbs:"", comments:""
+  });
+  const [localSupply, setLocalSupply] = useState(null);
+  const displaySupply = (localSupply || supply).map(s => ({...s, ...(overrides[s.wbs_code]||{})}));
+
+  // Build rates lookup for resource options
+  const resourceTypes = useMemo(()=> rates.map(r=>r.resource_type), [rates]);
+
+  const gapCount = useMemo(()=> displaySupply.filter(s=>{
+    const isC=(s.delivery_method||"").includes("Contractor");
+    return s.pct_of_total ? false : isC ? !(s.contractor_rate>0) : !(s.ee_unit_hrs>0);
+  }).length, [displaySupply]);
+
+  const filtered = useMemo(()=>{
+    const q = search.toLowerCase();
+    return displaySupply.filter(s=>{
+      const phase = s.wbs_code.split(".")[0];
+      const isC   = (s.delivery_method||"").includes("Contractor");
+      const hasGap= s.pct_of_total ? false : isC ? !(s.contractor_rate>0) : !(s.ee_unit_hrs>0);
+      return (phaseFilter==="All" || phase===phaseFilter)
+          && (scopeFilter==="All"  || (s.scope||"")===scopeFilter)
+          && (!gapOnly || hasGap)
+          && (!q || s.wbs_code.toLowerCase().includes(q) || (s.description||"").toLowerCase().includes(q)
+               || (s.resource_main||"").toLowerCase().includes(q));
+    });
+  }, [displaySupply, search, phaseFilter, scopeFilter, gapOnly]);
+
+  const startEdit = (s) => {
+    if (!managerMode) return;
+    setEditing(s.wbs_code);
+    setEditVals({
+      description:       s.description       || "",
+      scope:             s.scope             || "Supply",
+      delivery_method:   s.delivery_method   || "Contractor Delivered",
+      resource_main:     s.resource_main     || "",
+      resource_install:  s.resource_install  || "",
+      resource_comm:     s.resource_comm     || "",
+      resource_options:  s.resource_options  || "",
+      uom:               s.uom               || "each",
+      contractor_rate:   s.contractor_rate   != null ? s.contractor_rate : "",
+      ee_labour_rate:    s.ee_labour_rate    != null ? s.ee_labour_rate  : "",
+      ee_unit_hrs:       s.ee_unit_hrs       != null ? s.ee_unit_hrs     : "",
+      pce_price:         s.pce_price         != null ? s.pce_price       : "",
+      plant_cost:        s.plant_cost        != null ? s.plant_cost      : "",
+      install_wbs:       s.install_wbs       || "",
+      commission_wbs:    s.commission_wbs    || "",
+      comments:          s.comments          || "",
+    });
+  };
+
+  const saveEdit = (wbs_code) => {
+    const toNum = v => v !== "" && v != null ? parseFloat(v) : null;
+    setOverrides(p=>({...p, [wbs_code]: {
+      description:      editVals.description,
+      scope:            editVals.scope,
+      delivery_method:  editVals.delivery_method,
+      resource_main:    editVals.resource_main,
+      resource_install: editVals.resource_install,
+      resource_comm:    editVals.resource_comm,
+      resource_options: editVals.resource_options,
+      uom:              editVals.uom,
+      contractor_rate:  toNum(editVals.contractor_rate),
+      ee_labour_rate:   toNum(editVals.ee_labour_rate),
+      ee_unit_hrs:      toNum(editVals.ee_unit_hrs),
+      pce_price:        toNum(editVals.pce_price),
+      plant_cost:       toNum(editVals.plant_cost),
+      install_wbs:      editVals.install_wbs,
+      commission_wbs:   editVals.commission_wbs,
+      comments:         editVals.comments,
+    }}));
+    setEditing(null);
+  };
+
+  const addItem = () => {
+    if (!newItem.wbs_code.trim() || !newItem.description.trim()) return;
+    const toNum = v => v !== "" && v != null ? parseFloat(v) : null;
+    const entry = {
+      wbs_code:         newItem.wbs_code.trim(),
+      l4_group:         newItem.wbs_code.trim().split(".").slice(0,4).join("."),
+      description:      newItem.description.trim(),
+      scope:            newItem.scope,
+      delivery_method:  newItem.delivery_method,
+      resource_main:    newItem.resource_main,
+      resource_install: newItem.resource_install,
+      resource_comm:    newItem.resource_comm,
+      resource_options: newItem.resource_options,
+      uom:              newItem.uom,
+      contractor_rate:  toNum(newItem.contractor_rate),
+      ee_labour_rate:   toNum(newItem.ee_labour_rate),
+      ee_unit_hrs:      toNum(newItem.ee_unit_hrs),
+      pce_price:        toNum(newItem.pce_price),
+      plant_cost:       toNum(newItem.plant_cost),
+      install_wbs:      newItem.install_wbs,
+      commission_wbs:   newItem.commission_wbs,
+      comments:         newItem.comments,
+    };
+    setLocalSupply(p => [...(p || supply), entry]);
+    setNewItem({wbs_code:"",description:"",scope:"Supply",delivery_method:"Contractor Delivered",
+      resource_main:"Contractor - Electrical",resource_install:"",resource_comm:"",
+      resource_options:"",uom:"each",contractor_rate:"",ee_labour_rate:"",ee_unit_hrs:"",
+      pce_price:"",plant_cost:"",install_wbs:"",commission_wbs:"",comments:""});
+    setShowAdd(false);
+  };
+
+  const fmtR = v => v > 0 ? `$${parseFloat(v).toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2})}` : "";
+  const fmtH = v => v > 0 ? `${parseFloat(v).toFixed(2)} hrs` : "";
+
+  const DELIVERY_OPTIONS = ["Contractor Delivered","EE Delivered","Contractor or EE Delivered"];
+  const SCOPE_OPTIONS    = ["Supply","Install","Commission","Supply & Install","Supply, Install & Commission","Demolition / Removal","Administration","Other"];
+  const UOM_OPTIONS      = ["each","m","m2","m3","kg","km","day","lot","set","hr"];
+
+  const INP = "w-full border rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white";
+  const SEL = "w-full border rounded px-1 py-0.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400";
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+
+      {/* ── Toolbar ── */}
+      <div className="bg-white border-b px-3 py-2 flex items-center gap-2 flex-shrink-0 flex-wrap">
+        <input value={search} onChange={e=>setSearch(e.target.value)}
+          placeholder="Search code, description, resource…"
+          className="border border-gray-200 rounded px-2 py-1.5 text-xs w-52 focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+        <select value={phaseFilter} onChange={e=>setPhaseFilter(e.target.value)}
+          className="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white focus:outline-none">
+          {["All","1","2","3","4","5"].map(p=>(
+            <option key={p} value={p}>{p==="All"?"All Phases":`Phase ${p}`}</option>
+          ))}
+        </select>
+        <select value={scopeFilter} onChange={e=>setScopeFilter(e.target.value)}
+          className="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white focus:outline-none">
+          {["All","Supply","Install","Commission","Supply & Install"].map(s=>(
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+        <label className="flex items-center gap-1 text-xs text-amber-700 cursor-pointer select-none">
+          <input type="checkbox" checked={gapOnly} onChange={e=>setGapOnly(e.target.checked)} className="accent-amber-500"/>
+          <span className="font-semibold">Gaps only</span>
+          <span className="bg-amber-100 text-amber-700 border border-amber-300 rounded px-1.5 py-0.5 font-bold text-[10px]">{gapCount}</span>
+        </label>
+        <span className="text-xs text-gray-400">{filtered.length.toLocaleString()} items</span>
+        <div className="flex-1"/>
+        {managerMode ? (
+          <>
+            <button onClick={()=>setShowAdd(s=>!s)}
+              className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded font-semibold">
+              {showAdd?"✕ Cancel":"+ Add WBS Item"}
+            </button>
+            <button onClick={()=>{}} className="text-xs bg-orange-100 border border-orange-300 text-orange-700 px-3 py-1.5 rounded font-semibold flex items-center gap-1.5">
+              🔓 Manager Mode
+            </button>
+          </>
+        ) : (
+          <button onClick={onUnlock} className="text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 px-3 py-1.5 rounded font-medium flex items-center gap-1.5">
+            🔒 Manager Mode
+          </button>
+        )}
+      </div>
+
+      {/* ── Gap banner ── */}
+      {gapCount > 0 && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-1.5 text-xs text-amber-800 flex items-center gap-2 flex-shrink-0">
+          <span>⚠️</span>
+          <span><b>{gapCount} items</b> have missing rates (known data gaps from source workbook). Use Manager Mode to fill them — click any row to edit all fields.</span>
+        </div>
+      )}
+
+      {/* ── Add New WBS Item form ── */}
+      {managerMode && showAdd && (
+        <div className="bg-green-50 border-b border-green-200 px-4 py-3 flex-shrink-0 overflow-x-auto">
+          <div className="text-xs font-bold text-green-800 mb-2 uppercase tracking-wide flex items-center gap-2">
+            <span>➕ Add New WBS Item</span>
+            <span className="text-[10px] text-green-600 font-normal normal-case">Fill in the fields below — all rate fields are optional and can be updated later</span>
+          </div>
+          <div className="grid gap-2" style={{gridTemplateColumns:"repeat(18,minmax(80px,1fr))"}}>
+            {[
+              {label:"WBS Code *",        key:"wbs_code",        type:"text",  span:2, placeholder:"3.1.3.04.1.10", mono:true},
+              {label:"Description *",     key:"description",     type:"text",  span:4, placeholder:"e.g. 132kV Circuit Breaker"},
+              {label:"Scope",             key:"scope",           type:"sel",   span:2, opts:SCOPE_OPTIONS},
+              {label:"Delivery",          key:"delivery_method", type:"sel",   span:2, opts:DELIVERY_OPTIONS},
+              {label:"Main Resource",     key:"resource_main",   type:"sel",   span:2, opts:["Contractor - Civil","Contractor - Electrical","Contractor - Building","Contractor","ZS Electrical Technician","Substation Designer","Network Development Officer","Work Away From Home","Supplier","N.A.",...resourceTypes]},
+              {label:"UOM",              key:"uom",             type:"sel",   span:1, opts:UOM_OPTIONS},
+              {label:"Contractor Rate $", key:"contractor_rate", type:"num",   span:1, placeholder:"0"},
+              {label:"EE Labour Rate $",  key:"ee_labour_rate",  type:"num",   span:1, placeholder:"139.26"},
+              {label:"EE Unit Hrs",       key:"ee_unit_hrs",     type:"num",   span:1, placeholder:"0"},
+              {label:"Materials $ (PCE)", key:"pce_price",       type:"num",   span:1, placeholder:"0"},
+              {label:"Plant Cost $",      key:"plant_cost",      type:"num",   span:1, placeholder:"0"},
+              {label:"Install WBS",       key:"install_wbs",     type:"text",  span:2, placeholder:"3.1.3.04.4.10", mono:true},
+              {label:"Comm WBS",          key:"commission_wbs",  type:"text",  span:2, placeholder:"4.1.1.xx.x.xx", mono:true},
+            ].map(({label,key,type,span,placeholder,opts,mono})=>(
+              <div key={key} style={{gridColumn:`span ${span}`}}>
+                <label className="text-[10px] text-gray-500 block mb-0.5 font-medium">{label}</label>
+                {type==="sel" ? (
+                  <select value={newItem[key]} onChange={e=>setNewItem(p=>({...p,[key]:e.target.value}))} className={SEL}>
+                    {(opts||[]).filter((v,i,a)=>a.indexOf(v)===i).map(o=><option key={o}>{o}</option>)}
+                  </select>
+                ) : (
+                  <input type={type==="num"?"number":"text"} min="0"
+                    value={newItem[key]} placeholder={placeholder}
+                    onChange={e=>setNewItem(p=>({...p,[key]:e.target.value}))}
+                    className={`${INP} ${mono?"font-mono":""}`}/>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex gap-2 items-center">
+            <button onClick={addItem}
+              disabled={!newItem.wbs_code.trim()||!newItem.description.trim()}
+              className="text-xs bg-green-700 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-1.5 rounded font-bold">
+              ✓ Add Item to WBS
+            </button>
+            <button onClick={()=>setShowAdd(false)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+            <span className="text-[10px] text-gray-400 ml-2">Install Resource and Commission Resource are set per-estimate in the Estimation Tool</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Main table ── */}
+      <div className="flex-1 overflow-auto">
+        {loading ? (
+          <div className="flex items-center justify-center h-full text-gray-400">
+            <div className="text-center"><div className="text-2xl animate-spin mb-2">⟳</div><div className="text-sm">Loading…</div></div>
+          </div>
+        ) : (
+          <table className="text-xs border-collapse" style={{minWidth:"1800px",width:"100%"}}>
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-[#1e3a5f] text-white">
+                <th className="px-2 py-2 text-left font-semibold whitespace-nowrap w-32">WBS Code</th>
+                <th className="px-2 py-2 text-left font-semibold min-w-[220px]">Description</th>
+                <th className="px-2 py-2 text-left font-semibold whitespace-nowrap w-28">Scope</th>
+                <th className="px-2 py-2 text-left font-semibold whitespace-nowrap w-36">Delivery</th>
+                <th className="px-2 py-2 text-left font-semibold whitespace-nowrap w-44">Main Resource</th>
+                <th className="px-2 py-2 text-left font-semibold whitespace-nowrap w-16">UOM</th>
+                <th className="px-2 py-2 text-right font-semibold whitespace-nowrap w-28">Contractor Rate ($)</th>
+                <th className="px-2 py-2 text-right font-semibold whitespace-nowrap w-28">EE Labour Rate ($/hr)</th>
+                <th className="px-2 py-2 text-right font-semibold whitespace-nowrap w-24">EE Unit Hrs</th>
+                <th className="px-2 py-2 text-right font-semibold whitespace-nowrap w-28">Materials $ (PCE)</th>
+                <th className="px-2 py-2 text-right font-semibold whitespace-nowrap w-24">Plant Cost ($)</th>
+                <th className="px-2 py-2 text-left font-semibold whitespace-nowrap w-32">Install WBS</th>
+                <th className="px-2 py-2 text-left font-semibold whitespace-nowrap w-32">Comm WBS</th>
+                <th className="px-2 py-2 text-center font-semibold whitespace-nowrap w-16">Status</th>
+                {managerMode && <th className="px-2 py-2 w-16"/>}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((s, i) => {
+                const isC    = (s.delivery_method||"").includes("Contractor");
+                const isPct  = !!s.pct_of_total;
+                const hasGap = isPct ? false : isC ? !(s.contractor_rate>0) : !(s.ee_unit_hrs>0);
+                const isEd   = editing === s.wbs_code;
+                const rowBg  = isEd    ? "bg-blue-50"
+                             : hasGap  ? (i%2===0?"bg-amber-50":"bg-amber-50/60")
+                             : i%2===0 ? "bg-white" : "bg-gray-50";
+
+                if (isEd) return (
+                  <tr key={s.wbs_code} className="bg-blue-50 border-y-2 border-blue-400">
+                    <td className="px-2 py-1.5 font-mono text-blue-800 whitespace-nowrap text-[10px]">{s.wbs_code}</td>
+                    <td className="px-1 py-1"><input value={editVals.description} onChange={e=>setEditVals(p=>({...p,description:e.target.value}))} className={INP}/></td>
+                    <td className="px-1 py-1"><select value={editVals.scope} onChange={e=>setEditVals(p=>({...p,scope:e.target.value}))} className={SEL}>{SCOPE_OPTIONS.map(o=><option key={o}>{o}</option>)}</select></td>
+                    <td className="px-1 py-1"><select value={editVals.delivery_method} onChange={e=>setEditVals(p=>({...p,delivery_method:e.target.value}))} className={SEL}>{DELIVERY_OPTIONS.map(o=><option key={o}>{o}</option>)}</select></td>
+                    <td className="px-1 py-1"><select value={editVals.resource_main} onChange={e=>setEditVals(p=>({...p,resource_main:e.target.value}))} className={SEL}>{["Contractor - Civil","Contractor - Electrical","Contractor - Building","Contractor","ZS Electrical Technician","Substation Designer","Network Development Officer","Work Away From Home","Supplier","N.A.",...resourceTypes].filter((v,i,a)=>a.indexOf(v)===i).map(o=><option key={o}>{o}</option>)}</select></td>
+                    <td className="px-1 py-1"><select value={editVals.uom} onChange={e=>setEditVals(p=>({...p,uom:e.target.value}))} className={SEL}>{UOM_OPTIONS.map(o=><option key={o}>{o}</option>)}</select></td>
+                    <td className="px-1 py-1"><input type="number" min="0" value={editVals.contractor_rate} onChange={e=>setEditVals(p=>({...p,contractor_rate:e.target.value}))} className={`${INP} text-right`} placeholder="0"/></td>
+                    <td className="px-1 py-1"><input type="number" min="0" value={editVals.ee_labour_rate} onChange={e=>setEditVals(p=>({...p,ee_labour_rate:e.target.value}))} className={`${INP} text-right`} placeholder="0"/></td>
+                    <td className="px-1 py-1"><input type="number" min="0" value={editVals.ee_unit_hrs} onChange={e=>setEditVals(p=>({...p,ee_unit_hrs:e.target.value}))} className={`${INP} text-right`} placeholder="0"/></td>
+                    <td className="px-1 py-1"><input type="number" min="0" value={editVals.pce_price} onChange={e=>setEditVals(p=>({...p,pce_price:e.target.value}))} className={`${INP} text-right`} placeholder="0"/></td>
+                    <td className="px-1 py-1"><input type="number" min="0" value={editVals.plant_cost} onChange={e=>setEditVals(p=>({...p,plant_cost:e.target.value}))} className={`${INP} text-right`} placeholder="0"/></td>
+                    <td className="px-1 py-1"><input value={editVals.install_wbs} onChange={e=>setEditVals(p=>({...p,install_wbs:e.target.value}))} className={`${INP} font-mono text-[10px]`} placeholder="e.g. 3.1.x.xx.4.xx"/></td>
+                    <td className="px-1 py-1"><input value={editVals.commission_wbs} onChange={e=>setEditVals(p=>({...p,commission_wbs:e.target.value}))} className={`${INP} font-mono text-[10px]`} placeholder="e.g. 4.1.x.xx.x.xx"/></td>
+                    <td className="px-1 py-1 text-center">
+                      <div className="flex flex-col gap-1">
+                        <button onClick={()=>saveEdit(s.wbs_code)} className="bg-blue-700 hover:bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] font-semibold">Save</button>
+                        <button onClick={()=>setEditing(null)} className="border border-gray-300 text-gray-500 hover:bg-gray-50 px-2 py-0.5 rounded text-[10px]">Cancel</button>
+                      </div>
+                    </td>
+                    {managerMode && <td/>}
+                  </tr>
+                );
+
+                return (
+                  <tr key={s.wbs_code}
+                    onClick={()=>startEdit(s)}
+                    className={`${rowBg} ${managerMode?"cursor-pointer hover:bg-blue-50/50":""} transition-colors`}>
+                    <td className="px-2 py-1.5 font-mono text-gray-600 whitespace-nowrap text-[10px]">{s.wbs_code}</td>
+                    <td className="px-2 py-1.5 text-gray-800 max-w-xs" title={s.description}>
+                      <div className="truncate">{s.description}</div>
+                      {s.comments && <div className="text-[10px] text-gray-400 truncate italic">{s.comments}</div>}
+                    </td>
+                    <td className="px-2 py-1.5 text-gray-600 whitespace-nowrap">{s.scope}</td>
+                    <td className="px-2 py-1.5 text-gray-600 whitespace-nowrap text-[10px]">{s.delivery_method}</td>
+                    <td className="px-2 py-1.5 text-gray-600 whitespace-nowrap text-[10px]">{s.resource_main}</td>
+                    <td className="px-2 py-1.5 text-gray-500 text-center">{s.uom}</td>
+                    <td className={`px-2 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap ${
+                      isPct ? "text-teal-600" : s.contractor_rate>0 ? "text-teal-700" : hasGap&&isC ? "text-amber-500" : "text-gray-300"}`}>
+                      {isPct ? `${(s.pct_of_total*100).toFixed(0)}% of L3` : (fmtR(s.contractor_rate) || (isC&&hasGap?"⚠ missing":"—"))}
+                    </td>
+                    <td className={`px-2 py-1.5 text-right tabular-nums whitespace-nowrap ${s.ee_labour_rate>0?"text-purple-700":"text-gray-300"}`}>
+                      {fmtR(s.ee_labour_rate)||"—"}
+                    </td>
+                    <td className={`px-2 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap ${
+                      s.ee_unit_hrs>0?"text-indigo-700":!isC&&!isPct&&hasGap?"text-amber-500":"text-gray-300"}`}>
+                      {fmtH(s.ee_unit_hrs)||((!isC&&!isPct&&hasGap)?"⚠ missing":"—")}
+                    </td>
+                    <td className={`px-2 py-1.5 text-right tabular-nums whitespace-nowrap ${s.pce_price>0?"text-green-700":"text-gray-300"}`}>
+                      {fmtR(s.pce_price)||"—"}
+                    </td>
+                    <td className={`px-2 py-1.5 text-right tabular-nums whitespace-nowrap ${s.plant_cost>0?"text-orange-600":"text-gray-300"}`}>
+                      {fmtR(s.plant_cost)||"—"}
+                    </td>
+                    <td className="px-2 py-1.5 font-mono text-gray-400 text-[10px] whitespace-nowrap">{s.install_wbs||"—"}</td>
+                    <td className="px-2 py-1.5 font-mono text-gray-400 text-[10px] whitespace-nowrap">{s.commission_wbs||"—"}</td>
+                    <td className="px-2 py-1.5 text-center">
+                      {isPct
+                        ? <span className="bg-teal-50 text-teal-700 border border-teal-200 rounded px-1.5 py-0.5 text-[10px] font-semibold">%</span>
+                        : hasGap
+                          ? <span className="bg-amber-100 text-amber-700 border border-amber-300 rounded px-1.5 py-0.5 text-[10px] font-semibold">GAP</span>
+                          : <span className="bg-green-100 text-green-700 border border-green-300 rounded px-1.5 py-0.5 text-[10px] font-semibold">OK</span>
+                      }
+                    </td>
+                    {managerMode && (
+                      <td className="px-1 py-1.5 text-center">
+                        {deleteCode===s.wbs_code ? (
+                          <div className="flex gap-1 justify-center">
+                            <button onClick={e=>{e.stopPropagation();setLocalSupply(p=>(p||supply).filter(x=>x.wbs_code!==s.wbs_code));setDeleteCode(null);}}
+                              className="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded">✓ Delete</button>
+                            <button onClick={e=>{e.stopPropagation();setDeleteCode(null);}}
+                              className="border text-gray-500 text-[10px] px-1.5 py-0.5 rounded">✕</button>
+                          </div>
+                        ) : (
+                          <button onClick={e=>{e.stopPropagation();setDeleteCode(s.wbs_code);}}
+                            className="text-red-400 hover:text-red-600 text-[10px]">✕</button>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+        {!loading && filtered.length===0 && (
+          <div className="text-center text-gray-400 text-sm py-16">No items match your filters.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function WBSManager({ equipSel, setEquipSel }) {
-  const {wbs:wbsCtx, rates, loading, error} = useData();
+  const {wbs:wbsCtx, supply, rates, loading, error} = useData();
   const [tab,          setTab]         = useState("items");
   const [search,       setSearch]      = useState("");
   const [scopeFilter,  setScopeFilter] = useState("All");
@@ -4289,9 +4662,8 @@ function WBSManager({ equipSel, setEquipSel }) {
 
   const equipSelectedCount = Object.values(equipSel).filter(q=>parseFloat(q)>0).length;
   const tabs=[
-    {id:"items",      label:"📋 WBS Items",           count:wbs.length},
+    {id:"items",      label:"📋 WBS Item Editor",      count:wbs.length},
     {id:"rates",      label:"💲 Resource Rates",       count:rates.length},
-    {id:"supplyrates",label:"🏷️ Supply Item Rates",    count:null},
     {id:"catalogue",  label:"🔧 Equipment Catalogue",  count:null},
     {id:"escalation", label:"📈 Escalation Rates",     count:null},
     {id:"scaling",    label:"📐 Comm Scaling",          count:WBS_PROFILES.length},
@@ -4386,105 +4758,19 @@ function WBSManager({ equipSel, setEquipSel }) {
 
       {/* WBS Items */}
       {tab==="items"&&(
-        <div className="flex-1 flex flex-col overflow-hidden">
-
-          {/* Toolbar */}
-          <div className="bg-white border-b px-4 py-2 flex items-center gap-3 flex-shrink-0">
-            <input value={search} onChange={e=>setSearch(e.target.value)}
-              placeholder="Search WBS code or description…"
-              className="border border-gray-300 rounded px-2 py-1.5 text-xs w-64 focus:outline-none focus:ring-1 focus:ring-blue-400"/>
-            <div className="flex border border-gray-200 rounded overflow-hidden">
-              {["All","Supply","Install","Commission","Supply & Install"].map(s=>(
-                <button key={s} onClick={()=>setScopeFilter(s)}
-                  className={`text-xs px-2.5 py-1.5 ${scopeFilter===s?"bg-blue-700 text-white":"text-gray-600 hover:bg-gray-50"}`}>{s}</button>
-              ))}
-            </div>
-            <span className="text-xs text-gray-400">{filtered.length.toLocaleString()} items</span>
-            <div className="flex-1"/>
-            {managerMode ? (
-              <>
-                <button onClick={()=>setShowAddWbs(s=>!s)}
-                  className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded font-semibold">
-                  {showAddWbs?"✕ Cancel":"+ Add WBS Item"}
-                </button>
-                <button onClick={()=>setManagerMode(false)}
-                  className="text-xs bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded font-semibold flex items-center gap-1.5">
-                  🔓 Manager Mode <span className="opacity-75">— click to lock</span>
-                </button>
-              </>
-            ) : (
-              <button onClick={()=>setShowPinModal(true)}
-                className="text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400 px-3 py-1.5 rounded font-medium flex items-center gap-1.5">
-                🔒 Manager Mode
-              </button>
-            )}
-          </div>
-
-          {/* Add WBS form */}
-          {managerMode && showAddWbs && (
-            <div className="bg-green-50 border-b border-green-200 px-4 py-3 flex-shrink-0">
-              <div className="text-xs font-bold text-green-800 mb-2 uppercase tracking-wide">Add New WBS Item</div>
-              <div className="grid grid-cols-5 gap-2 items-end">
-                <div>
-                  <label className="text-xs text-gray-500 block mb-0.5">WBS Code *</label>
-                  <input value={newWbs.wbs_code} onChange={e=>setNewWbs(p=>({...p,wbs_code:e.target.value}))}
-                    placeholder="e.g. 3.1.3.04.1.10"
-                    className="w-full border rounded px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-green-400"/>
-                </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-gray-500 block mb-0.5">Description *</label>
-                  <input value={newWbs.description} onChange={e=>setNewWbs(p=>({...p,description:e.target.value}))}
-                    className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400"/>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-0.5">Scope</label>
-                  <select value={newWbs.scope} onChange={e=>setNewWbs(p=>({...p,scope:e.target.value}))}
-                    className="w-full border rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-400">
-                    {["Supply","Install","Commission","Supply & Install","Demolition/Removal"].map(s=><option key={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <button onClick={addWbsItem} disabled={!newWbs.wbs_code.trim()||!newWbs.description.trim()}
-                    className="w-full text-xs bg-green-700 hover:bg-green-600 disabled:bg-gray-300 text-white px-3 py-1.5 rounded font-semibold">
-                    Add Item
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Virtual list */}
-          <div className="flex-1 overflow-hidden">
-            {loading?(
-              <div className="flex items-center justify-center h-full text-gray-400">
-                <div className="text-center"><div className="text-2xl animate-spin mb-2">⟳</div><div className="text-sm">Loading WBS…</div></div>
-              </div>
-            ):(
-              <WBSVirtualList
-                rows={filtered}
-                managerMode={managerMode}
-                editingWbs={editingWbs}
-                editVals={editVals}
-                setEditVals={setEditVals}
-                onStartEdit={startEditWbs}
-                onSaveEdit={saveEditWbs}
-                onCancelEdit={()=>setEditingWbs(null)}
-                wbsOverrides={wbsOverrides}
-                onDeleteWbs={(code)=>{setDeleteWbs(code);setDeleteStage(1);}}
-              />
-            )}
-          </div>
-        </div>
+        <WBSItemEditor
+          wbs={wbs}
+          supply={supply}
+          rates={rates}
+          managerMode={managerMode}
+          onUnlock={()=>setShowPinModal(true)}
+          loading={loading}
+        />
       )}
 
       {/* Resource Rates */}
       {tab==="rates"&&(
         <RatesEditor rates={rates} managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
-      )}
-
-      {/* Supply Item Rates */}
-      {tab==="supplyrates"&&(
-        <SupplyRatesEditor managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
       )}
 
       {/* Equipment Catalogue */}
