@@ -1,0 +1,331 @@
+{
+  "Contractor": {
+    "resource_code": "CON",
+    "currency_type": "Dollar",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Contractor - Electrical": {
+    "resource_code": "CONE",
+    "currency_type": "Dollar",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Contractor - Civil": {
+    "resource_code": "CONC",
+    "currency_type": "Dollar",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Administration Officer": {
+    "resource_code": "ADM_OFF_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Ancillary": {
+    "resource_code": "ANC_STD_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Cable Jointer - Distribution": {
+    "resource_code": "CBJ_DIS_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": "Underground"
+  },
+  "Cable Jointer - Transmission": {
+    "resource_code": "CBJ_TRA_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": "Transmission"
+  },
+  "Earthing Engineer": {
+    "resource_code": "TO_EAR_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Electrical Technician - Distribution": {
+    "resource_code": "ELT_DIS_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": "Overhead"
+  },
+  "Electrical Technician - Overhead": {
+    "resource_code": "ETO_ETO_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": "Overhead"
+  },
+  "Electrical Technician - Underground": {
+    "resource_code": "ETO_ETU_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": "Underground"
+  },
+  "Electrical Technician - Zone Substation": {
+    "resource_code": "ELT_ZSS_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": "Transmission"
+  },
+  "Electrical Worker - Overhead": {
+    "resource_code": "EWO_STD_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": "Overhead"
+  },
+  "Electrical Worker - Transmission": {
+    "resource_code": "EWT_STD_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": "Transmission"
+  },
+  "Electrical Worker - Underground": {
+    "resource_code": "EWU_STD_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": "Underground"
+  },
+  "External Project Manager / Specialist Engineer": {
+    "resource_code": "EPM_SE_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Land & Routes Specialist": {
+    "resource_code": "TO_LRS_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Metering Technician - Zone Substation": {
+    "resource_code": "ELT_MT_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Network Development Officer": {
+    "resource_code": "TO_ND_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Network Planner": {
+    "resource_code": "TO_PLNR_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Power Line Worker": {
+    "resource_code": "PLW_STD_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": "Overhead"
+  },
+  "Power Line Worker - Live Line": {
+    "resource_code": "PLW_LL_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": "Overhead"
+  },
+  "Power Quality Technician - Zone Substation": {
+    "resource_code": "ELT_PQT_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Protection Engineer": {
+    "resource_code": "TO_PROT_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Resource Coordinator - Overhead": {
+    "resource_code": "TO_RCO_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": "Overhead"
+  },
+  "Resource Coordinator - Transmission": {
+    "resource_code": "TO_RC_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": "Transmission"
+  },
+  "Resource Coordinator - Underground": {
+    "resource_code": "TO_RCU_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": "Underground"
+  },
+  "SCADA Designer": {
+    "resource_code": "TO_SCD_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Substation Designer Drafter": {
+    "resource_code": "ELT_ZSDD_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Substation Designer": {
+    "resource_code": "ELT_ZSD_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Subtransmission Mains Designer": {
+    "resource_code": "TO_SMD_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Asset Inspector": {
+    "resource_code": "TO_AIN_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Distribution Designer": {
+    "resource_code": "TO_DES_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Engineer / Technical": {
+    "resource_code": "TO_ENG_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Network Assurance": {
+    "resource_code": "TO_NET_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Project Manager": {
+    "resource_code": "TO_ROJ_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Senior Design": {
+    "resource_code": "TO_SED_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Supervisor": {
+    "resource_code": "TO_SUP_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Telecomms Technician": {
+    "resource_code": "TO_TEL_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Vegetation": {
+    "resource_code": "TO_VEG_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Work Away From Home": {
+    "resource_code": "WAFHA",
+    "currency_type": "Day",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Telecoms Designer": {
+    "resource_code": "TO_TELD_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Workplace Trainer & Assessor": {
+    "resource_code": "TRN_ASS_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "ZS Electrical Technician": {
+    "resource_code": "ELT_ZSETT_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": "Transmission"
+  },
+  "ZS Specialist Technician": {
+    "resource_code": "ELT_ZSPT_BL",
+    "currency_type": "Hour",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": "Transmission"
+  },
+  "Materials (Non-LLT)": {
+    "resource_code": "GMAT",
+    "currency_type": "Dollar",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  },
+  "Materials (LLT)": {
+    "resource_code": "LLMAT",
+    "currency_type": "Dollar",
+    "account_code_internal": "001001",
+    "account_code_external": "001000",
+    "labour_type": ""
+  }
+}
