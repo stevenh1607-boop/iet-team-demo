@@ -1314,211 +1314,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
             </CommScrollList>
           </div>
 
-          {/* ── INSTALL ROWS (L5=4) — auto-derived from supply quantities ── */}
-          {installItems.length > 0 && (
-            <div className="flex-shrink-0 border-t-2 border-purple-200 bg-white">
-              <div className="bg-purple-700 text-white text-xs font-bold px-4 py-2 flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  ⚙️ Install Rows (L5 = 4) — auto-calculated from supply quantities
-                  <span className="text-purple-300 font-normal text-[10px]">Hours derived from linked supply items · override if needed</span>
-                </span>
-                <span className="text-purple-300 font-normal text-[10px]">
-                  {installItems.length} install row{installItems.length!==1?"s":""} · {Object.values(installAgg).reduce((a,r)=>a+r.activeHrs,0).toFixed(1)} total hrs
-                </span>
-              </div>
-              {installItems.map(inst => {
-                const agg = installAgg[inst.wbs_code];
-                if (!agg) return null;
-                const instLn  = lines[inst.wbs_code] || {};
-                const isExp   = !!expandedRows[inst.wbs_code];
-                const hasHrs  = agg.activeHrs > 0;
-                const rowBg   = hasHrs ? "bg-purple-50 border-l-4 border-l-purple-500" : "bg-white";
-                return (
-                  <div key={inst.wbs_code} className={`border-b border-purple-100 ${rowBg}`}>
-                    {/* Main install row */}
-                    <div className="grid items-center px-3 py-2 text-xs" style={{gridTemplateColumns:"16px 1fr 90px 110px 110px 80px 56px"}}>
-                      <button onClick={()=>setExpandedRows(p=>({...p,[inst.wbs_code]:!p[inst.wbs_code]}))}
-                        className={`text-center rounded text-xs w-4 h-4 flex items-center justify-center ${isExp?"bg-purple-600 text-white":"text-gray-300 hover:text-purple-500"}`}>
-                        {isExp?"▾":"▸"}
-                      </button>
-                      <div className="min-w-0 pr-2">
-                        <div className="font-medium text-purple-900">{inst.description}</div>
-                        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                          <span className="text-purple-400 font-mono text-xs">{inst.wbs_code}</span>
-                          <span className="text-[9px] bg-purple-100 text-purple-700 border border-purple-200 rounded px-1">Install · L5=4</span>
-                          {agg.isOverridden && <span className="text-[9px] bg-orange-100 text-orange-700 border border-orange-200 rounded px-1">⚡ manual override</span>}
-                          <span className="text-[9px] text-gray-400">{agg.linked.length} supply item{agg.linked.length!==1?"s":""} linked</span>
-                        </div>
-                      </div>
-                      {/* Derived hours */}
-                      <div className="text-center">
-                        <div className={`text-xs font-bold ${agg.isOverridden?"text-orange-600":hasHrs?"text-purple-700":"text-gray-300"}`}>
-                          {hasHrs ? fmtHrs(agg.activeHrs) : "—"}
-                          {agg.isOverridden && <span className="text-orange-400 ml-0.5">*</span>}
-                        </div>
-                        {!agg.isOverridden && agg.derivedHrs > 0 && (
-                          <div className="text-[9px] text-gray-400">auto</div>
-                        )}
-                      </div>
-                      {/* Delivery method */}
-                      <div className="flex justify-center">
-                        <select value={agg.delivery}
-                          onChange={e=>updLine(inst.wbs_code,"delivery",e.target.value)}
-                          className="text-xs border border-purple-300 bg-white rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-purple-400 w-full">
-                          <option>EE Delivered</option>
-                          <option>Contractor Delivered</option>
-                        </select>
-                      </div>
-                      {/* Cost */}
-                      <div className="text-right">
-                        <div className={`text-xs font-bold ${hasHrs?"text-blue-800":"text-gray-300"}`}>
-                          {hasHrs ? fmt(isCommercial ? agg.comm : agg.eeInt) : "—"}
-                        </div>
-                        {hasHrs && agg.isContr && (
-                          <div className="text-[9px] text-teal-600">Contractor</div>
-                        )}
-                      </div>
-                      {/* Resource */}
-                      <div className="text-center text-[9px] text-gray-500 truncate px-1">{agg.resName.split(" ").slice(-2).join(" ")}</div>
-                      <div className="text-center text-gray-300 text-xs">{isExp?"▲":"▸ detail"}</div>
-                    </div>
 
-                    {/* Expanded detail panel */}
-                    {isExp && (
-                      <div className="mx-3 mb-3 rounded-lg border border-purple-200 bg-white shadow-sm overflow-hidden">
-                        <div className="bg-purple-700 text-white text-xs font-semibold px-3 py-1.5 flex items-center justify-between">
-                          <span>Install Detail — {inst.wbs_code} · {inst.description}</span>
-                          {!resourceUnlocked && (
-                            <button onClick={()=>setShowResourcePin(true)}
-                              className="text-[10px] bg-purple-900 hover:bg-purple-800 text-purple-200 px-2 py-0.5 rounded flex items-center gap-1">
-                              🔒 Unlock to override
-                            </button>
-                          )}
-                          {resourceUnlocked && (
-                            <span className="text-[10px] text-orange-300">🔓 Override enabled</span>
-                          )}
-                        </div>
-                        <div className="p-3 space-y-3">
-                          {/* Linked supply items breakdown */}
-                          <div>
-                            <div className="text-xs font-semibold text-gray-600 mb-1.5">Derived from supply quantities:</div>
-                            <div className="bg-gray-50 rounded border border-gray-200 overflow-hidden">
-                              <table className="w-full text-xs">
-                                <thead className="bg-gray-100 border-b">
-                                  <tr>
-                                    <th className="text-left px-2 py-1 font-semibold text-gray-500">Supply item</th>
-                                    <th className="text-center px-2 py-1 font-semibold text-gray-500">Qty</th>
-                                    <th className="text-center px-2 py-1 font-semibold text-gray-500">Factor</th>
-                                    <th className="text-center px-2 py-1 font-semibold text-gray-500">Hrs/unit</th>
-                                    <th className="text-right px-2 py-1 font-semibold text-purple-700">= Install Hrs</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {agg.linked.map((sup,i)=>{
-                                    const sl = lines[sup.wbs_code] || {};
-                                    const sq = parseFloat(sl.qty||"0");
-                                    const sf = parseFloat(sl.factor||"1");
-                                    const sh = sup.install_hrs_per || 0;
-                                    const hrs = sq * sf * sh;
-                                    return (
-                                      <tr key={sup.wbs_code} className={`border-b border-gray-100 ${sq>0?"bg-purple-50/40":""}`}>
-                                        <td className="px-2 py-1">
-                                          <div className="truncate max-w-[200px] text-gray-700">{sup.description}</div>
-                                          <div className="font-mono text-gray-400 text-[10px]">{sup.wbs_code}</div>
-                                        </td>
-                                        <td className="px-2 py-1 text-center font-bold text-orange-700">{sq > 0 ? sq : "—"}</td>
-                                        <td className="px-2 py-1 text-center text-gray-500">{sf !== 1 ? sf : "1.0"}</td>
-                                        <td className="px-2 py-1 text-center text-gray-500">{sh}h</td>
-                                        <td className={`px-2 py-1 text-right font-bold ${hrs>0?"text-purple-700":"text-gray-300"}`}>{hrs>0?fmtHrs(hrs):"—"}</td>
-                                      </tr>
-                                    );
-                                  })}
-                                  {agg.linked.length === 0 && (
-                                    <tr><td colSpan={5} className="px-2 py-2 text-center text-gray-400 italic">No supply items linked to this install row yet</td></tr>
-                                  )}
-                                </tbody>
-                                <tfoot className="bg-purple-50 border-t-2 border-purple-200">
-                                  <tr>
-                                    <td colSpan={4} className="px-2 py-1.5 font-bold text-purple-800">Total derived install hours</td>
-                                    <td className="px-2 py-1.5 text-right font-bold text-purple-800">{fmtHrs(agg.derivedHrs)}</td>
-                                  </tr>
-                                </tfoot>
-                              </table>
-                            </div>
-                          </div>
-
-                          {/* Override controls */}
-                          <div className="grid grid-cols-3 gap-3">
-                            <div>
-                              <label className="text-xs text-gray-500 block mb-0.5">Install Resource</label>
-                              <select
-                                disabled={!resourceUnlocked}
-                                value={resourceOvrd[inst.wbs_code]?.install || inst.resource_main || "ZS Electrical Technician"}
-                                onChange={e=>setResourceOvrd(inst.wbs_code,"install",e.target.value)}
-                                className={`text-xs border rounded px-1.5 py-1 w-full focus:outline-none focus:ring-1 focus:ring-purple-400 ${resourceUnlocked?"border-purple-300 bg-white":"border-gray-200 bg-gray-50 text-gray-400"}`}>
-                                {RESOURCE_TYPES.map(r=><option key={r}>{r}</option>)}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="text-xs text-gray-500 block mb-0.5">
-                                Hrs Override
-                                {agg.isOverridden && (
-                                  <button onClick={()=>updLine(inst.wbs_code,"instHrsOvrd","")}
-                                    className="ml-1 text-[10px] text-red-500 hover:text-red-700">✕ reset</button>
-                                )}
-                              </label>
-                              <input type="number" min="0" step="0.5"
-                                disabled={!resourceUnlocked}
-                                value={instLn.instHrsOvrd||""}
-                                placeholder={agg.derivedHrs.toFixed(1)+" (auto)"}
-                                onChange={e=>updLine(inst.wbs_code,"instHrsOvrd",e.target.value)}
-                                className={`text-xs border rounded px-1.5 py-1 w-full focus:outline-none focus:ring-1 focus:ring-purple-400 ${resourceUnlocked?"border-purple-300 bg-purple-50":"border-gray-200 bg-gray-50 text-gray-400"} ${agg.isOverridden?"border-orange-400 bg-orange-50 font-bold text-orange-800":""}`}/>
-                            </div>
-                            <div>
-                              <label className="text-xs text-gray-500 block mb-0.5">
-                                {agg.isContr ? "Contractor Rate ($/unit)" : "EE Rate ($/hr)"}
-                              </label>
-                              {agg.isContr ? (
-                                <input type="number" min="0"
-                                  disabled={!resourceUnlocked}
-                                  value={instLn.contrRate||""}
-                                  placeholder={(inst.contractor_rate||0).toFixed(2)}
-                                  onChange={e=>updLine(inst.wbs_code,"contrRate",e.target.value)}
-                                  className={`text-xs border rounded px-1.5 py-1 w-full focus:outline-none focus:ring-1 focus:ring-purple-400 ${resourceUnlocked?"border-teal-300 bg-teal-50":"border-gray-200 bg-gray-50 text-gray-400"}`}/>
-                              ) : (
-                                <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded px-1.5 py-1">
-                                  {fmt(agg.eeRate)}/hr · {fmt(agg.eeLabCost)} total
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Cost summary for this install row */}
-                          <div className="bg-purple-50 border border-purple-200 rounded p-2.5 grid grid-cols-3 gap-3 text-xs">
-                            <div className="text-center">
-                              <div className="text-gray-500 text-[10px] uppercase font-semibold mb-0.5">Active Hrs</div>
-                              <div className={`font-bold text-lg ${agg.isOverridden?"text-orange-600":"text-purple-700"}`}>{agg.activeHrs.toFixed(1)}</div>
-                              <div className="text-[10px] text-gray-400">{agg.isOverridden?"manual":"auto-derived"}</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-gray-500 text-[10px] uppercase font-semibold mb-0.5">EE Internal</div>
-                              <div className="font-bold text-blue-800">{fmt(agg.eeInt)}</div>
-                              <div className="text-[10px] text-gray-400">{agg.isContr?"contractor":"EE labour"}</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-gray-500 text-[10px] uppercase font-semibold mb-0.5">Commercial</div>
-                              <div className="font-bold text-orange-700">{fmt(agg.comm)}</div>
-                              <div className="text-[10px] text-gray-400">{agg.isContr?"+20% ANS":"+20% ANS"}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
 
           {/* RIGHT — commissioning summary */}
           <div className="w-52 bg-white border-l flex flex-col overflow-hidden flex-shrink-0">
@@ -1827,17 +1623,157 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                             className="w-full text-xs border border-gray-200 rounded px-2 py-1 resize-none focus:outline-none focus:ring-1 focus:ring-blue-300"/>
                         </div>
                       </div>
-                      <InvMatsLookup wbsCode={item.wbs_code}/>
                     </div>
                   </div>
                 )}
               </div>
             );
           })}
+
+          {/* ── INSTALL ROWS (L5=4) — auto-derived from supply quantities ── */}
+          {installItems.length > 0 && (
+            <div className="sticky bottom-0 border-t-2 border-purple-300 bg-white shadow-lg">
+              <div className="bg-purple-700 text-white text-xs font-bold px-4 py-2 flex items-center justify-between cursor-pointer"
+                onClick={()=>setExpandedRows(p=>({...p,__installSection__:!p.__installSection__}))}>
+                <span className="flex items-center gap-2">
+                  ⚙️ {installItems.length} Install Row{installItems.length!==1?"s":""} (L5 = 4)
+                  <span className="text-purple-300 font-normal">— auto-derived from supply · click to expand</span>
+                </span>
+                <span className="text-purple-200">{expandedRows.__installSection__ ? "▴" : "▾"} {Object.values(installAgg).reduce((a,r)=>a+r.activeHrs,0).toFixed(1)} hrs total</span>
+              </div>
+              {expandedRows.__installSection__ !== false && installItems.map(inst => {
+                const agg = installAgg[inst.wbs_code];
+                if (!agg) return null;
+                const instLn  = lines[inst.wbs_code] || {};
+                const isExp   = !!expandedRows[inst.wbs_code];
+                const hasHrs  = agg.activeHrs > 0;
+                const rowBg   = hasHrs ? "bg-purple-50 border-l-4 border-l-purple-500" : "bg-white";
+                return (
+                  <div key={inst.wbs_code} className={`border-b border-purple-100 ${rowBg}`}>
+                    <div className="grid items-center px-3 py-2 text-xs" style={{gridTemplateColumns:"16px 1fr 90px 110px 110px 80px 56px"}}>
+                      <button onClick={()=>setExpandedRows(p=>({...p,[inst.wbs_code]:!p[inst.wbs_code]}))}
+                        className={`text-center rounded text-xs w-4 h-4 flex items-center justify-center ${isExp?"bg-purple-600 text-white":"text-gray-300 hover:text-purple-500"}`}>
+                        {isExp?"▾":"▸"}
+                      </button>
+                      <div className="min-w-0 pr-2">
+                        <div className="font-medium text-purple-900">{inst.description}</div>
+                        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                          <span className="text-purple-400 font-mono text-xs">{inst.wbs_code}</span>
+                          <span className="text-[9px] bg-purple-100 text-purple-700 border border-purple-200 rounded px-1">Install · L5=4</span>
+                          {agg.isOverridden && <span className="text-[9px] bg-orange-100 text-orange-700 border border-orange-200 rounded px-1">⚡ manual override</span>}
+                          <span className="text-[9px] text-gray-400">{agg.linked.length} supply item{agg.linked.length!==1?"s":""} linked</span>
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className={`text-xs font-bold ${agg.isOverridden?"text-orange-600":hasHrs?"text-purple-700":"text-gray-300"}`}>
+                          {hasHrs ? fmtHrs(agg.activeHrs) : "—"}{agg.isOverridden&&<span className="text-orange-400 ml-0.5">*</span>}
+                        </div>
+                        {!agg.isOverridden && <div className="text-[9px] text-gray-400">auto</div>}
+                      </div>
+                      <div className="flex justify-center">
+                        <select value={agg.delivery} onChange={e=>updLine(inst.wbs_code,"delivery",e.target.value)}
+                          className="text-xs border border-purple-300 bg-white rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-purple-400 w-full">
+                          <option>EE Delivered</option>
+                          <option>Contractor Delivered</option>
+                        </select>
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-xs font-bold ${hasHrs?"text-blue-800":"text-gray-300"}`}>{hasHrs?fmt(isCommercial?agg.comm:agg.eeInt):"—"}</div>
+                        {hasHrs&&agg.isContr&&<div className="text-[9px] text-teal-600">Contractor</div>}
+                      </div>
+                      <div className="text-center text-[9px] text-gray-500 truncate px-1">{agg.resName.split(" ").slice(-2).join(" ")}</div>
+                      <div className="text-center text-gray-300 text-xs">{isExp?"▲":"▸"}</div>
+                    </div>
+                    {isExp && (
+                      <div className="mx-3 mb-3 rounded-lg border border-purple-200 bg-white shadow-sm overflow-hidden">
+                        <div className="bg-purple-700 text-white text-xs font-semibold px-3 py-1.5 flex items-center justify-between">
+                          <span>Install Detail — {inst.wbs_code}</span>
+                          {!resourceUnlocked
+                            ? <button onClick={()=>setShowResourcePin(true)} className="text-[10px] bg-purple-900 hover:bg-purple-800 text-purple-200 px-2 py-0.5 rounded">🔒 Unlock to override</button>
+                            : <span className="text-[10px] text-orange-300">🔓 Override enabled</span>}
+                        </div>
+                        <div className="p-3 space-y-3">
+                          <div>
+                            <div className="text-xs font-semibold text-gray-600 mb-1.5">Derived from supply quantities:</div>
+                            <div className="bg-gray-50 rounded border border-gray-200 overflow-hidden">
+                              <table className="w-full text-xs">
+                                <thead className="bg-gray-100 border-b">
+                                  <tr>
+                                    <th className="text-left px-2 py-1 font-semibold text-gray-500">Supply item</th>
+                                    <th className="text-center px-2 py-1 font-semibold text-gray-500">Qty</th>
+                                    <th className="text-center px-2 py-1 font-semibold text-gray-500">Hrs/unit</th>
+                                    <th className="text-right px-2 py-1 font-semibold text-purple-700">= Install Hrs</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {agg.linked.map((sup,i)=>{
+                                    const sl=lines[sup.wbs_code]||{};
+                                    const sq=parseFloat(sl.qty||"0");
+                                    const sf=parseFloat(sl.factor||"1");
+                                    const sh=sup.install_hrs_per||0;
+                                    const hrs=sq*sf*sh;
+                                    return (
+                                      <tr key={sup.wbs_code} className={`border-b border-gray-100 ${sq>0?"bg-purple-50/40":""}`}>
+                                        <td className="px-2 py-1"><div className="truncate max-w-[200px] text-gray-700">{sup.description}</div><div className="font-mono text-gray-400 text-[10px]">{sup.wbs_code}</div></td>
+                                        <td className="px-2 py-1 text-center font-bold text-orange-700">{sq>0?sq:"—"}</td>
+                                        <td className="px-2 py-1 text-center text-gray-500">{sh}h</td>
+                                        <td className={`px-2 py-1 text-right font-bold ${hrs>0?"text-purple-700":"text-gray-300"}`}>{hrs>0?fmtHrs(hrs):"—"}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                                <tfoot className="bg-purple-50 border-t-2 border-purple-200">
+                                  <tr>
+                                    <td colSpan={3} className="px-2 py-1.5 font-bold text-purple-800">Total derived install hours</td>
+                                    <td className="px-2 py-1.5 text-right font-bold text-purple-800">{fmtHrs(agg.derivedHrs)}</td>
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <label className="text-xs text-gray-500 block mb-0.5">Install Resource</label>
+                              <select disabled={!resourceUnlocked}
+                                value={resourceOvrd[inst.wbs_code]?.install||inst.resource_main||"ZS Electrical Technician"}
+                                onChange={e=>setResourceOvrd(inst.wbs_code,"install",e.target.value)}
+                                className={`text-xs border rounded px-1.5 py-1 w-full focus:outline-none ${resourceUnlocked?"border-purple-300 bg-white":"border-gray-200 bg-gray-50 text-gray-400"}`}>
+                                {RESOURCE_TYPES.map(r=><option key={r}>{r}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-500 block mb-0.5">
+                                Hrs Override {agg.isOverridden&&<button onClick={()=>updLine(inst.wbs_code,"instHrsOvrd","")} className="ml-1 text-[10px] text-red-500 hover:text-red-700">✕ reset</button>}
+                              </label>
+                              <input type="number" min="0" step="0.5" disabled={!resourceUnlocked}
+                                value={instLn.instHrsOvrd||""}
+                                placeholder={agg.derivedHrs.toFixed(1)+" (auto)"}
+                                onChange={e=>updLine(inst.wbs_code,"instHrsOvrd",e.target.value)}
+                                className={`text-xs border rounded px-1.5 py-1 w-full focus:outline-none ${resourceUnlocked?"border-purple-300":"border-gray-200 bg-gray-50 text-gray-400"} ${agg.isOverridden?"border-orange-400 bg-orange-50 font-bold text-orange-800":""}`}/>
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-500 block mb-0.5">{agg.isContr?"Contractor Rate ($/unit)":"EE Rate ($/hr)"}</label>
+                              {agg.isContr
+                                ? <input type="number" min="0" disabled={!resourceUnlocked} value={instLn.contrRate||""} placeholder={(inst.contractor_rate||0).toFixed(2)} onChange={e=>updLine(inst.wbs_code,"contrRate",e.target.value)} className={`text-xs border rounded px-1.5 py-1 w-full focus:outline-none ${resourceUnlocked?"border-teal-300 bg-teal-50":"border-gray-200 bg-gray-50 text-gray-400"}`}/>
+                                : <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded px-1.5 py-1">{fmt(agg.eeRate)}/hr · {fmt(agg.eeLabCost)} total</div>
+                              }
+                            </div>
+                          </div>
+                          <div className="bg-purple-50 border border-purple-200 rounded p-2.5 grid grid-cols-3 gap-3 text-xs">
+                            <div className="text-center"><div className="text-gray-500 text-[10px] uppercase font-semibold mb-0.5">Active Hrs</div><div className={`font-bold text-lg ${agg.isOverridden?"text-orange-600":"text-purple-700"}`}>{agg.activeHrs.toFixed(1)}</div><div className="text-[10px] text-gray-400">{agg.isOverridden?"manual":"auto"}</div></div>
+                            <div className="text-center"><div className="text-gray-500 text-[10px] uppercase font-semibold mb-0.5">EE Internal</div><div className="font-bold text-blue-800">{fmt(agg.eeInt)}</div><div className="text-[10px] text-gray-400">{agg.isContr?"contractor":"EE labour"}</div></div>
+                            <div className="text-center"><div className="text-gray-500 text-[10px] uppercase font-semibold mb-0.5">Commercial</div><div className="font-bold text-orange-700">{fmt(agg.comm)}</div></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
-
-      {/* RIGHT — Live Cost */}
       <div className="w-56 bg-white border-l flex flex-col overflow-hidden flex-shrink-0">
         <div className="bg-orange-700 text-white text-xs font-bold px-3 py-2 uppercase tracking-wide">Live Cost Display</div>
         <div className="flex-1 overflow-y-auto">
