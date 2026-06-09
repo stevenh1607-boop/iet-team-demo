@@ -347,6 +347,13 @@ function getScaleFactor(profiles, profileId, qty) {
   return 1.00;
 }
 
+// WAFHA / Accommodation item detection — for supply items (not calcLine)
+// UOM=day items with resource_main=Work Away From Home are day-rated,
+// contribute NO install hours, and must not be flagged as GAP in the WBS editor.
+const isWAFHAItem = (item) =>
+  (item?.resource_main === "Work Away From Home") ||
+  (item?.uom === "day" && (item?.description||"").toLowerCase().includes("accommodation"));
+
 // ANS margins
 const ANS_LAB  = 0.20;
 const ANS_MAT  = 0.2686;
@@ -408,7 +415,9 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
   const matBurden  = isCommercial ? 0 : equipCost * MAT_BURDEN;
   const eeInt  = eeLabCost + contrCost + plantFact + equipCost + matBurden;
   const comm   = eeLabCost*(1+ANS_LAB) + contrCost*(1+ANS_CON) + plantFact + equipCost*(1+ANS_MAT);
-  return { q, f, isContr, installHrs, commHrs, eeLabHrs, eeLabCost,
+  // WAFHA items: installHrs must always be 0 — they are day-rated, not hour-rated
+  const finalInstallHrs = isWAFHA ? 0 : installHrs;
+  return { q, f, isContr, isWAFHA, installHrs: finalInstallHrs, commHrs, eeLabHrs, eeLabCost,
            contrCost, plantFact, equipCost, matBurden, eeInt, comm,
            instHrsOverridden: installHrsOvrd !== "" && installHrsOvrd != null, instHrsPU,
            effectiveResource };
@@ -1304,7 +1313,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
           <div className="text-center">UOM</div>
           <div className="text-center text-orange-700">Qty</div>
           <div className="text-center">Factor</div>
-          <div className="text-center text-purple-700">Install Hrs</div>
+          <div className="text-center text-purple-700">Install Hrs <span className="text-gray-400 font-normal text-[9px] block leading-tight">(days for WAFHA)</span></div>
           <div className="text-center text-gray-400">Expand</div>
         </div>
         <div className="flex-1 overflow-y-auto">
@@ -1343,6 +1352,8 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                       }
                       {item.resource_install && item.install_hrs_per>0 &&
                         <span className="text-xs text-blue-500 bg-blue-50 border border-blue-200 rounded px-1">Install: {resourceOvrd[item.install_wbs]?.install || item.resource_install}</span>}
+                      {isWAFHAItem(item) &&
+                        <span className="text-xs text-amber-700 bg-amber-50 border border-amber-300 rounded px-1 font-semibold">WAFHA · day rate</span>}
                     </div>
                   </div>
                   <div className="text-center text-gray-500">{item.uom||"EA"}</div>
@@ -1356,8 +1367,13 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                       onChange={e=>updLine(item.wbs_code,"factor",e.target.value)}
                       className={`w-14 text-center border rounded py-0.5 text-xs focus:outline-none focus:ring-1 ${parseFloat(factor)!==1?"border-blue-400 bg-blue-50 text-blue-800 font-bold":"border-gray-200 text-gray-500"}`}/>
                   </div>
-                  <div className={`text-center font-bold ${c.instHrsOverridden?"text-orange-600":hasQty?"text-purple-700":"text-gray-300"}`}>
-                    {hasQty?<>{fmtHrs(c.installHrs)}{c.instHrsOverridden&&<span className="text-orange-400 ml-0.5">*</span>}</>:"–"}
+                  <div className={`text-center font-bold ${
+                    isWAFHAItem(item) ? (hasQty?"text-amber-600":"text-gray-300")
+                    : c.instHrsOverridden?"text-orange-600":hasQty?"text-purple-700":"text-gray-300"}`}>
+                    {isWAFHAItem(item)
+                      ? (hasQty ? <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 rounded px-1 font-semibold">{parseFloat(qty).toLocaleString("en-AU",{maximumFractionDigits:1})} days</span> : "–")
+                      : (hasQty?<>{fmtHrs(c.installHrs)}{c.instHrsOverridden&&<span className="text-orange-400 ml-0.5">*</span>}</>:"–")
+                    }
                   </div>
                   <div className="text-center text-gray-300 text-xs">{isExp?"▲ close":"▸ costs"}</div>
                 </div>
@@ -1383,7 +1399,10 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                             ? `Contractor · Install: ${item.resource_install||item.resource_main||"—"} · Comm: ${item.resource_comm||"—"}`
                             : `${item.resource_main||"EE"} · Install: ${item.resource_install||item.resource_main||"—"} · Comm: ${item.resource_comm||"—"}`
                           }
-                          {" · "}Std: {item.install_hrs_per}h install · {item.comm_hrs_per}h comm · {fmt(item.ee_labour_rate)}/hr
+                          {isWAFHAItem(item)
+                            ? ` · WAFHA/Accommodation — UOM: day · Rate: ${fmt(item.ee_labour_rate||359.50)}/day · No install hrs`
+                            : `· Std: ${item.install_hrs_per}h install · ${item.comm_hrs_per}h comm · ${fmt(item.ee_labour_rate)}/hr`
+                          }
                         </span>
                       </span>
                     </div>
@@ -1458,7 +1477,8 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                         </div>
                         <div>
                           <label className="text-xs text-gray-500 block mb-0.5">Install Hrs/Unit Override</label>
-                          <input type="number" min="0" value={ln.instHrsOvrd||""} placeholder={String(item.install_hrs_per||0)}
+                          {isWAFHAItem(item) && <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">WAFHA — day-rated, no install hrs override</div>}
+                          {!isWAFHAItem(item) && <input type="number" min="0" value={ln.instHrsOvrd||""} placeholder={String(item.install_hrs_per||0)}
                             onChange={e=>updLine(item.wbs_code,"instHrsOvrd",e.target.value)}
                             className="w-full text-xs border border-purple-300 bg-purple-50 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-purple-400"/>
                         </div>
@@ -1564,7 +1584,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
           <div className="px-3 py-2 bg-blue-50 border-b">
             <div className="text-xs font-bold text-blue-800 mb-2 uppercase tracking-wide truncate">{l4label}</div>
             {[
-              {label:"Install Hours",value:fmtHrs(groupTotals.installHrs),color:"text-purple-700",bg:"bg-purple-50 border border-purple-100"},
+              {label:"Install Hours (excl. WAFHA)",value:fmtHrs(groupTotals.installHrs),color:"text-purple-700",bg:"bg-purple-50 border border-purple-100"},
             ].map(r=>(
               <div key={r.label} className={`flex justify-between items-center py-1 px-2 rounded mb-1 ${r.bg}`}>
                 <span className="text-xs text-gray-600">{r.label}</span>
@@ -1584,7 +1604,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
           <div className="px-3 py-2">
             <div className="text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide border-b pb-1">Investment Totals</div>
             {[
-              {label:"Install Hours",value:fmtHrs(investTotals.installHrs),color:"text-purple-700"},
+              {label:"Install Hours (excl. WAFHA days)",value:fmtHrs(investTotals.installHrs),color:"text-purple-700"},
               {label:"Phase 4 Comm Hrs",value:fmtHrs(commGrandHrs),color:"text-teal-700"},
             ].map(r=>(
               <div key={r.label} className="flex justify-between items-center py-1 border-b border-gray-100">
@@ -5170,14 +5190,16 @@ function SupplyRatesEditor({ managerMode, onUnlock }) {
       s.wbs_code.toLowerCase().includes(search.toLowerCase()) ||
       (s.description||"").toLowerCase().includes(search.toLowerCase());
     const isContractor = (s.delivery_method||"").includes("Contractor");
-    const hasGap = isContractor
+    const isWAFHASup = isWAFHAItem(s);
+    const hasGap = isWAFHASup ? false : (isContractor
       ? !(s.contractor_rate > 0)
-      : !(s.ee_unit_hrs > 0);
+      : !(s.ee_unit_hrs > 0));
     const matchGap = !gapOnly || hasGap;
     return matchPhase && matchSearch && matchGap;
   }), [merged, search, gapOnly, phaseFilter]);
 
   const gapCount = useMemo(() => merged.filter(s => {
+    if (isWAFHAItem(s)) return false; // WAFHA/day-rated items are never GAP
     const isContractor = (s.delivery_method||"").includes("Contractor");
     return isContractor ? !(s.contractor_rate > 0) : !(s.ee_unit_hrs > 0);
   }).length, [merged]);
@@ -5258,7 +5280,8 @@ function SupplyRatesEditor({ managerMode, onUnlock }) {
           <tbody>
             {filtered.map((s, i) => {
               const isContractor = (s.delivery_method||"").includes("Contractor");
-              const hasGap = isContractor ? !(s.contractor_rate > 0) : !(s.ee_unit_hrs > 0);
+              const isWAFHASup   = isWAFHAItem(s);
+              const hasGap = isWAFHASup ? false : (isContractor ? !(s.contractor_rate > 0) : !(s.ee_unit_hrs > 0));
               const isEditing = editing === s.wbs_code;
               const rowBg = isEditing ? "bg-blue-50 border-l-2 border-blue-500"
                           : hasGap   ? (i%2===0?"bg-amber-50":"bg-amber-50/70")
@@ -5313,13 +5336,20 @@ function SupplyRatesEditor({ managerMode, onUnlock }) {
                   <td className={`px-3 py-1.5 text-right tabular-nums ${s.ee_labour_rate>0?"text-purple-700":"text-gray-300"}`}>
                     {fmtR(s.ee_labour_rate) || "—"}
                   </td>
-                  <td className={`px-3 py-1.5 text-right tabular-nums font-semibold ${s.ee_unit_hrs>0?"text-indigo-700":!isContractor&&hasGap?"text-amber-500":"text-gray-300"}`}>
-                    {s.ee_unit_hrs > 0 ? s.ee_unit_hrs.toFixed(2)+" hrs" : (!isContractor && hasGap ? "⚠ missing" : "—")}
+                  <td className={`px-3 py-1.5 text-right tabular-nums font-semibold ${
+                    isWAFHASup ? "text-amber-600"
+                    : s.ee_unit_hrs>0?"text-indigo-700":!isContractor&&hasGap?"text-amber-500":"text-gray-300"}`}>
+                    {isWAFHASup
+                      ? <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 rounded px-1">day rate</span>
+                      : (s.ee_unit_hrs > 0 ? s.ee_unit_hrs.toFixed(2)+" hrs" : (!isContractor && hasGap ? "⚠ missing" : "—"))
+                    }
                   </td>
                   <td className="px-3 py-1.5 text-center">
-                    {hasGap
-                      ? <span className="bg-amber-100 text-amber-700 border border-amber-300 rounded px-1.5 py-0.5 text-[10px] font-semibold">GAP</span>
-                      : <span className="bg-green-100 text-green-700 border border-green-300 rounded px-1.5 py-0.5 text-[10px] font-semibold">OK</span>
+                    {isWAFHASup
+                      ? <span className="bg-amber-100 text-amber-700 border border-amber-300 rounded px-1.5 py-0.5 text-[10px] font-semibold">DAY</span>
+                      : hasGap
+                        ? <span className="bg-amber-100 text-amber-700 border border-amber-300 rounded px-1.5 py-0.5 text-[10px] font-semibold">GAP</span>
+                        : <span className="bg-green-100 text-green-700 border border-green-300 rounded px-1.5 py-0.5 text-[10px] font-semibold">OK</span>
                     }
                   </td>
                 </tr>
