@@ -1584,15 +1584,61 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
   );
 }
 function ReviewLines({ lines, isCommercial }) {
-  const { supply } = useData();
+  const { supply, commLookup, commProfiles } = useData();
   const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
+
   const totals = entered.reduce((a,item)=>{
     const ln=lines[item.wbs_code]||{};
     const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
-    return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs,eeInt:a.eeInt+c.eeInt,comm:a.comm+c.comm};
-  },{installHrs:0,commHrs:0,eeInt:0,comm:0});
+    return {installHrs:a.installHrs+c.installHrs,eeInt:a.eeInt+c.eeInt,comm:a.comm+c.comm};
+  },{installHrs:0,eeInt:0,comm:0});
 
-  if (entered.length===0) return (
+  // ── Build Phase 4 commissioning rows ──────────────────────────
+  // Step 1: aggregate derived quantities from supply items
+  const commTotals = {};
+  entered.forEach(item=>{
+    const cw=item.commission_wbs;
+    if(!cw||!commLookup[cw]) return;
+    const qty=parseFloat(lines[item.wbs_code]?.qty||"0")*parseFloat(lines[item.wbs_code]?.factor||"1");
+    if(!commTotals[cw]) commTotals[cw]={qty:0,...commLookup[cw]};
+    commTotals[cw].qty+=qty;
+  });
+
+  // Step 2: build display rows — auto-derived + direct-entry
+  const phase4Rows = [];
+  Object.entries(commLookup).forEach(([commWbs, data])=>{
+    const isDirect   = !!data.direct_entry;
+    const derivedQty = isDirect
+      ? (parseFloat(lines[`comm_direct_${commWbs}`]?.qty||"0")||0)
+      : (commTotals[commWbs]?.qty||0);
+    if(derivedQty<=0) return; // only show rows with qty
+    const scale      = getScaleFactor(commProfiles, data.profile_id, derivedQty);
+    const baseHrs    = derivedQty*(data.hrs_per_unit||0);
+    const ovrd       = lines[`comm_ovrd_${commWbs}`]?.qty;
+    const commHrs    = (ovrd!==undefined&&ovrd!=="")?parseFloat(ovrd)||0:baseHrs*scale;
+    const rate       = data.ee_labour_rate||139.26;
+    const eeInt      = commHrs*rate;
+    const comm       = eeInt*(1+ANS_LAB);
+    phase4Rows.push({ commWbs, data, derivedQty, isDirect, scale, baseHrs, commHrs, rate, eeInt, comm,
+                      isHrsOvrd: ovrd!==undefined&&ovrd!=="" });
+  });
+
+  const phase4Totals = phase4Rows.reduce((a,r)=>({
+    commHrs: a.commHrs+r.commHrs, eeInt: a.eeInt+r.eeInt, comm: a.comm+r.comm
+  }),{commHrs:0,eeInt:0,comm:0});
+
+  // Group supply items by L1 phase (excluding Phase 4 — handled separately)
+  const byPhase = {};
+  entered.forEach(item=>{
+    const phase=item.wbs_code.split(".")[0];
+    if(phase==="4") return;
+    if(!byPhase[phase]) byPhase[phase]=[];
+    byPhase[phase].push(item);
+  });
+
+  const hasAnyData = entered.length>0 || phase4Rows.length>0;
+
+  if(!hasAnyData) return (
     <div className="flex-1 flex items-center justify-center bg-gray-50">
       <div className="text-center text-gray-400">
         <div className="text-4xl mb-3">📋</div>
@@ -1602,79 +1648,174 @@ function ReviewLines({ lines, isCommercial }) {
     </div>
   );
 
-  // Group by L1 phase
-  const byPhase = {};
-  entered.forEach(item=>{
-    const phase=item.wbs_code.split(".")[0];
-    if(!byPhase[phase]) byPhase[phase]=[];
-    byPhase[phase].push(item);
-  });
+  const colSpanBase = isCommercial ? 8 : 7; // cols in supply table
+  const colSpanComm = isCommercial ? 7 : 6; // cols in commission table
 
   return (
     <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
       <div className="max-w-6xl mx-auto space-y-4">
-        {/* Summary bar */}
-        <div className={`bg-white rounded-lg border border-gray-200 shadow-sm p-4 grid gap-4 ${isCommercial?"grid-cols-4":"grid-cols-3"}`}>
+
+        {/* ── Summary bar ── */}
+        <div className={`bg-white rounded-lg border border-gray-200 shadow-sm p-4 grid gap-4 ${isCommercial?"grid-cols-5":"grid-cols-4"}`}>
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-800">{entered.length}</div>
-            <div className="text-xs text-gray-500">Lines Entered</div>
+            <div className="text-xs text-gray-500">Supply Lines</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-purple-700">{fmtHrs(totals.installHrs)}</div>
             <div className="text-xs text-gray-500">Install Hours</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-900">{fmt(totals.eeInt)}</div>
+            <div className="text-2xl font-bold text-teal-700">{fmtHrs(phase4Totals.commHrs)}</div>
+            <div className="text-xs text-gray-500">Comm Hours (Ph.4)</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-900">{fmt(totals.eeInt+phase4Totals.eeInt)}</div>
             <div className="text-xs text-gray-500">EE Internal Total</div>
           </div>
           {isCommercial && (
-          <div className="text-center">
-            <div className="text-2xl font-bold text-orange-700">{fmt(totals.comm)}</div>
-            <div className="text-xs text-gray-500">Commercial Total</div>
-          </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-orange-700">{fmt(totals.comm+phase4Totals.comm)}</div>
+              <div className="text-xs text-gray-500">Commercial Total</div>
+            </div>
           )}
         </div>
 
-        {Object.entries(byPhase).map(([phase,items])=>(
+        {/* ── Supply phases (1–3, 5) ── */}
+        {Object.entries(byPhase).sort().map(([phase,items])=>(
           <div key={phase} className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-            <div className="bg-gray-700 text-white text-xs font-bold px-4 py-2 uppercase tracking-wide">
-              Phase {phase}
+            <div className="bg-gray-700 text-white text-xs font-bold px-4 py-2 uppercase tracking-wide flex items-center justify-between">
+              <span>Phase {phase} — {{"1":"Planning","2":"Design","3":"Construction","5":"M&C"}[phase]||phase}</span>
+              <span className="font-mono opacity-75">{items.length} lines</span>
             </div>
             <table className="w-full text-xs">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="text-left px-3 py-2 font-semibold text-gray-500">WBS Code</th>
+                  <th className="text-left px-3 py-2 font-semibold text-gray-500 whitespace-nowrap">WBS Code</th>
                   <th className="text-left px-3 py-2 font-semibold text-gray-500">Description</th>
                   <th className="text-center px-3 py-2 font-semibold text-gray-500">Qty</th>
+                  <th className="text-center px-3 py-2 font-semibold text-gray-500">Factor</th>
                   <th className="text-center px-3 py-2 font-semibold text-gray-500">UOM</th>
-                  <th className="text-right px-3 py-2 font-semibold text-purple-600">Install Hrs</th>
-                  <th className="text-right px-3 py-2 font-semibold text-blue-700">EE Internal</th>
-                  {isCommercial && <th className="text-right px-3 py-2 font-semibold text-orange-700">Commercial</th>}
+                  <th className="text-right px-3 py-2 font-semibold text-purple-600 whitespace-nowrap">Install Hrs</th>
+                  <th className="text-right px-3 py-2 font-semibold text-blue-700 whitespace-nowrap">EE Internal</th>
+                  {isCommercial && <th className="text-right px-3 py-2 font-semibold text-orange-700 whitespace-nowrap">Commercial</th>}
                   <th className="text-left px-3 py-2 font-semibold text-gray-500">Delivery</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map(item=>{
+                {items.map((item,i)=>{
                   const ln=lines[item.wbs_code]||{};
                   const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
                   return (
-                    <tr key={item.wbs_code} className="border-b hover:bg-gray-50">
-                      <td className="px-3 py-2 font-mono text-blue-600 whitespace-nowrap">{item.wbs_code}</td>
-                      <td className="px-3 py-2 text-gray-800 max-w-xs truncate">{item.description}</td>
-                      <td className="px-3 py-2 text-center font-bold text-orange-700">{ln.qty}</td>
-                      <td className="px-3 py-2 text-center text-gray-500">{item.uom||"EA"}</td>
-                      <td className="px-3 py-2 text-right font-medium text-purple-700">{fmtHrs(c.installHrs)}</td>
-
-                      <td className="px-3 py-2 text-right font-bold text-blue-800">{fmt(c.eeInt)}</td>
-                      {isCommercial && <td className="px-3 py-2 text-right font-bold text-orange-700">{fmt(c.comm)}</td>}
-                      <td className="px-3 py-2 text-gray-500">{c.isContr?"Contractor":"EE"}</td>
+                    <tr key={item.wbs_code} className={`border-b ${i%2===0?"bg-white":"bg-gray-50"} hover:bg-blue-50`}>
+                      <td className="px-3 py-1.5 font-mono text-blue-600 whitespace-nowrap text-[11px]">{item.wbs_code}</td>
+                      <td className="px-3 py-1.5 text-gray-800 max-w-xs truncate" title={item.description}>{item.description}</td>
+                      <td className="px-3 py-1.5 text-center font-bold text-orange-700">{ln.qty}</td>
+                      <td className="px-3 py-1.5 text-center text-gray-500">{ln.factor||"1"}</td>
+                      <td className="px-3 py-1.5 text-center text-gray-500">{item.uom||"each"}</td>
+                      <td className="px-3 py-1.5 text-right font-medium text-purple-700">{fmtHrs(c.installHrs)||"—"}</td>
+                      <td className="px-3 py-1.5 text-right font-bold text-blue-800">{fmt(c.eeInt)}</td>
+                      {isCommercial && <td className="px-3 py-1.5 text-right font-bold text-orange-700">{fmt(c.comm)}</td>}
+                      <td className="px-3 py-1.5 text-gray-500 text-[11px]">{c.isContr?"Contractor":"EE"}</td>
                     </tr>
                   );
                 })}
               </tbody>
+              <tfoot className="bg-gray-100 border-t">
+                <tr>
+                  <td colSpan={5} className="px-3 py-1.5 font-semibold text-gray-600 text-[11px]">Phase {phase} totals</td>
+                  <td className="px-3 py-1.5 text-right font-bold text-purple-700">
+                    {fmtHrs(items.reduce((a,item)=>{
+                      const ln=lines[item.wbs_code]||{};
+                      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
+                      return a+c.installHrs;
+                    },0))||"—"}
+                  </td>
+                  <td className="px-3 py-1.5 text-right font-bold text-blue-900">
+                    {fmt(items.reduce((a,item)=>{
+                      const ln=lines[item.wbs_code]||{};
+                      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
+                      return a+c.eeInt;
+                    },0))}
+                  </td>
+                  {isCommercial && <td className="px-3 py-1.5 text-right font-bold text-orange-800">
+                    {fmt(items.reduce((a,item)=>{
+                      const ln=lines[item.wbs_code]||{};
+                      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
+                      return a+c.comm;
+                    },0))}
+                  </td>}
+                  <td/>
+                </tr>
+              </tfoot>
             </table>
           </div>
         ))}
+
+        {/* ── Phase 4 — Commissioning ── */}
+        {phase4Rows.length>0 && (
+          <div className="bg-white rounded-lg border border-teal-300 shadow-sm overflow-hidden">
+            <div className="bg-teal-700 text-white text-xs font-bold px-4 py-2 uppercase tracking-wide flex items-center justify-between">
+              <span>Phase 4 — Commissioning <span className="font-normal opacity-75 normal-case ml-2">auto-derived from supply quantities · scale factor applied</span></span>
+              <span className="font-mono opacity-75">{phase4Rows.length} lines · {fmtHrs(phase4Totals.commHrs)}</span>
+            </div>
+            <table className="w-full text-xs">
+              <thead className="bg-teal-50 border-b border-teal-200">
+                <tr>
+                  <th className="text-left px-3 py-2 font-semibold text-gray-500 whitespace-nowrap">WBS Code</th>
+                  <th className="text-left px-3 py-2 font-semibold text-gray-500">Description</th>
+                  <th className="text-left px-3 py-2 font-semibold text-gray-500">Resource</th>
+                  <th className="text-center px-3 py-2 font-semibold text-orange-700 whitespace-nowrap">Qty</th>
+                  <th className="text-center px-3 py-2 font-semibold text-gray-500 whitespace-nowrap">Hrs/Unit</th>
+                  <th className="text-center px-3 py-2 font-semibold text-blue-600 whitespace-nowrap">Scale</th>
+                  <th className="text-right px-3 py-2 font-semibold text-teal-700 whitespace-nowrap">Comm Hrs</th>
+                  <th className="text-right px-3 py-2 font-semibold text-blue-700 whitespace-nowrap">EE Internal</th>
+                  {isCommercial && <th className="text-right px-3 py-2 font-semibold text-orange-700 whitespace-nowrap">Commercial</th>}
+                  <th className="text-left px-3 py-2 font-semibold text-gray-500">Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {phase4Rows.sort((a,b)=>a.commWbs.localeCompare(b.commWbs)).map((row,i)=>(
+                  <tr key={row.commWbs} className={`border-b ${i%2===0?"bg-white":"bg-teal-50/30"} hover:bg-teal-50`}>
+                    <td className="px-3 py-1.5 font-mono text-teal-700 whitespace-nowrap text-[11px]">{row.commWbs}</td>
+                    <td className="px-3 py-1.5 text-gray-800 max-w-xs truncate" title={row.data.description}>{row.data.description}</td>
+                    <td className="px-3 py-1.5 text-gray-500 text-[11px] whitespace-nowrap">{row.data.resource_type}</td>
+                    <td className="px-3 py-1.5 text-center font-bold text-orange-700">
+                      {row.derivedQty.toLocaleString("en-AU",{maximumFractionDigits:1})}
+                    </td>
+                    <td className="px-3 py-1.5 text-center text-gray-500">{row.data.hrs_per_unit||0}</td>
+                    <td className="px-3 py-1.5 text-center text-blue-600">
+                      {row.scale < 1
+                        ? <span className="font-bold text-blue-700">{fmtPct(row.scale)}</span>
+                        : <span className="text-gray-400">—</span>}
+                    </td>
+                    <td className="px-3 py-1.5 text-right font-bold text-teal-700 whitespace-nowrap">
+                      {fmtHrs(row.commHrs)}
+                      {row.isHrsOvrd && <span className="ml-1 text-orange-500 text-[10px]">⚡ovrd</span>}
+                    </td>
+                    <td className="px-3 py-1.5 text-right font-bold text-blue-800">{fmt(row.eeInt)}</td>
+                    {isCommercial && <td className="px-3 py-1.5 text-right font-bold text-orange-700">{fmt(row.comm)}</td>}
+                    <td className="px-3 py-1.5 text-[11px]">
+                      {row.isDirect
+                        ? <span className="bg-teal-100 text-teal-700 border border-teal-200 rounded px-1.5 py-0.5 font-semibold">DIRECT</span>
+                        : <span className="text-gray-400">auto</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-teal-100 border-t border-teal-300">
+                <tr>
+                  <td colSpan={6} className="px-3 py-1.5 font-semibold text-teal-800 text-[11px]">Phase 4 totals (scale-adjusted)</td>
+                  <td className="px-3 py-1.5 text-right font-bold text-teal-800">{fmtHrs(phase4Totals.commHrs)}</td>
+                  <td className="px-3 py-1.5 text-right font-bold text-blue-900">{fmt(phase4Totals.eeInt)}</td>
+                  {isCommercial && <td className="px-3 py-1.5 text-right font-bold text-orange-800">{fmt(phase4Totals.comm)}</td>}
+                  <td/>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+
       </div>
     </div>
   );
