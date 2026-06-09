@@ -1009,6 +1009,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
     supply.forEach(item => {
       const commWbs = item.commission_wbs;
       if (!commWbs || !commLookup[commWbs]) return;
+      if (commLookup[commWbs].direct_entry) return; // qty entered directly, not auto-derived
       const qty    = parseFloat(lines[item.wbs_code]?.qty || "0");
       const factor = parseFloat(lines[item.wbs_code]?.factor || "1");
       if (!m[commWbs]) m[commWbs] = { qty:0, ...commLookup[commWbs] };
@@ -1021,6 +1022,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
     const g = {};
     Object.entries(commTotals).forEach(([commWbs, data])=>{
       if (data.qty <= 0) return;
+      if (commLookup[commWbs]?.direct_entry) return; // handled by direct-entry section below
       const l4 = commWbs.split('.').slice(0,4).join('.');
       if (!g[l4]) g[l4] = { items:[], totalHrs:0, totalCost:0 };
       const scale     = getScaleFactor(commProfiles, data.profile_id, data.qty);
@@ -1624,11 +1626,12 @@ function ReviewLines({ lines, isCommercial }) {
   },{installHrs:0,eeInt:0,comm:0});
 
   // ── Build Phase 4 commissioning rows ──────────────────────────
-  // Step 1: aggregate derived quantities from supply items
+  // Step 1: aggregate derived quantities from supply items (skip direct_entry items)
   const commTotals = {};
   entered.forEach(item=>{
     const cw=item.commission_wbs;
     if(!cw||!commLookup[cw]) return;
+    if(commLookup[cw].direct_entry) return; // qty entered directly by estimator
     const qty=parseFloat(lines[item.wbs_code]?.qty||"0")*parseFloat(lines[item.wbs_code]?.factor||"1");
     if(!commTotals[cw]) commTotals[cw]={qty:0,...commLookup[cw]};
     commTotals[cw].qty+=qty;
@@ -1878,10 +1881,11 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
     byPhase[ph].matCost    += c.equipCost  || 0; // PCE/materials
   });
 
-  // Phase 4 derived
+  // Phase 4 derived (skip direct_entry items — those use estimator-entered qty)
   const commTotals = {};
   entered.forEach(item=>{
     if(!item.commission_wbs||!commLookup[item.commission_wbs]) return;
+    if(commLookup[item.commission_wbs].direct_entry) return;
     const qty=parseFloat(lines[item.wbs_code]?.qty||"0");
     const factor=parseFloat(lines[item.wbs_code]?.factor||"1");
     const cw=item.commission_wbs;
@@ -1891,6 +1895,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
   const eeRate=139.26;
   const phase4=Object.entries(commTotals).reduce((a,[wbs,ct])=>{
     if(ct.qty<=0) return a;
+    if(commLookup[wbs]?.direct_entry) return a;
     const scale=getScaleFactor(commProfiles,ct.profile_id,ct.qty);
     const baseHrs=ct.qty*(ct.hrs_per_unit||0);
     const ovrd=lines[`comm_ovrd_${wbs}`]?.qty;
