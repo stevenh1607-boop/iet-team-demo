@@ -129,7 +129,10 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
     const totalOffset = startMonNum - 1 + monthNum - 1;
     const yr = startYr + Math.floor(totalOffset / 12);
     const mo = (totalOffset % 12) + 1;
-    return new Date(yr, mo - 1, 1); // real Date — SheetJS writes as Excel serial; we apply mmm-yy format below
+    // Return Excel date serial (numeric) — Copperleaf requires plain numeric date serials, not ISO strings.
+    // Excel serial = days since 1900-01-00 (25569 offset from JS epoch + Lotus bug adds 1).
+    const d = new Date(Date.UTC(yr, mo - 1, 1));
+    return Math.round(d.getTime() / 86400000) + 25569;
   };
 
   // ── Escalation ───────────────────────────────────────────────
@@ -370,16 +373,17 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
 
   // Convert rows to AOA (array of arrays) for SheetJS
   // Date values will be formatted as Excel date serials
-  const ws = XL.utils.aoa_to_sheet(rows, { cellDates: true });
-  // Post-process header row: set mmm-yy custom number format on each month date cell
-  // This matches the working Copperleaf template exactly (Custom: mmm-yy)
+  const ws = XL.utils.aoa_to_sheet(rows);
+  // Post-process header row: month serials are plain numbers — stamp mmm-yy format
+  // and ensure type is numeric (n), NOT date (d) — Copperleaf reads the serial directly.
   for (let m = 0; m < totalMonths; m++) {
     const colIdx = 17 + m;
     const colLetter = XL.utils.encode_col(colIdx);
-    const addr = colLetter + "1"; // header is row 1
+    const addr = colLetter + "1";
     if (ws[addr]) {
-      ws[addr].t = "d";
+      ws[addr].t = "n";
       ws[addr].z = "mmm-yy";
+      delete ws[addr].w;
     }
   }
   // Stamp @ format on every cell in col I (Account Code) — including header and empty cells.
