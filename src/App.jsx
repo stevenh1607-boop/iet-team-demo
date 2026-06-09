@@ -207,9 +207,7 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
   // ── Helper: write a SPEND row ─────────────────────────────────
   const writeSpend = (l3code, spendName, currType, resCode, labourType, perMonthByMonthIdx, metaCols={}) => {
     const row = new Array(17 + totalMonths).fill("");
-    row[0] = buildCLGroupPath(l3code);
-    row[1] = "WBS Level 3";  // Spend rows show L3 context
-    row[2] = l3code;
+    // Cols A/B/C (group path/description/id) must be BLANK on Spend rows — working VBA export leaves these empty
     row[3] = "Spend";
     row[4] = "Unit";
     row[5] = spendName;
