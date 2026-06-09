@@ -370,9 +370,11 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
   const q   = parseFloat(qty)   || 0;
   const f   = parseFloat(factor)|| 1;
   const isContr = (delivery || item.delivery_method || "EE Delivered") === "Contractor Delivered";
+  // install_hrs_per: used for supply items (propagated from linked install row)
+  // ee_unit_hrs: used for install-scope rows shown directly (e.g. 3.1.1.12.4.01)
   const instHrsPU = (installHrsOvrd !== "" && installHrsOvrd != null)
     ? (parseFloat(installHrsOvrd) || 0)
-    : (item.install_hrs_per || 0);
+    : (item.install_hrs_per != null ? item.install_hrs_per : (item.ee_unit_hrs || 0));
   const commHrsPU = item.comm_hrs_per || 0;
   const installHrs = q * f * instHrsPU;
   const commHrs    = q * commHrsPU;
@@ -885,6 +887,17 @@ function InvMatsLookup({ wbsCode }) {
   );
 }
 
+// Thin wrapper that scrolls the selected commissioning group into view
+function CommScrollList({ selectedCommGroup, children }) {
+  const containerRef = useRef(null);
+  useEffect(()=>{
+    if (!selectedCommGroup || !containerRef.current) return;
+    const el = containerRef.current.querySelector(`[data-comm-group="${selectedCommGroup}"]`);
+    if (el) el.scrollIntoView({ behavior:"smooth", block:"start" });
+  },[selectedCommGroup]);
+  return <div ref={containerRef} className="flex-1 overflow-y-auto">{children}</div>;
+}
+
 function EstimationScreen({ isCommercial, lines, setLines }) {
   const { wbs, supply, rates, loading, commLookup, commProfiles } = useData();
   const ratesLookup = useMemo(() => {
@@ -1049,14 +1062,23 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
     return g;
   },[commLookup, commTotals, commProfiles, lines]);
 
+  // When navigating to Phase 4 — select the first active commissioning group
   useEffect(()=>{
     if (activePhase === 4) {
-      const keys = Object.keys(commGroups).sort();
-      if (keys.length > 0 && (!selectedCommGroup || !commGroups[selectedCommGroup]))
+      const keys = Object.keys(commAllGroups).sort();
+      if (keys.length > 0 && (!selectedCommGroup || !commAllGroups[selectedCommGroup]))
         setSelectedCommGroup(keys[0]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[activePhase, commGroups]);
+  },[activePhase]);
+
+  // When a Phase 4 L4 is selected in the nav tree, jump to that commissioning group
+  useEffect(()=>{
+    if (activePhase === 4 && selectedL4 && commAllGroups[selectedL4]) {
+      setSelectedCommGroup(selectedL4);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[selectedL4, activePhase]);
 
   if (loading) return (
     <div className="flex-1 flex items-center justify-center bg-gray-50">
@@ -1133,18 +1155,26 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
               <div className="text-right text-blue-800">EE Cost</div>
               <div className="text-center">Profile</div>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <CommScrollList selectedCommGroup={selectedCommGroup}>
               {Object.entries(commAllGroups).sort().map(([l4, group]) => {
                 const hasActive = group.items.some(i => i.derivedQty > 0);
+                const isSelected = l4 === selectedCommGroup;
                 return (
                   <div key={l4}>
-                    <div className={`px-3 py-1 flex items-center gap-2 border-b-2 border-gray-300 text-xs font-bold uppercase tracking-wide cursor-pointer
-                      ${hasActive ? "bg-teal-700 text-white" : "bg-gray-100 text-gray-500"}`}
+                    <div
+                      data-comm-group={l4}
+                      className={`px-3 py-1 flex items-center gap-2 border-b-2 text-xs font-bold uppercase tracking-wide cursor-pointer transition-colors
+                        ${l4===selectedCommGroup
+                          ? "bg-[#1e3a5f] text-white border-blue-400"
+                          : hasActive
+                            ? "bg-teal-700 text-white border-teal-500"
+                            : "bg-gray-100 text-gray-500 border-gray-300"}`}
                       onClick={()=>setSelectedCommGroup(l4===selectedCommGroup?null:l4)}>
                       <span className="font-mono font-normal opacity-70">{l4}</span>
                       <span className="flex-1 truncate">{group.label}</span>
                       {hasActive && <span className="font-mono font-bold">{fmtHrs(group.totalHrs)}</span>}
                     </div>
+                    {/* Items always visible — highlighted group scrolls into view via id */}
                     {group.items.map(item => {
                       const ovrdKey    = `comm_ovrd_${item.wbs}`;
                       const directKey  = `comm_direct_${item.wbs}`;
@@ -1219,7 +1249,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                   </div>
                 );
               })}
-            </div>
+            </CommScrollList>
           </div>
           {/* RIGHT — commissioning summary */}
           <div className="w-52 bg-white border-l flex flex-col overflow-hidden flex-shrink-0">
