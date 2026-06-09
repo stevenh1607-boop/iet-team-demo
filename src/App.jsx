@@ -9,7 +9,7 @@ import { useState, useMemo, useEffect, useCallback, createContext, useContext, u
 const BASE = import.meta.env.BASE_URL || "/";
 
 // ── DATA CONTEXT ────────────────────────────────────────────────
-const DataCtx = createContext({ wbs:[], rates:[], supply:[], equipment:[], equipLookup:{}, commLookup:{}, commProfiles:{}, escRates:null, resourceCodes:{}, invMats:[], matAssemblies:[], loading:true, error:null });
+const DataCtx = createContext({ wbs:[], rates:[], supply:[], equipment:[], equipLookup:{}, commLookup:{}, commProfiles:{}, escRates:null, resourceCodes:{}, invMats:[], matAssemblies:[], equipPricing:{}, loading:true, error:null });
 
 // ── COPPERLEAF CSV EXPORT ────────────────────────────────────────
 // Matches Sync_To_C55 macro structure exactly:
@@ -5047,7 +5047,7 @@ function RatesEditor({ rates, managerMode, onUnlock }) {
         <table className="text-xs w-full min-w-max">
           <thead className="bg-gray-50 border-b sticky top-0 z-10">
             <tr>
-              <th className="text-left px-3 py-2 font-semibold text-gray-600 whitespace-nowrap min-w-[180px]">Resource Name</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600 whitespace-nowrap" style={{minWidth:"200px",width:"200px"}}>Resource Name</th>
               <th className="text-center px-2 py-2 font-semibold text-gray-500 whitespace-nowrap">Unit</th>
               <th className="text-right px-2 py-2 font-semibold text-green-700 whitespace-nowrap">EE Internal</th>
               <th className="text-right px-2 py-2 font-semibold text-orange-700 whitespace-nowrap">EE Commercial</th>
@@ -5079,8 +5079,8 @@ function RatesEditor({ rates, managerMode, onUnlock }) {
                 : null;
               return (
                 <tr key={r.resource_name} className={`border-b transition-colors ${rowBg}`}>
-                  <td className="px-3 py-1.5 font-medium text-gray-800">
-                    <div className="whitespace-nowrap">{r.resource_name}</div>
+                  <td className="px-3 py-1.5 font-medium text-gray-800" style={{minWidth:"200px"}}>
+                    <span className="whitespace-nowrap">{r.resource_name}</span>
                   </td>
                   {/* Unit */}
                   <td className="px-2 py-1.5 text-center">
@@ -6382,6 +6382,7 @@ function WBSManager({ equipSel, setEquipSel }) {
     {id:"items",      label:"📋 WBS Item Editor",      count:wbs.length},
     {id:"rates",      label:"💲 Resource Rates",       count:rates.length},
     {id:"catalogue",  label:"🔧 Equipment Catalogue",  count:null},
+    {id:"eqpricing",  label:"💲 Equipment Pricing",    count:null},
     {id:"escalation", label:"📈 Escalation Rates",     count:null},
     {id:"scaling",    label:"📐 Comm Scaling",          count:WBS_PROFILES.length},
     {id:"people",     label:"👥 People & Roles",        count:people.filter(p=>p.active).length},
@@ -6493,6 +6494,10 @@ function WBSManager({ equipSel, setEquipSel }) {
       {/* Equipment Catalogue */}
       {tab==="catalogue"&&(
         <EquipmentCatalogueManager equipSel={equipSel} setEquipSel={setEquipSel}/>
+      )}
+      {/* Equipment Pricing */}
+      {tab==="eqpricing"&&(
+        <EquipmentPricingEditor managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
       )}
 
       {/* Escalation Rates */}
@@ -6912,6 +6917,243 @@ function EquipmentScreen({ lines, setLines, isCommercial, inv }) {
 
 // ── EQUIPMENT CATALOGUE MANAGER (WBS Manager tab) ────────────────
 // Admin view — full catalogue, price editing, WBS assignment, add new items
+// ── EQUIPMENT PRICING EDITOR ─────────────────────────────────────────────────
+// Shows base price, date of quote, annual escalation rate, and calculates
+// current escalated price for PCE, SCADA and Comms equipment items.
+// Matches the logic from the workbook's Period Contract Equipment / SCADA / Comms sheets.
+function EquipmentPricingEditor({ managerMode, onUnlock }) {
+  const { equipPricing: ctxPricing, supply } = useData();
+  const [localPricing, setLocalPricing] = useState(null);
+  const [editingKey,   setEditingKey]   = useState(null);
+  const [editVals,     setEditVals]     = useState({});
+  const [search,       setSearch]       = useState("");
+  const [sourceFilter, setSourceFilter] = useState("All");
+
+  const basePricing = localPricing || ctxPricing || {};
+
+  // Calculate escalated price: compound annual growth from price_date to today
+  const calcEscalated = (basePrice, priceDate, escRate) => {
+    if (!basePrice || basePrice <= 0) return null;
+    if (!priceDate || !escRate) return basePrice;
+    const from = new Date(priceDate);
+    const now  = new Date();
+    const yearsElapsed = (now - from) / (1000 * 60 * 60 * 24 * 365.25);
+    if (yearsElapsed <= 0) return basePrice;
+    return basePrice * Math.pow(1 + escRate, yearsElapsed);
+  };
+
+  const pricingArray = useMemo(() => {
+    return Object.values(basePricing).sort((a, b) =>
+      (a.wbs_code || "").localeCompare(b.wbs_code || "")
+    );
+  }, [basePricing]);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return pricingArray.filter(r => {
+      const matchQ = !q
+        || (r.wbs_code || "").toLowerCase().includes(q)
+        || (r.description || "").toLowerCase().includes(q)
+        || (r.make || "").toLowerCase().includes(q)
+        || (r.category || "").toLowerCase().includes(q);
+      const matchS = sourceFilter === "All" || r.source === sourceFilter;
+      return matchQ && matchS;
+    });
+  }, [pricingArray, search, sourceFilter]);
+
+  const startEdit = (r) => {
+    setEditingKey(r.wbs_code);
+    setEditVals({
+      base_price: r.base_price ?? "",
+      price_date: r.price_date ?? "",
+      esc_rate:   r.esc_rate != null ? (r.esc_rate * 100).toFixed(1) : "6.0",
+      comments:   r.comments ?? "",
+    });
+  };
+
+  const saveEdit = (key) => {
+    const updated = { ...basePricing };
+    if (!updated[key]) return;
+    updated[key] = {
+      ...updated[key],
+      base_price: parseFloat(editVals.base_price) || updated[key].base_price,
+      price_date: editVals.price_date || updated[key].price_date,
+      esc_rate:   parseFloat(editVals.esc_rate) / 100 || updated[key].esc_rate,
+      comments:   editVals.comments,
+    };
+    setLocalPricing(updated);
+    setEditingKey(null);
+  };
+
+  const srcBadge = (src) => {
+    const cfg = {PCE:"bg-blue-100 text-blue-800", SCADA:"bg-purple-100 text-purple-800", Comms:"bg-teal-100 text-teal-800"};
+    return <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${cfg[src]||"bg-gray-100 text-gray-600"}`}>{src}</span>;
+  };
+
+  // Summary stats
+  const staleCount = filtered.filter(r => {
+    if (!r.price_date) return true;
+    const ageYrs = (new Date() - new Date(r.price_date)) / (1000*60*60*24*365.25);
+    return ageYrs > 2;
+  }).length;
+
+  const totalEscalated = filtered.reduce((sum, r) => {
+    const esc = calcEscalated(r.base_price, r.price_date, r.esc_rate);
+    return sum + (esc || 0);
+  }, 0);
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Toolbar */}
+      <div className="bg-white border-b px-3 py-2 flex items-center gap-2 flex-shrink-0 flex-wrap">
+        <input value={search} onChange={e=>setSearch(e.target.value)}
+          placeholder="Search WBS, description, make, category…"
+          className="border border-gray-300 rounded px-2 py-1 text-xs w-56 focus:outline-none focus:ring-1 focus:ring-blue-300"/>
+        {search && <button onClick={()=>setSearch("")} className="text-gray-400 text-xs hover:text-gray-600">✕</button>}
+        <select value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)}
+          className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none">
+          <option>All</option>
+          <option value="PCE">PCE / LLT</option>
+          <option value="SCADA">SCADA</option>
+          <option value="Comms">Comms</option>
+        </select>
+        <span className="text-xs text-gray-400">{filtered.length} items</span>
+        {staleCount > 0 && (
+          <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded flex items-center gap-1">
+            ⚠️ {staleCount} prices older than 2 years
+          </span>
+        )}
+        <div className="flex-1"/>
+        {managerMode ? (
+          <span className="text-xs bg-orange-100 text-orange-700 border border-orange-300 px-3 py-1.5 rounded font-semibold">🔓 Manager Mode — click row to edit</span>
+        ) : (
+          <button onClick={onUnlock} className="text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 px-3 py-1.5 rounded flex items-center gap-1.5">🔒 Manager Mode</button>
+        )}
+      </div>
+
+      {/* Table */}
+      <div className="flex-1 overflow-auto">
+        <table className="text-xs w-full min-w-max">
+          <thead className="bg-gray-50 border-b sticky top-0 z-10">
+            <tr>
+              <th className="text-left px-3 py-2 font-semibold text-gray-500 whitespace-nowrap" style={{minWidth:"140px"}}>WBS Code</th>
+              <th className="text-left px-2 py-2 font-semibold text-gray-500 whitespace-nowrap" style={{minWidth:"60px"}}>Source</th>
+              <th className="text-left px-2 py-2 font-semibold text-gray-600 whitespace-nowrap" style={{minWidth:"280px"}}>Description</th>
+              <th className="text-left px-2 py-2 font-semibold text-gray-500 whitespace-nowrap">Category</th>
+              <th className="text-left px-2 py-2 font-semibold text-gray-500 whitespace-nowrap">Make / Model</th>
+              <th className="text-right px-2 py-2 font-semibold text-blue-700 whitespace-nowrap">Base Price</th>
+              <th className="text-center px-2 py-2 font-semibold text-gray-500 whitespace-nowrap">Price Date</th>
+              <th className="text-right px-2 py-2 font-semibold text-purple-700 whitespace-nowrap">Esc. Rate</th>
+              <th className="text-right px-2 py-2 font-semibold text-green-700 whitespace-nowrap">Current Est.</th>
+              <th className="text-left px-2 py-2 font-semibold text-gray-400 whitespace-nowrap">Comments</th>
+              <th className="px-2 py-2" style={{minWidth:"64px"}}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(r => {
+              const isEd = editingKey === r.wbs_code;
+              const escalated = calcEscalated(r.base_price, r.price_date, r.esc_rate);
+              const ageYrs = r.price_date ? (new Date() - new Date(r.price_date)) / (1000*60*60*24*365.25) : null;
+              const isStale = ageYrs !== null && ageYrs > 2;
+              const rowBg = isEd ? "bg-blue-50" : isStale ? "bg-amber-50/50" : "hover:bg-gray-50";
+              const priceDiff = escalated && r.base_price ? escalated - r.base_price : 0;
+              return (
+                <tr key={r.wbs_code} className={`border-b transition-colors ${rowBg}`}>
+                  <td className="px-3 py-1.5 font-mono text-gray-700 text-[10px]" style={{minWidth:"140px"}}>{r.wbs_code}</td>
+                  <td className="px-2 py-1.5">{srcBadge(r.source)}</td>
+                  <td className="px-2 py-1.5 text-gray-800" style={{minWidth:"280px"}}>
+                    <div className="line-clamp-2">{r.description}</div>
+                    {r.contract_no && <div className="text-[10px] text-gray-400 font-mono">{r.contract_no}</div>}
+                  </td>
+                  <td className="px-2 py-1.5 text-gray-500 whitespace-nowrap">{r.category}</td>
+                  <td className="px-2 py-1.5 text-gray-500 whitespace-nowrap text-[10px]">{[r.make, r.model].filter(Boolean).join(" / ")}</td>
+
+                  {/* Base Price */}
+                  <td className="px-2 py-1.5 text-right">
+                    {isEd
+                      ? <input type="number" step="0.01" value={editVals.base_price}
+                          onChange={e=>setEditVals(p=>({...p,base_price:e.target.value}))}
+                          className="w-24 border border-blue-300 bg-blue-50 rounded px-1 py-0.5 text-xs text-right focus:outline-none"/>
+                      : <span className={`font-medium ${r.base_price ? "text-blue-800" : "text-gray-300"}`}>
+                          {r.base_price ? "$"+r.base_price.toLocaleString("en-AU",{minimumFractionDigits:0,maximumFractionDigits:0}) : "—"}
+                        </span>
+                    }
+                  </td>
+
+                  {/* Price Date */}
+                  <td className="px-2 py-1.5 text-center">
+                    {isEd
+                      ? <input type="date" value={editVals.price_date}
+                          onChange={e=>setEditVals(p=>({...p,price_date:e.target.value}))}
+                          className="border border-gray-300 rounded px-1 py-0.5 text-xs focus:outline-none"/>
+                      : <span className={`${isStale?"text-amber-700 font-semibold":"text-gray-600"}`}>
+                          {r.price_date ? r.price_date : "—"}
+                          {isStale && <span className="text-[9px] text-amber-600 ml-1">({ageYrs.toFixed(1)}y)</span>}
+                        </span>
+                    }
+                  </td>
+
+                  {/* Escalation Rate */}
+                  <td className="px-2 py-1.5 text-right">
+                    {isEd
+                      ? <input type="number" step="0.1" value={editVals.esc_rate}
+                          onChange={e=>setEditVals(p=>({...p,esc_rate:e.target.value}))}
+                          className="w-16 border border-purple-300 rounded px-1 py-0.5 text-xs text-right focus:outline-none"/>
+                      : <span className="text-purple-700">{r.esc_rate != null ? (r.esc_rate*100).toFixed(1)+"%" : "—"}</span>
+                    }
+                  </td>
+
+                  {/* Current Escalated Price */}
+                  <td className="px-2 py-1.5 text-right">
+                    {escalated
+                      ? <div>
+                          <div className="font-bold text-green-800">${escalated.toLocaleString("en-AU",{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+                          {priceDiff > 0.5 && <div className="text-[10px] text-amber-600">+${priceDiff.toLocaleString("en-AU",{minimumFractionDigits:0,maximumFractionDigits:0})}</div>}
+                        </div>
+                      : <span className="text-gray-300">—</span>
+                    }
+                  </td>
+
+                  {/* Comments */}
+                  <td className="px-2 py-1.5 text-gray-400 text-[10px] max-w-[200px]">
+                    {isEd
+                      ? <input type="text" value={editVals.comments}
+                          onChange={e=>setEditVals(p=>({...p,comments:e.target.value}))}
+                          className="w-full border border-gray-300 rounded px-1 py-0.5 text-xs focus:outline-none"/>
+                      : <span className="line-clamp-1" title={r.comments}>{r.comments}</span>
+                    }
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                    {managerMode && (isEd
+                      ? <div className="flex gap-1">
+                          <button onClick={()=>saveEdit(r.wbs_code)} className="text-green-600 hover:text-green-800 text-xs bg-green-50 border border-green-300 rounded px-2 py-0.5 font-bold">✓</button>
+                          <button onClick={()=>setEditingKey(null)} className="text-gray-400 hover:text-gray-600 text-xs border border-gray-200 rounded px-1.5 py-0.5">✕</button>
+                        </div>
+                      : <button onClick={()=>startEdit(r)} className="text-blue-400 hover:text-blue-700 text-xs border border-blue-200 hover:border-blue-400 rounded px-2 py-0.5">Edit</button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Footer */}
+      <div className="flex-shrink-0 border-t bg-gray-50 px-3 py-1.5 flex items-center gap-4 text-[10px] text-gray-500">
+        <span><span className="bg-blue-100 text-blue-800 px-1 rounded font-semibold">PCE</span> Period Contract / LLT equipment</span>
+        <span><span className="bg-purple-100 text-purple-800 px-1 rounded font-semibold">SCADA</span> SCADA BOM items</span>
+        <span><span className="bg-teal-100 text-teal-800 px-1 rounded font-semibold">Comms</span> Communications equipment</span>
+        <span className="ml-2 text-amber-700">⚠️ Amber rows = price date older than 2 years — review recommended</span>
+        <span className="ml-2">Escalated cost = Base Price × (1 + Annual Rate)^years since quote</span>
+        {localPricing && <span className="ml-auto text-orange-600 font-semibold">⚡ Session overrides active (not saved to database)</span>}
+      </div>
+    </div>
+  );
+}
+
 function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
   const { equipment, supply, wbs: wbsMaster, loading } = useData();
   const [typeFilter, setTypeFilter] = useState("All");
@@ -7476,6 +7718,7 @@ export default function App() {
   const [commProfiles, setCommProfiles] = useState({}); // profile_id -> {tiers, name, status}
   const [escRates,     setEscRates]     = useState(null);
   const [resourceCodes,setResourceCodes]= useState({});
+  const [equipPricing, setEquipPricing]  = useState({});
   const [invMats,      setInvMats]      = useState([]);
   const [matAssemblies,setMatAssemblies]= useState([]);
   const [equipSel,    setEquipSel]    = useState({});
@@ -7492,10 +7735,11 @@ export default function App() {
       fetch(`${BASE}data/commission_scaling.json`).then(r=>{if(!r.ok)return {profiles:{},lookup:{}};return r.json();}).catch(()=>({profiles:{},lookup:{}})),
       fetch(`${BASE}data/escalation_rates.json`).then(r=>{if(!r.ok)return null;return r.json();}).catch(()=>null),
       fetch(`${BASE}data/resource_codes.json`).then(r=>{if(!r.ok)return {};return r.json();}).catch(()=>({})),
+      fetch(`${BASE}data/equipment_pricing.json`).then(r=>{if(!r.ok)return {};return r.json();}).catch(()=>({})),
       fetch(`${BASE}data/inventory_materials.json`).then(r=>{if(!r.ok)return [];return r.json();}).catch(()=>[]),
       fetch(`${BASE}data/material_assemblies.json`).then(r=>{if(!r.ok)return [];return r.json();}).catch(()=>[]),
     ])
-    .then(([wbs,rates,supply,equip,lookup,commLookup,escRatesData,resourceCodesData,invMatsData,matAssData])=>{
+    .then(([wbs,rates,supply,equip,lookup,commLookup,escRatesData,resourceCodesData,equipPricingData,invMatsData,matAssData])=>{
       setWbsData(wbs.records||[]);
       setRatesData(rates.records||[]);
       setSupplyData(supply.items||[]);
@@ -7535,6 +7779,7 @@ export default function App() {
       setCommProfiles(commLookup.profiles || {});
       setEscRates(escRatesData);
       setResourceCodes(resourceCodesData || {});
+      setEquipPricing(equipPricingData || {});
       setInvMats(Array.isArray(invMatsData) ? invMatsData : []);
       setMatAssemblies(Array.isArray(matAssData) ? matAssData : []);
       setLoading(false);
@@ -7613,7 +7858,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-    <DataCtx.Provider value={{wbs:wbsData,rates:ratesData,supply:supplyData,equipment:equipData,equipLookup,commLookup,commProfiles,escRates,resourceCodes,invMats,matAssemblies,loading,error}}>
+    <DataCtx.Provider value={{wbs:wbsData,rates:ratesData,supply:supplyData,equipment:equipData,equipLookup,commLookup,commProfiles,escRates,resourceCodes,equipPricing,invMats,matAssemblies,loading,error}}>
       <div className="flex flex-col h-screen font-sans text-sm select-none">
 
         {/* Top nav */}
