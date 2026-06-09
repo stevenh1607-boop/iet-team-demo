@@ -9,7 +9,7 @@ import { useState, useMemo, useEffect, useCallback, createContext, useContext, u
 const BASE = import.meta.env.BASE_URL || "/";
 
 // ── DATA CONTEXT ────────────────────────────────────────────────
-const DataCtx = createContext({ wbs:[], rates:[], supply:[], equipment:[], equipLookup:{}, commLookup:{}, commProfiles:{}, escRates:null, resourceCodes:{}, invMats:[], matAssemblies:[], equipPricing:{}, equipPricingOverrides:{}, setEquipPricingOverrides:()=>{}, loading:true, error:null });
+const DataCtx = createContext({ wbs:[], rates:[], supply:[], equipment:[], equipLookup:{}, commLookup:{}, commProfiles:{}, escRates:null, resourceCodes:{}, invMats:[], matAssemblies:[], equipPricing:{}, loading:true, error:null });
 
 // ── COPPERLEAF CSV EXPORT ────────────────────────────────────────
 // Matches Sync_To_C55 macro structure exactly:
@@ -1058,7 +1058,7 @@ function CommScrollList({ selectedCommGroup, children }) {
 }
 
 function EstimationScreen({ isCommercial, lines, setLines }) {
-  const { wbs, supply, rates, loading, commLookup, commProfiles, equipPricingOverrides } = useData();
+  const { wbs, supply, rates, loading, commLookup, commProfiles } = useData();
   const ratesLookup = useMemo(() => {
     const map = {};
     (rates||[]).forEach(r => { map[r.resource_type] = r; });
@@ -1504,7 +1504,14 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
         <div className="bg-white border-b px-4 py-2 flex items-center justify-between flex-shrink-0">
           <div>
             <div className="font-bold text-blue-900 text-sm">{selectedL4} — {l4label}</div>
-            <div className="text-xs text-gray-400">{items.length} items · Click ▸ to expand cost detail</div>
+            <div className="text-xs text-gray-400 flex items-center gap-2">
+              {items.length} items · Click ▸ to expand cost detail
+              {items.some(i=>i._priceFromEquipPricing) && (
+                <span className="text-orange-600 text-[10px] bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded flex items-center gap-1">
+                  ⚡ Prices updated from Equipment Pricing this session
+                </span>
+              )}
+            </div>
           </div>
           <div className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded border">
             {items.filter(i=>parseFloat(getLine(i.wbs_code).qty||"0")>0).length} of {items.length} with quantities
@@ -1720,14 +1727,11 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                       <div className="grid grid-cols-4 gap-3">
                         <div>
                           <label className="text-xs text-gray-500 block mb-0.5">Equipment Price/Unit ($)</label>
-                          <input type="number" min="0" value={ln.mats||""} placeholder={item.pce_price>0?String(item.pce_price):"0"}
+                          <input type="number" min="0" value={ln.mats||""} placeholder={item.pce_price>0?item.pce_price.toFixed(2):"0"}
+                          title={item._priceFromEquipPricing?"Price updated from Equipment Pricing this session":""}
                             onChange={e=>updLine(item.wbs_code,"mats",e.target.value)}
                             className="w-full text-xs border border-green-300 bg-green-50 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-green-400"/>
-                          {item.pce_price>0&&<div className="text-xs mt-0.5">
-                              {equipPricingOverrides[item.wbs_code]
-                                ? <span className="text-green-700">⚡ Price updated: {fmt(item.pce_price)} <span className="text-gray-400 text-[10px]">(from Equipment Pricing)</span></span>
-                                : <span className="text-amber-600">PCE default: {fmt(item.pce_price)}</span>}
-                            </div>}
+                          {item.pce_price>0&&<div className="text-xs text-amber-600 mt-0.5">PCE default: {fmt(item.pce_price)}</div>}
                         </div>
                         <div>
                           <label className="text-xs text-gray-500 block mb-0.5">Plant & Machinery ($)</label>
@@ -6278,7 +6282,7 @@ function WBSItemEditor({ wbs, supply, rates, managerMode, onUnlock, loading }) {
   );
 }
 
-function WBSManager({ equipSel, setEquipSel }) {
+function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
   const {wbs:wbsCtx, supply, rates, loading, error} = useData();
   const [tab,          setTab]         = useState("items");
   const [search,       setSearch]      = useState("");
@@ -6501,7 +6505,7 @@ function WBSManager({ equipSel, setEquipSel }) {
       )}
       {/* Equipment Pricing */}
       {tab==="eqpricing"&&(
-        <EquipmentPricingEditor managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
+        <EquipmentPricingEditor managerMode={managerMode} onUnlock={()=>setShowPinModal(true)} onPriceUpdate={onPriceUpdate}/>
       )}
 
       {/* Escalation Rates */}
@@ -6750,6 +6754,8 @@ function EquipmentScreen({ lines, setLines, isCommercial, inv }) {
   },[selected]);
 
   const getPrice = (s) => parseFloat(lines[s.wbs_code]?.mats||"") || s.pce_price || 0;
+  // Flag items whose price was updated from Equipment Pricing page this session
+  const isPriceOverridden = (s) => !!(s._priceFromEquipPricing);
   const grandTotal     = selected.reduce((a,s)=> a + parseFloat(lines[s.wbs_code]?.qty||"0") * getPrice(s), 0);
   const grandTotalComm = grandTotal * ANS_mat;
   const lltItems       = selected.filter(s=>s.equipType==="LLT");
@@ -6925,29 +6931,21 @@ function EquipmentScreen({ lines, setLines, isCommercial, inv }) {
 // Shows base price, date of quote, annual escalation rate, and calculates
 // current escalated price for PCE, SCADA and Comms equipment items.
 // Matches the logic from the workbook's Period Contract Equipment / SCADA / Comms sheets.
-function EquipmentPricingEditor({ managerMode, onUnlock }) {
+function EquipmentPricingEditor({ managerMode, onUnlock, onPriceUpdate }) {
   // ── Data ──────────────────────────────────────────────────────
   // equipPricing: keyed by wbs_code, holds base_price / price_date / esc_rate
   // supply: the live supply items — pce_price in supply IS the escalated cost
   // When manager edits base_price/date/rate here, we derive a new escalated price
   // that overrides pce_price in estimation (via localPricing propagated through context).
-  const { equipPricing: ctxPricing, equipPricingOverrides, setEquipPricingOverrides } = useData();
+  const { equipPricing: ctxPricing } = useData();
+  const [localPricing, setLocalPricing] = useState(null);
   const [editingKey,   setEditingKey]   = useState(null);
   const [editVals,     setEditVals]     = useState({});
   const [expanded,     setExpanded]     = useState({});
   const [search,       setSearch]       = useState("");
   const [sourceFilter, setSourceFilter] = useState("All");
 
-  // Merge base pricing with any live overrides (set by manager edits)
-  // equipPricingOverrides is App-level state — changes here immediately update
-  // supply item pce_price in EstimationScreen AND EquipmentCatalogueManager
-  const basePricing = useMemo(() => {
-    const merged = { ...ctxPricing };
-    Object.entries(equipPricingOverrides).forEach(([k, v]) => {
-      if (merged[k]) merged[k] = { ...merged[k], ...v };
-    });
-    return merged;
-  }, [ctxPricing, equipPricingOverrides]);
+  const basePricing = localPricing || ctxPricing || {};
 
   // ── Escalation formula (matches workbook: base × (1+rate)^years) ──────────
   const calcEscalated = (basePrice, priceDate, escRate) => {
@@ -6992,30 +6990,27 @@ function EquipmentPricingEditor({ managerMode, onUnlock }) {
   };
 
   const saveEdit = (key) => {
-    const oldRow  = basePricing[key];
-    if (!oldRow) return;
-    const newBase = parseFloat(editVals.base_price);
-    const newDate = editVals.price_date || oldRow.price_date;
-    const newRate = parseFloat(editVals.esc_rate) / 100;
-    const newEsc  = (!isNaN(newBase) && newDate && !isNaN(newRate))
+    const next = { ...basePricing };
+    if (!next[key]) return;
+    const oldRow  = next[key];
+    const newBase  = parseFloat(editVals.base_price);
+    const newDate  = editVals.price_date || oldRow.price_date;
+    const newRate  = parseFloat(editVals.esc_rate) / 100;
+    const newEsc   = (!isNaN(newBase) && newDate && !isNaN(newRate))
       ? calcEscalated(newBase, newDate, newRate)
       : oldRow.escalated_price;
-    // Write to App-level overrides — this immediately patches:
-    //   1. effectiveSupply → pce_price in EstimationScreen calcLine
-    //   2. EquipmentCatalogueManager (reads supply from DataCtx)
-    //   3. Copperleaf export (reads supply from DataCtx)
-    setEquipPricingOverrides(prev => ({
-      ...prev,
-      [key]: {
-        ...oldRow,
-        base_price:      !isNaN(newBase) ? newBase : oldRow.base_price,
-        price_date:      newDate,
-        esc_rate:        !isNaN(newRate) ? newRate : oldRow.esc_rate,
-        escalated_price: newEsc,
-        comments:        editVals.comments,
-        _edited:         true,
-      }
-    }));
+    next[key] = {
+      ...oldRow,
+      base_price:     !isNaN(newBase) ? newBase : oldRow.base_price,
+      price_date:     newDate,
+      esc_rate:       !isNaN(newRate) ? newRate : oldRow.esc_rate,
+      escalated_price: newEsc,   // derived — this is what flows to pce_price in estimation
+      comments:       editVals.comments,
+      _edited:        true,
+    };
+    setLocalPricing(next);
+    // Propagate to App-level equipPricing so resolvedSupply recalculates immediately
+    if (onPriceUpdate) onPriceUpdate(key, next[key]);
     setEditingKey(null);
   };
 
@@ -7039,7 +7034,7 @@ function EquipmentPricingEditor({ managerMode, onUnlock }) {
   };
 
   const staleCount = filtered.filter(r => { const a = ageYears(r.price_date); return a === null || a > 2; }).length;
-  const editedCount = Object.keys(equipPricingOverrides).length;
+  const editedCount = Object.values(basePricing).filter(r => r._edited).length;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -7354,7 +7349,7 @@ function EquipmentPricingEditor({ managerMode, onUnlock }) {
 
 
 function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
-  const { equipment, supply, wbs: wbsMaster, equipPricingOverrides, loading } = useData();
+  const { equipment, supply, wbs: wbsMaster, loading } = useData();
   const [typeFilter, setTypeFilter] = useState("All");
   const [catFilter,  setCatFilter]  = useState("All");
   const [search,     setSearch]     = useState("");
@@ -7782,17 +7777,10 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
                             className="w-full border border-green-300 rounded px-1 py-0.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-green-400"/>
                         : item.is_poa || !item.price
                           ? <span className="text-amber-600 font-semibold text-[11px]">POA</span>
-                          : (() => {
-                              const ovr = equipPricingOverrides[item.wbs_code];
-                              const livePrice = ovr?.escalated_price;
-                              return livePrice && Math.abs(livePrice - item.price) > 0.01
-                                ? <span>
-                                    <span className="font-bold text-green-700">${livePrice.toLocaleString("en-AU",{maximumFractionDigits:0})}</span>
-                                    <span className="block text-[9px] text-gray-400 line-through">${(item.price||0).toLocaleString("en-AU")}</span>
-                                    <span className="text-[9px] text-orange-600">⚡ updated</span>
-                                  </span>
-                                : <span className="font-semibold text-gray-800">${(item.price||0).toLocaleString("en-AU")}</span>;
-                            })()
+                          : <span className="font-semibold text-gray-800">
+      ${(item.price||0).toLocaleString("en-AU")}
+      {item._priceFromEquipPricing && <span className="ml-1 text-[9px] text-orange-600" title="Price updated from Equipment Pricing this session">⚡</span>}
+    </span>
                       }
                     </td>
                     <td className="px-2 py-1.5 text-center">
@@ -7927,22 +7915,13 @@ export default function App() {
   const [commProfiles, setCommProfiles] = useState({}); // profile_id -> {tiers, name, status}
   const [escRates,     setEscRates]     = useState(null);
   const [resourceCodes,setResourceCodes]= useState({});
-  const [equipPricing,          setEquipPricing]          = useState({});
-  // Overrides edited in EquipmentPricingEditor — lifted to App so all consumers see them
-  const [equipPricingOverrides, setEquipPricingOverrides] = useState({});
+  const [equipPricing, setEquipPricing]  = useState({});
 
-  // Effective supply: patches pce_price whenever manager has edited equipment pricing
-  // This makes the price visible in Estimation, Equipment Catalogue, and Copperleaf export
-  const effectiveSupply = useMemo(() => {
-    if (Object.keys(equipPricingOverrides).length === 0) return supplyData;
-    return supplyData.map(item => {
-      const ovr = equipPricingOverrides[item.wbs_code];
-      if (!ovr) return item;
-      // Use escalated_price if set, otherwise recalculate from base+date+rate
-      const newPrice = ovr.escalated_price ?? item.pce_price;
-      return { ...item, pce_price: newPrice };
-    });
-  }, [supplyData, equipPricingOverrides]);
+  // Callback for EquipmentPricingEditor to update a single item
+  // This triggers resolvedSupply/resolvedEquipment recompute via useMemo dependencies
+  const handlePriceUpdate = useCallback((key, updatedRow) => {
+    setEquipPricing(prev => ({ ...prev, [key]: updatedRow }));
+  }, []);
   const [invMats,      setInvMats]      = useState([]);
   const [matAssemblies,setMatAssemblies]= useState([]);
   const [equipSel,    setEquipSel]    = useState({});
@@ -8080,9 +8059,58 @@ export default function App() {
   const equipSelected = Object.values(equipSel).filter(q=>parseFloat(q)>0).length;
   const linesEntered = Object.values(lines).filter(l=>parseFloat(l.qty)>0).length;
 
+  // ── Resolve equipment pricing into supply items ─────────────────────
+  // equipPricing holds base_price + price_date + esc_rate for PCE/SCADA/Comms items.
+  // When a manager edits a price in Equipment Pricing, the new escalated_price overrides
+  // pce_price in supply. Everything that reads supply (calcLine, EquipmentScreen,
+  // Copperleaf export, Equipment Catalogue) automatically picks up the updated price.
+  const resolvedSupply = useMemo(() => {
+    if (!equipPricing || Object.keys(equipPricing).length === 0) return supplyData;
+    return supplyData.map(item => {
+      const ep = equipPricing[item.wbs_code];
+      if (!ep) return item;
+      // Use escalated_price if manager has saved an edit, otherwise recalculate on the fly
+      const escalated = ep.escalated_price != null
+        ? ep.escalated_price
+        : (() => {
+            const base = ep.base_price;
+            const rate = ep.esc_rate ?? 0.06;
+            const dateStr = ep.price_date;
+            if (!base || base <= 0) return item.pce_price;
+            if (!dateStr) return base * (1 + rate);
+            const yrs = (Date.now() - new Date(dateStr).getTime()) / (1000*60*60*24*365.25);
+            return yrs > 0 ? base * Math.pow(1 + rate, yrs) : base;
+          })();
+      if (escalated == null) return item;
+      return { ...item, pce_price: escalated };
+    });
+  }, [supplyData, equipPricing]);
+
+  // ── Resolve equipment pricing into the equipment catalogue items ────────
+  const resolvedEquipment = useMemo(() => {
+    if (!equipPricing || Object.keys(equipPricing).length === 0) return equipData;
+    return equipData.map(item => {
+      const ep = equipPricing[item.wbs_code];
+      if (!ep) return item;
+      const escalated = ep.escalated_price != null
+        ? ep.escalated_price
+        : (() => {
+            const base = ep.base_price;
+            const rate = ep.esc_rate ?? 0.06;
+            const dateStr = ep.price_date;
+            if (!base || base <= 0) return item.price;
+            if (!dateStr) return base * (1 + rate);
+            const yrs = (Date.now() - new Date(dateStr).getTime()) / (1000*60*60*24*365.25);
+            return yrs > 0 ? base * Math.pow(1 + rate, yrs) : base;
+          })();
+      if (escalated == null) return item;
+      return { ...item, price: escalated, _priceFromEquipPricing: true };
+    });
+  }, [equipData, equipPricing]);
+
   return (
     <ErrorBoundary>
-    <DataCtx.Provider value={{wbs:wbsData,rates:ratesData,supply:effectiveSupply,equipment:equipData,equipLookup,commLookup,commProfiles,escRates,resourceCodes,equipPricing,equipPricingOverrides,setEquipPricingOverrides,invMats,matAssemblies,loading,error}}>
+    <DataCtx.Provider value={{wbs:wbsData,rates:ratesData,supply:resolvedSupply,equipment:resolvedEquipment,equipLookup,commLookup,commProfiles,escRates,resourceCodes,equipPricing,invMats,matAssemblies,loading,error}}>
       <div className="flex flex-col h-screen font-sans text-sm select-none">
 
         {/* Top nav */}
@@ -8156,7 +8184,7 @@ export default function App() {
               </div>
             </>
           )}
-          {appTab==="wbsmanager" && <WBSManager equipSel={equipSel} setEquipSel={setEquipSel}/>}
+          {appTab==="wbsmanager" && <WBSManager equipSel={equipSel} setEquipSel={setEquipSel} onPriceUpdate={handlePriceUpdate}/>}
           {appTab==="hub"        && <InvestmentHub
             onLoad={(s)=>{loadInvestment(s);}}
             onNew={newEstimate}
