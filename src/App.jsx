@@ -6881,6 +6881,22 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
   );
 }
 
+const defaultInv = {
+  name:"Marulan 132kV 3-Way Switching Station", number:"10007569",
+  wacs:"N/A", type:"Commercially Funded", estClass:"Class 4", revision:"A",
+  milestones:[
+    {stage:"Acceptance of offer and commencement of works", month:"1",  pct:"15"},
+    {stage:"Long lead-time equipment ordered",              month:"4",  pct:"35"},
+    {stage:"Design completed, sub-contract works awarded",  month:"10", pct:"45"},
+    {stage:"Construction works 100% completed",             month:"15", pct:"5"},
+    {stage:"",                                              month:"",   pct:"0"},
+  ],
+  complexity:"High", newTech:"Moderate", estimatedBy:"Steven Hannigan",
+  reviewedBy:"Daniel Lawrence", startMonth:"Jul", startYear:"2025",
+  planStart:"1", planDur:"4", designStart:"1", designDur:"9",
+  constrStart:"6", constrDur:"15", contInt:"10", contComm:"10",
+};
+
 const APP_TABS = [
   {id:"hub",        label:"🔍 Investment Hub"},
   {id:"estimation", label:"⚡ Estimation Tool"},
