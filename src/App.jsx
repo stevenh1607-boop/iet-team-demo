@@ -129,8 +129,7 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
     const totalOffset = startMonNum - 1 + monthNum - 1;
     const yr = startYr + Math.floor(totalOffset / 12);
     const mo = (totalOffset % 12) + 1;
-    // Return YYYY-MM-DD text string — Copperleaf requires text date headers, not Excel date serials
-    return `${yr}-${String(mo).padStart(2,"0")}-01`;
+    return new Date(yr, mo - 1, 1); // real Date — SheetJS writes as Excel serial; we apply mmm-yy format below
   };
 
   // ── Escalation ───────────────────────────────────────────────
@@ -371,15 +370,27 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
 
   // Convert rows to AOA (array of arrays) for SheetJS
   // Date values will be formatted as Excel date serials
-  const ws = XL.utils.aoa_to_sheet(rows);
-  // Force account code column (index 8) to text on every spend row so Excel
-  // does not strip leading zeros — Copperleaf requires e.g. '001000 not 1000
-  const acctColLetter = "I"; // col index 8 = column I
-  Object.keys(ws).filter(addr => !addr.startsWith("!") && addr.startsWith(acctColLetter)).forEach(addr => {
+  const ws = XL.utils.aoa_to_sheet(rows, { cellDates: true });
+  // Post-process header row: set mmm-yy custom number format on each month date cell
+  // This matches the working Copperleaf template exactly (Custom: mmm-yy)
+  for (let m = 0; m < totalMonths; m++) {
+    const colIdx = 17 + m;
+    const colLetter = XL.utils.encode_col(colIdx);
+    const addr = colLetter + "1"; // header is row 1
+    if (ws[addr]) {
+      ws[addr].t = "d";
+      ws[addr].z = "mmm-yy";
+    }
+  }
+  // Force account code column (col index 8 = col I) to text with @ format
+  // so Excel stores '001000 / '001001 as text strings, not numbers
+  const acctRe = /^I(\d+)$/;
+  Object.keys(ws).filter(addr => !addr.startsWith("!") && acctRe.test(addr)).forEach(addr => {
     const cell = ws[addr];
-    if (cell && cell.v && String(cell.v).match(/^\d+$/)) {
+    if (cell && cell.v !== undefined && cell.v !== "") {
       cell.t = "s";
       cell.v = String(cell.v);
+      cell.z = "@";
       delete cell.w;
     }
   });
