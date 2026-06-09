@@ -314,9 +314,9 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
           totalMat, effQty,
           desc:       (eq?.description || item.description || "").substring(0, 120),
           category:   eq?.category    || "",
-          makeModel:  [eq?.make, eq?.model].filter(Boolean).join(" / "),
-          contractNo: eq?.contract_no || "",
-          voltage:    eq?.voltage || eq?.family || "",
+          makeModel:  [eq?.make, eq?.model].map(v=>(!v||v==="nan"||v==="NaN")?"":String(v).trim()).filter(Boolean).join(" / "),
+          contractNo: (!eq?.contract_no||eq?.contract_no==="nan"||eq?.contract_no==="NaN")?"":String(eq.contract_no).trim(),
+          voltage:    (!eq?.voltage&&!eq?.family)?"":(!eq?.voltage||eq?.voltage==="nan")?String(eq?.family||"").trim():String(eq.voltage).trim(),
         });
       }
     });
