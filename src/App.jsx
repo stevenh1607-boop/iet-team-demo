@@ -387,13 +387,21 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
 
   // Summary sheet — matches template metadata
   const now = new Date();
+  const fmtDMY = d => {
+    const dd = String(d.getDate()).padStart(2,"0");
+    const mm = String(d.getMonth()+1).padStart(2,"0");
+    const yyyy = d.getFullYear();
+    return dd+"/"+mm+"/"+yyyy;
+  };
+  const altStartStr = fmtDMY(new Date(startYr, startMonNum-1, 1));
+  const exportDateStr = fmtDMY(now);
   const summaryData = [
     ["Please do not edit this worksheet. This worksheet contains critical information for forecast import."],
     ["Investment Name"],
     ["Investment Code"],
     ["Alternative"],
-    ["Alternative Start Date", new Date(startYr, startMonNum-1, 1)],
-    ["Export Date", now],
+    ["Alternative Start Date", altStartStr],
+    ["Export Date", exportDateStr],
     ["Export User", inv.estimatedBy || ""],
     ["Spend Amount", "Inflated"],
     ["Uninflated Fiscal Year"],
@@ -402,16 +410,8 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
     ["Include loadings", "Yes"],
     ["Alternative ID"],
   ];
-  const ws2 = XL.utils.aoa_to_sheet(summaryData, { cellDates: true });
+  const ws2 = XL.utils.aoa_to_sheet(summaryData);
   ws2["!cols"] = [{wch:70},{wch:20}];
-  // Force DD/MM/YYYY number format on date cells so Copperleaf import accepts them.
-  // B5 = Alternative Start Date (row index 4), B6 = Export Date (row index 5).
-  ["B5", "B6"].forEach(addr => {
-    if (ws2[addr]) {
-      ws2[addr].t = "d";
-      ws2[addr].z = "DD/MM/YYYY";
-    }
-  });
   XL.utils.book_append_sheet(wb, ws2, "Summary");
 
   // Write to Blob
