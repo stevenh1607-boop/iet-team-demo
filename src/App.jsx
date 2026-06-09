@@ -5931,6 +5931,7 @@ function WBSItemEditor({ wbs, supply, rates, managerMode, onUnlock, loading }) {
   const [scopeFilter, setScopeFilter] = useState("All");
   const [gapOnly,     setGapOnly]     = useState(false);
   const [showAdd,     setShowAdd]     = useState(false);
+  const [showWizard,  setShowWizard]  = useState(false);
   const [editing,     setEditing]     = useState(null);
   const [editVals,    setEditVals]    = useState({});
   const [overrides,   setOverrides]   = useState({});
@@ -6097,9 +6098,9 @@ function WBSItemEditor({ wbs, supply, rates, managerMode, onUnlock, loading }) {
         <div className="flex-1"/>
         {managerMode ? (
           <>
-            <button onClick={()=>setShowAdd(s=>!s)}
+            <button onClick={()=>setShowWizard(true)}
               className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded font-semibold">
-              {showAdd?"✕ Cancel":"+ Add WBS Item"}
+              + Add WBS Item
             </button>
             <button onClick={()=>{}} className="text-xs bg-orange-100 border border-orange-300 text-orange-700 px-3 py-1.5 rounded font-semibold flex items-center gap-1.5">
               🔓 Manager Mode
@@ -6121,65 +6122,17 @@ function WBSItemEditor({ wbs, supply, rates, managerMode, onUnlock, loading }) {
       )}
 
       {/* ── Add New WBS Item form ── */}
-      {managerMode && showAdd && (
-        <div className="bg-green-50 border-b border-green-200 px-4 py-3 flex-shrink-0 overflow-x-auto">
-          <div className="text-xs font-bold text-green-800 mb-2 uppercase tracking-wide flex items-center gap-2">
-            <span>➕ Add New WBS Item</span>
-            <span className="text-[10px] text-green-600 font-normal normal-case">Fill in the fields below — all rate fields are optional and can be updated later</span>
-          </div>
-          <div className="grid gap-2" style={{gridTemplateColumns:"repeat(18,minmax(80px,1fr))"}}>
-            {[
-              {label:"WBS Code *",        key:"wbs_code",        type:"text",  span:2, placeholder:"3.1.3.04.1.10", mono:true},
-              {label:"Description *",     key:"description",     type:"text",  span:4, placeholder:"e.g. 132kV Circuit Breaker"},
-              {label:"Scope",             key:"scope",           type:"sel",   span:2, opts:SCOPE_OPTIONS},
-              {label:"Delivery",          key:"delivery_method", type:"sel",   span:2, opts:DELIVERY_OPTIONS},
-              {label:"Main Resource",     key:"resource_main",   type:"sel",   span:2, opts:["Contractor - Civil","Contractor - Electrical","Contractor - Building","Contractor","ZS Electrical Technician","Substation Designer","Network Development Officer","Work Away From Home","Supplier","N.A.",...resourceTypes]},
-              {label:"UOM",              key:"uom",             type:"sel",   span:1, opts:UOM_OPTIONS},
-              {label:"Contractor Rate $", key:"contractor_rate", type:"num",   span:1, placeholder:"0"},
-              {label:"EE Labour Rate $",  key:"ee_labour_rate",  type:"num",   span:1, placeholder:"139.26"},
-              {label:"EE Unit Hrs",       key:"ee_unit_hrs",     type:"num",   span:1, placeholder:"0"},
-              {label:"Materials $ (PCE)", key:"pce_price",       type:"num",   span:1, placeholder:"0"},
-              {label:"Plant Cost $",      key:"plant_cost",      type:"num",   span:1, placeholder:"0"},
-              {label:"Install WBS",       key:"install_wbs",     type:"text",  span:2, placeholder:"3.1.3.04.4.10", mono:true},
-              {label:"Comm WBS",          key:"commission_wbs",  type:"text",  span:2, placeholder:"4.1.1.xx.x.xx", mono:true},
-            ].map(({label,key,type,span,placeholder,opts,mono})=>(
-              <div key={key} style={{gridColumn:`span ${span}`}}>
-                <label className="text-[10px] text-gray-500 block mb-0.5 font-medium">{label}</label>
-                {type==="sel" ? (
-                  <select value={newItem[key]} onChange={e=>setNewItem(p=>({...p,[key]:e.target.value}))} className={SEL}>
-                    {(opts||[]).filter((v,i,a)=>a.indexOf(v)===i).map(o=><option key={o}>{o}</option>)}
-                  </select>
-                ) : (
-                  <input type={type==="num"?"number":"text"} min="0"
-                    value={newItem[key]} placeholder={placeholder}
-                    onChange={e=>setNewItem(p=>({...p,[key]:e.target.value}))}
-                    className={`${INP} ${mono?"font-mono":""}`}/>
-                )}
-              </div>
-            ))}
-          </div>
-          {/* WBS code validation banner */}
-          {wbsAddVal && (
-            <div className={`mt-1 mb-1 text-xs flex items-center gap-1.5 px-2 py-1 rounded ${
-              wbsAddDupe ? "bg-red-50 text-red-700 border border-red-200" : "bg-green-50 text-green-700 border border-green-200"
-            }`}>
-              {wbsAddDupe
-                ? <><span>🚫</span><span><strong>{wbsAddVal}</strong> already exists in the supply list — duplicate WBS codes are not permitted</span></>
-                : <><span>✓</span><span><strong>{wbsAddVal}</strong> is available</span></>
-              }
-            </div>
-          )}
-          <div className="mt-2 flex gap-2 items-center">
-            <button onClick={addItem}
-              disabled={!newItem.wbs_code.trim()||!newItem.description.trim()||wbsAddDupe}
-              title={wbsAddDupe?"WBS code already in use":""}
-              className="text-xs bg-green-700 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded font-bold">
-              {wbsAddDupe ? "🚫 Duplicate WBS" : "✓ Add Item to WBS"}
-            </button>
-            <button onClick={()=>setShowAdd(false)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
-            <span className="text-[10px] text-gray-400 ml-2">Install Resource and Commission Resource are set per-estimate in the Estimation Tool</span>
-          </div>
-        </div>
+      {/* ── WBS Item Wizard modal ── */}
+      {showWizard && (
+        <WBSWizard
+          onClose={()=>setShowWizard(false)}
+          existingCodes={usedWbsCodesSupply}
+          supplyItems={displaySupply}
+          onSave={(entries) => {
+            setLocalSupply(p => [...(p || supply), ...entries]);
+            setShowWizard(false);
+          }}
+        />
       )}
 
       {/* ── Main table ── */}
@@ -6960,6 +6913,544 @@ function EquipmentScreen({ lines, setLines, isCommercial, inv }) {
 }
 
 
+
+// ── WBS ITEM WIZARD ──────────────────────────────────────────────────────────
+// 4-step guided wizard for creating new WBS items with correct
+// Supply -> Install -> Commission relationships enforced.
+// Used from: WBSItemEditor "+ Add WBS Item" button
+//            EquipmentCatalogueManager "+ Add Item" (Path B — no existing WBS)
+// Accepts optional prefill props from the catalogue add flow.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const WIZ_SCOPE_PATTERNS = [
+  { id:"standard",  label:"Supply (.1) -> Install (.4) -> Commission (.7)",     desc:"Standard HV plant — 3 rows created" },
+  { id:"combined",  label:"Supply & Install combined (.1 only, no separate .4)",  desc:"Items installed as supplied — 2 rows" },
+  { id:"supplyonly",label:"Supply only — no field labour",                       desc:"Factory-installed or no labour cost — 1 row" },
+  { id:"scada",     label:"SCADA / Comms — custom commission profile",           desc:"Non-standard commission scaling — 3 rows" },
+];
+
+const WIZ_SCALING_PROFILES = [
+  "HV Plant Outdoor","HV Plant Indoor","SCADA RTC","Comms","Protection & Control","Transformer","None"
+];
+
+const WIZ_AER_TYPES = [
+  "R1 -- Administration / Design","R2a -- Network Planner / SCADA Designer",
+  "R2b -- Supervisor / Telecomms","R3a -- Protection / Project Engineer",
+  "R3b -- External PM / Specialist","R4 -- Electrical Technician / Worker",
+  "Contractor - Electrical","Contractor - Civil","Contractor - Building","Supplier / Materials","N.A."
+];
+
+const WIZ_DELIVERY = ["Contractor Delivered","EE Delivered","Contractor or EE Delivered"];
+
+const WIZ_STEPS = [
+  { id:"hierarchy", label:"Hierarchy",     short:"1" },
+  { id:"supply",    label:"Supply item",   short:"2" },
+  { id:"hours",     label:"Hours",         short:"3" },
+  { id:"validate",  label:"Validate",      short:"4" },
+];
+
+const WIZ_PIN = "1607";
+
+function WBSWizard({ onClose, onSave, prefill, existingCodes, supplyItems }) {
+  const [step,      setStep]      = useState(0);
+  const [pinInput,  setPinInput]  = useState("");
+  const [pinError,  setPinError]  = useState(false);
+  const [saved,     setSaved]     = useState(false);
+  const [govRef,    setGovRef]    = useState("");
+
+  // Step 1 — hierarchy
+  const [parentNode,    setParentNode]    = useState("");
+  const [deviceCode,    setDeviceCode]    = useState("");
+  const [deviceDesc,    setDeviceDesc]    = useState("");
+  const [scopePattern,  setScopePattern]  = useState("standard");
+
+  // Step 2 — supply item
+  const [supplyDesc,    setSupplyDesc]    = useState(prefill?.description || "");
+  const [aer,           setAer]           = useState("R2a -- Network Planner / SCADA Designer");
+  const [delivery,      setDelivery]      = useState("Contractor Delivered");
+  const [make,          setMake]          = useState(prefill?.make_model || "");
+  const [price,         setPrice]         = useState(prefill?.price ? String(prefill.price) : "");
+  const [isLLT,         setIsLLT]         = useState(false);
+  const [itemNo,        setItemNo]        = useState("01");
+
+  // Step 3 — hours
+  const [installCrew,   setInstallCrew]   = useState("2");
+  const [installHrs,    setInstallHrs]    = useState("8");
+  const [commHrs,       setCommHrs]       = useState("4");
+  const [scalingProfile,setScalingProfile]= useState("HV Plant Outdoor");
+
+  // Derived WBS codes
+  const supplyCode  = deviceCode.trim() ? `${deviceCode.trim()}.1.${itemNo}` : "";
+  const installCode = deviceCode.trim() ? `${deviceCode.trim()}.4.${itemNo}` : "";
+  const commCode    = deviceCode.trim()
+    ? (scopePattern === "standard" || scopePattern === "scada")
+        ? `${deviceCode.trim().replace(/^(\d+\.\d+\.\d+)/, m => {
+            const parts = m.split(".");
+            return `4.${parts[1]}.${parts[2]}`;
+          })}.7.${itemNo}`
+        : ""
+    : "";
+
+  const installHrsTotal = (parseFloat(installCrew)||0) * (parseFloat(installHrs)||0);
+  const commHrsTotal    = parseFloat(commHrs) || 0;
+
+  const dupSupply   = supplyCode  && existingCodes && existingCodes.has(supplyCode);
+  const dupInstall  = installCode && existingCodes && existingCodes.has(installCode);
+
+  // Rows that will be created
+  const willCreate = () => {
+    const rows = [];
+    if (supplyCode) rows.push({ code: supplyCode,  scope:"Supply",     desc: supplyDesc || deviceDesc, hrs: null });
+    if (installCode && scopePattern !== "supplyonly" && scopePattern !== "combined")
+      rows.push({ code: installCode, scope:"Install",    desc: `${supplyDesc||deviceDesc} -- install`, hrs: installHrsTotal });
+    if (commCode && (scopePattern === "standard" || scopePattern === "scada"))
+      rows.push({ code: commCode,    scope:"Commission", desc: `${supplyDesc||deviceDesc} -- commission`, hrs: commHrsTotal });
+    return rows;
+  };
+
+  const rows = willCreate();
+
+  const canNext = () => {
+    if (step === 0) return deviceCode.trim().length >= 7 && deviceDesc.trim() && !dupSupply;
+    if (step === 1) return supplyDesc.trim().length > 0;
+    if (step === 2) return installHrsTotal > 0 || scopePattern === "supplyonly";
+    return false;
+  };
+
+  const trySubmit = () => {
+    if (pinInput !== WIZ_PIN) { setPinError(true); setPinInput(""); return; }
+    setPinError(false);
+    // Build supply entries for each row
+    const entries = rows.map(r => ({
+      wbs_code:        r.code,
+      l4_group:        deviceCode.trim(),
+      description:     r.desc,
+      scope:           r.scope,
+      delivery_method: delivery,
+      resource_main:   aer,
+      uom:             "each",
+      ee_unit_hrs:     r.scope === "Install"     ? installHrsTotal : r.scope === "Commission" ? commHrsTotal : null,
+      pce_price:       r.scope === "Supply"      ? (parseFloat(price)||null) : null,
+      install_wbs:     supplyCode || "",
+      commission_wbs:  commCode || "",
+      _pending_governance: true,
+      _gov_ref:        govRef,
+      _wizard:         true,
+    }));
+    if (onSave) onSave(entries);
+    setSaved(true);
+  };
+
+  const fmtHrs = (h) => h > 0 ? `${h} hrs/unit` : "--";
+
+  const STEP_CLS = (i) =>
+    i < step  ? "bg-green-600 text-white border-green-600"
+    : i === step ? "bg-blue-600 text-white border-blue-600"
+    :              "bg-white text-gray-400 border-gray-200";
+
+  if (saved) return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 text-center">
+        <div className="text-4xl mb-3">✓</div>
+        <div className="text-lg font-bold text-green-800 mb-2">WBS items created</div>
+        <div className="text-sm text-gray-600 mb-2">{rows.length} row{rows.length!==1?"s":""} saved in <span className="font-semibold text-amber-700">Pending Governance</span> state.</div>
+        <div className="text-xs text-gray-400 mb-4">Items will appear in the WBS editor marked pending. They cannot be used in estimates until the WBS Manager confirms governance sign-off.</div>
+        {govRef && <div className="text-xs text-blue-600 mb-4">Governance ref: <span className="font-mono font-semibold">{govRef}</span></div>}
+        <button onClick={onClose} className="bg-blue-700 hover:bg-blue-600 text-white px-6 py-2 rounded font-semibold text-sm">Done</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-xl shadow-2xl flex flex-col" style={{width:"780px",maxHeight:"90vh"}}>
+
+        {/* Header + stepper */}
+        <div className="bg-[#1e3a5f] text-white px-5 py-3 rounded-t-xl flex items-center gap-4 flex-shrink-0">
+          <span className="font-semibold text-sm">New WBS item wizard</span>
+          <div className="flex items-center gap-1.5 flex-1">
+            {WIZ_STEPS.map((s, i) => (
+              <React.Fragment key={s.id}>
+                <div className={`flex items-center gap-1.5 text-xs`}>
+                  <div className={`w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-bold ${STEP_CLS(i)}`}>
+                    {i < step ? "✓" : s.short}
+                  </div>
+                  <span className={i === step ? "text-white font-medium" : "text-blue-300"}>{s.label}</span>
+                </div>
+                {i < WIZ_STEPS.length-1 && <div className="flex-1 h-px bg-blue-700 min-w-[20px]"/>}
+              </React.Fragment>
+            ))}
+          </div>
+          <button onClick={onClose} className="text-blue-300 hover:text-white text-lg leading-none ml-2">x</button>
+        </div>
+
+        {/* Body */}
+        <div className="flex flex-1 overflow-hidden">
+
+          {/* Left: context sidebar */}
+          <div className="w-48 flex-shrink-0 bg-gray-50 border-r px-3 py-4 flex flex-col gap-4 overflow-y-auto">
+            <div>
+              <div className="text-[9px] font-semibold uppercase tracking-wide text-gray-400 mb-2">WBS context</div>
+              <div className="text-[10px] text-gray-600 space-y-1">
+                {parentNode && <div><span className="text-gray-400">Parent:</span> <span className="font-mono font-medium">{parentNode}</span></div>}
+                {deviceCode && <div><span className="text-gray-400">L4 code:</span> <span className="font-mono font-medium text-blue-700">{deviceCode}</span></div>}
+                {deviceDesc && <div><span className="text-gray-400">Group:</span> <span className="font-medium">{deviceDesc}</span></div>}
+              </div>
+            </div>
+            <div>
+              <div className="text-[9px] font-semibold uppercase tracking-wide text-gray-400 mb-2">Will create</div>
+              <div className="space-y-1.5">
+                {[
+                  { label:"Supply (.1)",     done: step > 0, active: step === 0 },
+                  { label:"Install (.4)",    done: step > 2 && scopePattern !== "supplyonly" && scopePattern !== "combined", active: step === 2, skip: scopePattern === "supplyonly" || scopePattern === "combined" },
+                  { label:"Commission (.7)", done: step > 2 && (scopePattern === "standard" || scopePattern === "scada"), active: step === 2, skip: scopePattern === "supplyonly" },
+                ].map((r, i) => (
+                  <div key={i} className={`flex items-center gap-1.5 text-[10px] ${r.skip?"opacity-30 line-through":""}`}>
+                    <span className={`w-3 h-3 rounded-full flex-shrink-0 border ${r.done?"bg-green-500 border-green-500":r.active?"bg-blue-400 border-blue-400":"bg-white border-gray-300"}`}/>
+                    <span className={r.done?"text-green-700":r.active?"text-blue-700":"text-gray-400"}>{r.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {prefill && (
+              <div className="bg-blue-50 border border-blue-200 rounded p-2">
+                <div className="text-[9px] font-semibold uppercase tracking-wide text-blue-600 mb-1">Pre-filled from catalogue</div>
+                <div className="text-[10px] text-blue-700 space-y-0.5">
+                  {prefill.description && <div>{prefill.description}</div>}
+                  {prefill.make_model  && <div className="text-gray-500">{prefill.make_model}</div>}
+                  {prefill.price > 0   && <div className="font-semibold">${parseFloat(prefill.price).toLocaleString()}</div>}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right: step content */}
+          <div className="flex-1 overflow-y-auto p-4">
+
+            {/* STEP 1 — Hierarchy */}
+            {step === 0 && (
+              <div className="space-y-4">
+                <div>
+                  <div className="text-xs font-semibold text-gray-700 mb-3 pb-1.5 border-b">Step 1 -- place in WBS hierarchy</div>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className="text-[10px] text-gray-500 block mb-0.5">Parent node (L1-L3) -- optional context</label>
+                      <input value={parentNode} onChange={e=>setParentNode(e.target.value)}
+                        placeholder="e.g. 3.1.3 -- HV plant"
+                        className="w-full border rounded px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-500 block mb-0.5">L4 device group code <span className="text-red-400">*</span></label>
+                      <input value={deviceCode} onChange={e=>setDeviceCode(e.target.value)}
+                        placeholder="e.g. 3.1.3.09"
+                        className={`w-full border rounded px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 ${dupSupply?"border-red-400 bg-red-50":"focus:ring-blue-400"}`}/>
+                      {dupSupply && <div className="text-[10px] text-red-600 mt-0.5">Supply code already exists</div>}
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="text-[10px] text-gray-500 block mb-0.5">Device group description <span className="text-red-400">*</span></label>
+                    <input value={deviceDesc} onChange={e=>setDeviceDesc(e.target.value)}
+                      placeholder="e.g. 66kV Surge Arresters"
+                      className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className="text-[10px] text-gray-500 block mb-0.5">Item number suffix</label>
+                      <select value={itemNo} onChange={e=>setItemNo(e.target.value)}
+                        className="w-full border rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                        {["01","02","03","04","05","06","07","08","09","10"].map(n=><option key={n}>{n}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-500 block mb-0.5">Derived supply code</label>
+                      <div className={`border rounded px-2 py-1 text-xs font-mono ${supplyCode?"bg-blue-50 text-blue-700 border-blue-200":"bg-gray-50 text-gray-400"}`}>
+                        {supplyCode || "-- enter L4 code above --"}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-500 block mb-1.5">Scope pattern <span className="text-red-400">*</span></label>
+                    <div className="space-y-1.5">
+                      {WIZ_SCOPE_PATTERNS.map(p=>(
+                        <label key={p.id} className={`flex items-start gap-2 p-2 rounded border cursor-pointer text-xs ${scopePattern===p.id?"bg-blue-50 border-blue-300":"border-gray-200 hover:border-gray-300"}`}>
+                          <input type="radio" name="scope_pattern" value={p.id}
+                            checked={scopePattern===p.id} onChange={()=>setScopePattern(p.id)}
+                            className="mt-0.5 flex-shrink-0"/>
+                          <div>
+                            <div className="font-medium text-gray-800">{p.label}</div>
+                            <div className="text-gray-400 text-[10px]">{p.desc}</div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2 — Supply item */}
+            {step === 1 && (
+              <div className="space-y-3">
+                <div className="text-xs font-semibold text-gray-700 mb-3 pb-1.5 border-b">Step 2 -- supply item definition</div>
+                <div className="bg-blue-50 border border-blue-200 rounded px-3 py-2 text-[10px] text-blue-700 mb-2">
+                  Defining supply item for <span className="font-mono font-semibold">{supplyCode}</span>
+                  {prefill && " -- pre-filled from catalogue item. Review and confirm."}
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500 block mb-0.5">Item description <span className="text-red-400">*</span></label>
+                  <input value={supplyDesc} onChange={e=>setSupplyDesc(e.target.value)}
+                    placeholder="e.g. 66kV Surge Arrester -- 10kA station class"
+                    className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                </div>
+                {prefill?.make_model && (
+                  <div>
+                    <label className="text-[10px] text-gray-500 block mb-0.5">Make / model (from catalogue)</label>
+                    <input value={make} onChange={e=>setMake(e.target.value)}
+                      className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-gray-500 block mb-0.5">AER resource type <span className="text-red-400">*</span></label>
+                    <select value={aer} onChange={e=>setAer(e.target.value)}
+                      className="w-full border rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                      {WIZ_AER_TYPES.map(t=><option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-500 block mb-0.5">Default delivery method</label>
+                    <select value={delivery} onChange={e=>setDelivery(e.target.value)}
+                      className="w-full border rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                      {WIZ_DELIVERY.map(d=><option key={d}>{d}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-gray-500 block mb-0.5">Unit price / PCE price ($)</label>
+                    <input type="number" min="0" step="0.01" value={price} onChange={e=>setPrice(e.target.value)}
+                      placeholder={prefill ? "Pre-filled from catalogue" : "0 or leave blank"}
+                      className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                    {!price && <div className="text-[10px] text-amber-600 mt-0.5">No price -- will appear as GAP in supply items</div>}
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-500 block mb-0.5">LLT item?</label>
+                    <select value={isLLT?"yes":"no"} onChange={e=>setIsLLT(e.target.value==="yes")}
+                      className="w-full border rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                      <option value="no">No -- standard lead time</option>
+                      <option value="yes">Yes -- triggers Copperleaf B-row procurement</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="bg-gray-50 border border-gray-200 rounded px-3 py-2 text-[10px] text-gray-500">
+                  <span className="font-semibold">Note:</span> Install and commission resource types are set per-estimate by the estimator.
+                  You are setting the supply-level defaults here.
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3 — Hours */}
+            {step === 2 && (
+              <div className="space-y-4">
+                <div className="text-xs font-semibold text-gray-700 mb-1 pb-1.5 border-b">Step 3 -- pre-agreed standard hours</div>
+                <div className="bg-amber-50 border border-amber-200 rounded px-3 py-2 text-[10px] text-amber-800">
+                  These are the Class 4 pre-agreed standard hours negotiated with department stakeholder managers.
+                  Estimators do <span className="font-semibold">not</span> enter install or commission hours -- they flow automatically from these values.
+                </div>
+
+                {scopePattern === "supplyonly" ? (
+                  <div className="bg-gray-50 border rounded p-4 text-center text-xs text-gray-500">
+                    Supply only -- no install or commission hours required for this scope pattern.
+                  </div>
+                ) : (
+                  <>
+                    {/* Install hours */}
+                    {scopePattern !== "combined" && (
+                      <div className="border rounded p-3">
+                        <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 mb-2 pb-1 border-b">
+                          Install hours -- {installCode}
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 mb-2">
+                          <div>
+                            <label className="text-[10px] text-gray-500 block mb-0.5">Crew size</label>
+                            <input type="number" min="1" max="20" value={installCrew} onChange={e=>setInstallCrew(e.target.value)}
+                              className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-500 block mb-0.5">Hours per person</label>
+                            <input type="number" min="0" step="0.5" value={installHrs} onChange={e=>setInstallHrs(e.target.value)}
+                              className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-500 block mb-0.5">Total hrs / unit</label>
+                            <div className="border rounded px-2 py-1 text-xs font-bold bg-green-50 text-green-800 border-green-200">
+                              {installHrsTotal > 0 ? `${installHrsTotal} hrs` : "--"}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-[10px] text-gray-400">
+                          {installCrew} crew x {installHrs} hrs = <span className="font-semibold text-gray-600">{installHrsTotal} total hrs/unit</span>
+                          <span className="ml-2">-- stored as ee_unit_hrs on the Install row</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Commission hours */}
+                    {(scopePattern === "standard" || scopePattern === "scada") && (
+                      <div className="border rounded p-3">
+                        <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 mb-2 pb-1 border-b">
+                          Commission hours (base -- before scaling) -- {commCode || "commission row"}
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 mb-2">
+                          <div>
+                            <label className="text-[10px] text-gray-500 block mb-0.5">Base hrs / unit</label>
+                            <input type="number" min="0" step="0.5" value={commHrs} onChange={e=>setCommHrs(e.target.value)}
+                              className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-500 block mb-0.5">Economy-of-scale profile</label>
+                            <select value={scalingProfile} onChange={e=>setScalingProfile(e.target.value)}
+                              className="w-full border rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                              {WIZ_SCALING_PROFILES.map(p=><option key={p}>{p}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-500 block mb-0.5">Stored as</label>
+                            <div className="border rounded px-2 py-1 text-xs font-bold bg-green-50 text-green-800 border-green-200">
+                              {commHrs || "--"} hrs (base)
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-[10px] text-gray-400">
+                          Base hours scaled at estimate time using the <span className="font-semibold text-gray-600">{scalingProfile}</span> profile.
+                          Scaling reduces hours per unit as quantity increases.
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* STEP 4 — Validate + governance */}
+            {step === 3 && (
+              <div className="space-y-4">
+                <div className="text-xs font-semibold text-gray-700 mb-1 pb-1.5 border-b">Step 4 -- validate and governance</div>
+                <div className="bg-green-50 border border-green-200 rounded px-3 py-2 text-[10px] text-green-700 mb-1">
+                  {rows.length} row{rows.length!==1?"s":""} ready to create. Review before saving.
+                </div>
+
+                {/* Preview table */}
+                <table className="w-full text-[10px] border-collapse">
+                  <thead>
+                    <tr className="bg-gray-700 text-white">
+                      <th className="text-left py-1.5 px-2 font-medium">WBS code</th>
+                      <th className="text-left py-1.5 px-2 font-medium">Scope</th>
+                      <th className="text-left py-1.5 px-2 font-medium">Description</th>
+                      <th className="text-right py-1.5 px-2 font-medium">Hrs / unit</th>
+                      <th className="text-right py-1.5 px-2 font-medium">Price / rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r, i) => (
+                      <tr key={i} className={i%2===0?"bg-gray-50":"bg-white"}>
+                        <td className="py-1.5 px-2 font-mono text-blue-700 font-semibold">{r.code}</td>
+                        <td className="py-1.5 px-2">
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
+                            r.scope==="Supply"?"bg-blue-100 text-blue-800":
+                            r.scope==="Install"?"bg-green-100 text-green-800":
+                            "bg-amber-100 text-amber-800"
+                          }`}>{r.scope}</span>
+                        </td>
+                        <td className="py-1.5 px-2 text-gray-700">{r.desc}</td>
+                        <td className="py-1.5 px-2 text-right text-gray-600">{r.hrs !== null ? fmtHrs(r.hrs) : "--"}</td>
+                        <td className="py-1.5 px-2 text-right text-gray-600">
+                          {r.scope==="Supply" && price ? `$${parseFloat(price).toLocaleString()}` : "--"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Summary */}
+                <div className="grid grid-cols-3 gap-2 text-[10px]">
+                  <div className="bg-gray-50 border rounded p-2">
+                    <div className="text-gray-400 mb-0.5">Delivery method</div>
+                    <div className="font-medium text-gray-700">{delivery}</div>
+                  </div>
+                  <div className="bg-gray-50 border rounded p-2">
+                    <div className="text-gray-400 mb-0.5">AER resource type</div>
+                    <div className="font-medium text-gray-700">{aer.split("--")[0].trim()}</div>
+                  </div>
+                  <div className="bg-gray-50 border rounded p-2">
+                    <div className="text-gray-400 mb-0.5">Status on save</div>
+                    <div className="font-semibold text-amber-700">Pending Governance</div>
+                  </div>
+                </div>
+
+                {/* Governance PIN */}
+                <div className="bg-amber-50 border border-amber-300 rounded p-3">
+                  <div className="text-[10px] font-semibold text-amber-800 mb-2">
+                    Governance gate -- WBS Manager PIN required
+                  </div>
+                  <div className="text-[10px] text-amber-700 mb-2">
+                    New WBS items are saved as Pending until governance sign-off is confirmed.
+                    Items will be visible in the WBS editor but cannot be selected in estimates until activated.
+                  </div>
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1">
+                      <label className="text-[10px] text-gray-500 block mb-0.5">WBS Manager PIN <span className="text-red-400">*</span></label>
+                      <input type="password" value={pinInput} onChange={e=>{setPinInput(e.target.value);setPinError(false);}}
+                        placeholder="Enter PIN"
+                        onKeyDown={e=>{ if(e.key==="Enter") trySubmit(); }}
+                        className={`w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 ${pinError?"border-red-400 bg-red-50 focus:ring-red-400":"focus:ring-blue-400"}`}/>
+                      {pinError && <div className="text-[10px] text-red-600 mt-0.5">Incorrect PIN -- try again</div>}
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-[10px] text-gray-500 block mb-0.5">Governance ref (optional)</label>
+                      <input value={govRef} onChange={e=>setGovRef(e.target.value)}
+                        placeholder="e.g. GOV-2026-041"
+                        className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t px-5 py-3 flex justify-between items-center flex-shrink-0 bg-gray-50 rounded-b-xl">
+          <button
+            onClick={()=>setStep(s=>Math.max(0,s-1))}
+            style={{visibility: step===0?"hidden":"visible"}}
+            className="text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 px-4 py-1.5 rounded">
+            Back
+          </button>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5">Cancel</button>
+            {step < 3 ? (
+              <button
+                onClick={()=>setStep(s=>s+1)}
+                disabled={!canNext()}
+                className="text-xs bg-blue-700 hover:bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white px-5 py-1.5 rounded font-semibold">
+                Next
+              </button>
+            ) : (
+              <button
+                onClick={trySubmit}
+                disabled={!pinInput}
+                className="text-xs bg-green-700 hover:bg-green-600 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white px-5 py-1.5 rounded font-semibold">
+                Create WBS items
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── EQUIPMENT CATALOGUE MANAGER (WBS Manager tab) ────────────────
 // Admin view — full catalogue, price editing, WBS assignment, add new items
 // ── EQUIPMENT PRICING EDITOR ─────────────────────────────────────────────────
@@ -7643,6 +8134,8 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
   const [editing,    setEditing]    = useState(null);
   const [editVals,   setEditVals]   = useState({});
   const [showAdd,    setShowAdd]    = useState(false);
+  const [showAddPath, setShowAddPath] = useState(null); // null | "path-choice" | "fast" | "wizard"
+  const [wizardPrefill, setWizardPrefill] = useState(null);
   const [localItems, setLocalItems] = useState(null);
 
   // ── PIN-locked Manager Mode ──────────────────────────────────
@@ -7860,9 +8353,9 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
           <div className="flex-1"/>
           {managerMode ? (
             <>
-              <button onClick={() => setShowAdd(s => !s)}
-                className={`text-xs px-3 py-1.5 rounded font-semibold ${showAdd?"bg-gray-200 text-gray-700":"bg-green-700 hover:bg-green-600 text-white"}`}>
-                {showAdd ? "✕ Cancel" : "+ Add Item"}
+              <button onClick={() => setShowAddPath("path-choice")}
+                className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded font-semibold">
+                + Add Item
               </button>
               <span className="text-xs bg-orange-100 text-orange-700 border border-orange-300 px-3 py-1.5 rounded font-semibold flex items-center gap-1.5">
                 🔓 Manager Mode
@@ -7877,123 +8370,145 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
         </div>
 
         {/* Add new item form */}
-        {showAdd && (
-          <div className="bg-green-50 border-b border-green-200 px-4 py-3 flex-shrink-0">
-            <div className="text-xs font-bold text-green-800 mb-2 uppercase tracking-wide">Add New Equipment Item</div>
-            <div className="grid grid-cols-6 gap-2 items-start">
+        {/* ── Add Item: path-choice modal ── */}
+        {showAddPath === "path-choice" && (
+          <div className="fixed inset-0 z-40 bg-black/30 flex items-center justify-center">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-96">
+              <div className="text-sm font-bold text-gray-800 mb-1">Add equipment item</div>
+              <div className="text-xs text-gray-500 mb-4">Does this item map to an existing WBS supply code?</div>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => setShowAddPath("fast")}
+                  className="flex items-start gap-3 p-3 border-2 border-green-300 rounded-lg hover:bg-green-50 text-left">
+                  <span className="text-green-600 text-lg mt-0.5">A</span>
+                  <div>
+                    <div className="text-xs font-semibold text-green-800">Yes -- existing WBS code</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Fast path: add catalogue metadata and link to existing supply WBS row. No governance needed -- item is live immediately.</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { setShowAddPath("wizard"); setWizardPrefill(null); }}
+                  className="flex items-start gap-3 p-3 border-2 border-amber-300 rounded-lg hover:bg-amber-50 text-left">
+                  <span className="text-amber-600 text-lg mt-0.5">B</span>
+                  <div>
+                    <div className="text-xs font-semibold text-amber-800">No -- needs a new WBS code</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Wizard path: creates Supply, Install and Commission WBS rows with governance PIN gate. Item saved as Pending Governance.</div>
+                  </div>
+                </button>
+              </div>
+              <button onClick={() => setShowAddPath(null)}
+                className="mt-4 text-xs text-gray-400 hover:text-gray-600 w-full text-center">Cancel</button>
+            </div>
+          </div>
+        )}
 
-              {/* Row 1 */}
+        {/* ── Add Item: Path A fast form (existing WBS) ── */}
+        {showAddPath === "fast" && (
+          <div className="bg-green-50 border-b border-green-200 px-4 py-3 flex-shrink-0">
+            <div className="text-xs font-bold text-green-800 mb-2 uppercase tracking-wide flex items-center gap-2">
+              Path A -- Add Equipment Item (existing WBS)
+              <span className="text-[10px] font-normal normal-case text-green-600">Links to an existing supply row</span>
+            </div>
+            <div className="grid grid-cols-6 gap-2 items-end">
               <div className="col-span-2">
                 <label className="text-xs text-gray-500 block mb-0.5">Description *</label>
                 <input value={newItem.description} onChange={e => setNewItem(p => ({...p, description:e.target.value}))}
                   className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400"/>
               </div>
-
               <div>
                 <label className="text-xs text-gray-500 block mb-0.5">Type</label>
-                <select value={newItem.type} onChange={e => setNewItem(p => ({...p, type:e.target.value, category:""}))}
-                  className="w-full border rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-400">
-                  {["PCE","SCADA","COMMS","LLT"].map(t => (
-                    <option key={t} value={t}>{TYPE_COLORS[t]?.icon} {TYPE_COLORS[t]?.label||t}</option>
-                  ))}
+                <select value={newItem.type} onChange={e => setNewItem(p => ({...p, type:e.target.value}))}
+                  className="w-full border rounded px-2 py-1 text-xs bg-white focus:outline-none">
+                  {["PCE","SCADA","COMMS","LLT"].map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
-
               <div>
-                <label className="text-xs text-gray-500 block mb-0.5">
-                  Category
-                  <button onClick={() => setShowAddCategory(s => !s)}
-                    className="ml-1 text-teal-600 hover:text-teal-800 font-semibold" title="Add new category">+ new</button>
-                </label>
-                {showAddCategory ? (
-                  <div className="flex gap-1">
-                    <input autoFocus value={newCategoryInput}
-                      onChange={e => setNewCategoryInput(e.target.value)}
-                      onKeyDown={e => { if(e.key==="Enter") addCategory(); if(e.key==="Escape") setShowAddCategory(false); }}
-                      placeholder="New category…"
-                      className="flex-1 border border-teal-300 rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400"/>
-                    <button onClick={addCategory} disabled={!newCategoryInput.trim()}
-                      className="text-[10px] bg-teal-700 disabled:opacity-40 text-white rounded px-1.5 py-1 font-semibold">✓</button>
-                    <button onClick={() => { setShowAddCategory(false); setNewCategoryInput(""); }}
-                      className="text-[10px] border border-gray-300 text-gray-600 hover:bg-gray-50 rounded px-1.5 py-1">✕</button>
-                  </div>
-                ) : (
-                  <select value={newItem.category} onChange={e => setNewItem(p => ({...p, category:e.target.value}))}
-                    className="w-full border rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-400">
-                    <option value="">— select category —</option>
-                    {filteredCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                )}
+                <label className="text-xs text-gray-500 block mb-0.5">Category</label>
+                <select value={newItem.category} onChange={e => setNewItem(p => ({...p, category:e.target.value}))}
+                  className="w-full border rounded px-2 py-1 text-xs bg-white focus:outline-none">
+                  {filteredCategories.map(c => <option key={c}>{c}</option>)}
+                </select>
               </div>
-
               <div>
                 <label className="text-xs text-gray-500 block mb-0.5">Make / Part No.</label>
                 <input value={newItem.make_model} onChange={e => setNewItem(p => ({...p, make_model:e.target.value}))}
-                  className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400"/>
+                  className="w-full border rounded px-2 py-1 text-xs focus:outline-none"/>
               </div>
-
               <div>
-                <label className="text-xs text-gray-500 block mb-0.5">WBS Code</label>
+                <label className="text-xs text-gray-500 block mb-0.5">WBS Code (existing) *</label>
                 <input value={newItem.wbs_code} onChange={e => setNewItem(p => ({...p, wbs_code:e.target.value}))}
-                  placeholder="e.g. 3.2.1.02.1.05"
+                  placeholder="3.1.3.04.1.01"
                   className={`w-full border rounded px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 ${
-                    wbsInCatalogue ? "border-red-400 bg-red-50 focus:ring-red-400"
-                    : wbsInSupply  ? "border-amber-400 bg-amber-50 focus:ring-amber-400"
-                    : wbsOk        ? "border-green-400 bg-green-50 focus:ring-green-400"
-                    : "focus:ring-green-400"
+                    wbsInCatalogue ? "border-red-400 bg-red-50" : wbsInSupply ? "border-green-400 bg-green-50" : "focus:ring-green-400"
                   }`}/>
-                {wbsInCatalogue && (
-                  <div className="text-xs text-red-600 mt-0.5 flex items-center gap-1">
-                    🚫 WBS code already in catalogue — cannot add duplicate
+                {wbsInCatalogue && <div className="text-[10px] text-red-600 mt-0.5">Already in catalogue</div>}
+                {wbsInSupply && !wbsInCatalogue && <div className="text-[10px] text-green-700 mt-0.5">Found in supply items</div>}
+                {!wbsInSupply && !wbsInCatalogue && newItem.wbs_code && (
+                  <div className="text-[10px] text-amber-700 mt-0.5">
+                    Not found in supply -- use Path B wizard to create WBS rows first.
+                    <button onClick={() => { setWizardPrefill({description:newItem.description,make_model:newItem.make_model,price:newItem.price}); setShowAddPath("wizard"); }}
+                      className="ml-1 underline text-blue-600">Switch to wizard</button>
                   </div>
                 )}
-                {wbsInSupply && !wbsInCatalogue && (
-                  <div className="text-xs text-green-700 mt-0.5 flex items-center gap-1">
-                    ✓ WBS code found in supply items — this item will link to the Estimation Tool
-                  </div>
-                )}
-                {wbsInMaster && !wbsInSupply && !wbsInCatalogue && (
-                  <div className="text-xs text-blue-700 mt-0.5">ℹ️ Found in WBS Master — check supply items for full linkage</div>
-                )}
-                {wbsOk && !wbsInSupply && !wbsInMaster && (
-                  <div className="text-xs text-amber-700 mt-0.5">⚠️ Not found in supply items — will show in catalogue but won't link to estimation tool</div>
-                )}
-              </div>
-
-              {/* Row 2 */}
-              <div>
-                <label className="text-xs text-gray-500 block mb-0.5">Contract No.</label>
-                <input value={newItem.contract_no} onChange={e => setNewItem(p => ({...p, contract_no:e.target.value}))}
-                  className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400"/>
               </div>
               <div>
                 <label className="text-xs text-gray-500 block mb-0.5">Price ($)</label>
-                <input type="number" value={newItem.price} onChange={e => setNewItem(p => ({...p, price:e.target.value}))}
-                  placeholder="0 = POA"
-                  className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400"/>
+                <input type="number" min="0" step="0.01" value={newItem.price}
+                  onChange={e => setNewItem(p => ({...p, price:e.target.value}))}
+                  className="w-full border rounded px-2 py-1 text-xs focus:outline-none"/>
               </div>
               <div>
-                <label className="text-xs text-gray-500 block mb-0.5">Lead Time (wks)</label>
-                <input type="number" value={newItem.lead_time_weeks} onChange={e => setNewItem(p => ({...p, lead_time_weeks:e.target.value}))}
-                  placeholder=">20 = LLT"
-                  className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400"/>
+                <label className="text-xs text-gray-500 block mb-0.5">Lead time (wks)</label>
+                <input type="number" min="0" value={newItem.lead_time_weeks}
+                  onChange={e => setNewItem(p => ({...p, lead_time_weeks:e.target.value}))}
+                  className="w-full border rounded px-2 py-1 text-xs focus:outline-none"/>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-0.5">Contract No.</label>
+                <input value={newItem.contract_no || ""} onChange={e => setNewItem(p => ({...p, contract_no:e.target.value}))}
+                  className="w-full border rounded px-2 py-1 text-xs focus:outline-none"/>
               </div>
               <div className="col-span-2">
                 <label className="text-xs text-gray-500 block mb-0.5">Comments</label>
                 <input value={newItem.comments} onChange={e => setNewItem(p => ({...p, comments:e.target.value}))}
-                  className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400"/>
+                  className="w-full border rounded px-2 py-1 text-xs focus:outline-none"/>
               </div>
-              <div className="flex items-end">
-                <button onClick={addNewItem}
-                  disabled={!newItem.description.trim() || wbsInCatalogue}
-                  title={wbsInCatalogue ? "WBS code already in catalogue" : !newItem.description.trim() ? "Description required" : ""}
-                  className="w-full text-xs bg-green-700 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded font-semibold">
-                  {wbsInCatalogue ? "🚫 Duplicate WBS" : "Add Item"}
-                </button>
-              </div>
+            </div>
+            <div className="mt-2 flex gap-2 items-center">
+              <button onClick={addNewItem}
+                disabled={!newItem.description.trim() || wbsInCatalogue}
+                className="text-xs bg-green-700 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded font-bold">
+                Add to Catalogue
+              </button>
+              <button onClick={() => setShowAddPath(null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+              <span className="text-[10px] text-gray-400 ml-2">Need a new WBS code?</span>
+              <button onClick={() => { setWizardPrefill({description:newItem.description,make_model:newItem.make_model,price:newItem.price}); setShowAddPath("wizard"); }}
+                className="text-[10px] text-amber-700 border border-amber-300 hover:bg-amber-50 rounded px-2 py-0.5">Use wizard (Path B)</button>
             </div>
           </div>
         )}
+
+        {/* ── Add Item: Path B WBS wizard ── */}
+        {showAddPath === "wizard" && (
+          <WBSWizard
+            onClose={() => setShowAddPath(null)}
+            prefill={wizardPrefill}
+            existingCodes={usedWbsCodes}
+            onSave={(entries) => {
+              // After wizard creates WBS rows, auto-open fast form pre-filled
+              const firstEntry = entries[0];
+              setNewItem(p => ({
+                ...p,
+                description: wizardPrefill?.description || firstEntry.description || "",
+                make_model:  wizardPrefill?.make_model || "",
+                price:       wizardPrefill?.price || "",
+                wbs_code:    firstEntry.wbs_code || "",
+              }));
+              setShowAddPath("fast");
+            }}
+          />
+        )}
+
 
         {/* Catalogue table */}
         <div className="flex-1 overflow-y-auto">
@@ -8075,7 +8590,10 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
                         const wc = item.wbs_code;
                         const inSupply = wc && supplyWbsCodes.has(wc);
                         const inMaster = wc && (wbsMaster||[]).some(w => w.wbs_code === wc);
-                        if (!wc) return <span className="text-gray-300 text-[10px]" title="No WBS code set">—</span>;
+                        if (!wc) return managerMode ? (
+                          <button onClick={() => { setWizardPrefill({description:item.description,make_model:item.make_model,price:item.price}); setShowAddPath("wizard"); }}
+                            className="text-[10px] text-amber-700 border border-amber-300 hover:bg-amber-50 rounded px-1.5 py-0.5 font-semibold">+ Create WBS</button>
+                        ) : <span className="text-gray-300 text-[10px]" title="No WBS code set">—</span>;
                         if (inSupply && inMaster) return (
                           <span className="bg-green-100 text-green-700 border border-green-300 rounded px-1 py-0.5 text-[10px] font-semibold" title="WBS code found in supply items and WBS Master — will appear in Estimation Tool">✓ Live</span>
                         );
