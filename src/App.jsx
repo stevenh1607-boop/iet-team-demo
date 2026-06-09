@@ -6379,67 +6379,122 @@ function EquipmentScreen({ lines, setLines, isCommercial, inv }) {
 // ── EQUIPMENT CATALOGUE MANAGER (WBS Manager tab) ────────────────
 // Admin view — full catalogue, price editing, WBS assignment, add new items
 function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
-  const { equipment, loading } = useData();
+  const { equipment, supply, loading } = useData();
   const [typeFilter, setTypeFilter] = useState("All");
   const [catFilter,  setCatFilter]  = useState("All");
   const [search,     setSearch]     = useState("");
-  const [editing,    setEditing]    = useState(null); // item id being edited
+  const [editing,    setEditing]    = useState(null);
   const [editVals,   setEditVals]   = useState({});
   const [showAdd,    setShowAdd]    = useState(false);
-  const [newItem,    setNewItem]    = useState({type:"PCE",description:"",category:"",make_model:"",wbs_code:"",contract_no:"",price:"",lead_time_weeks:"",unit:"EA",comments:""});
-  const [localItems, setLocalItems] = useState(null); // overrides for edited prices
+  const [localItems, setLocalItems] = useState(null);
 
-  // Use localItems if any edits have been made, else use context equipment
-  const allItems = useMemo(()=> localItems || equipment, [localItems, equipment]);
+  // ── Custom category management ─────────────────────────────
+  // Seed from existing equipment data, allow manager to add new ones
+  const [customCategories, setCustomCategories] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("iet_equip_categories") || "null") || null; }
+    catch(e) { return null; }
+  });
+  const saveCustomCategories = (cats) => {
+    setCustomCategories(cats);
+    localStorage.setItem("iet_equip_categories", JSON.stringify(cats));
+  };
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryInput, setNewCategoryInput] = useState("");
 
-  const categories = useMemo(()=>[
-    ...new Set(allItems.filter(e=>typeFilter==="All"||e.type===typeFilter).map(e=>e.category).filter(Boolean))
-  ].sort(),[allItems, typeFilter]);
+  const allItems = useMemo(() => localItems || equipment, [localItems, equipment]);
 
-  const filtered = useMemo(()=>allItems.filter(e=>{
-    const mt = typeFilter==="All" || e.type===typeFilter;
-    const mc = catFilter==="All"  || e.category===catFilter;
+  // All known categories: union of data-derived + custom additions, per type
+  const allCategories = useMemo(() => {
+    const fromData = allItems.map(e => e.category).filter(Boolean);
+    const custom   = customCategories || [];
+    return [...new Set([...fromData, ...custom])].sort();
+  }, [allItems, customCategories]);
+
+  // Categories filtered to the current type selection
+  const filteredCategories = useMemo(() => {
+    if (typeFilter === "All") return allCategories;
+    const fromType = allItems.filter(e => e.type === typeFilter).map(e => e.category).filter(Boolean);
+    const custom   = customCategories || [];
+    return [...new Set([...fromType, ...custom])].sort();
+  }, [allItems, typeFilter, allCategories, customCategories]);
+
+  // Build a set of all WBS codes currently in the catalogue for duplicate detection
+  const usedWbsCodes = useMemo(() => new Set(allItems.map(e => e.wbs_code).filter(Boolean)), [allItems]);
+  // Also check supply items - a wbs_code already in supply can receive equipment link but shouldn't be a NEW catalogue entry
+  const supplyWbsCodes = useMemo(() => new Set((supply||[]).map(s => s.wbs_code).filter(Boolean)), [supply]);
+
+  // ── New item form ─────────────────────────────────────────
+  const [newItem, setNewItem] = useState({
+    type:"PCE", description:"", category:"", make_model:"",
+    wbs_code:"", contract_no:"", price:"", lead_time_weeks:"", unit:"EA", comments:""
+  });
+
+  // WBS code validation state
+  const wbsVal = newItem.wbs_code.trim();
+  const wbsInCatalogue = wbsVal && usedWbsCodes.has(wbsVal);
+  const wbsInSupply    = wbsVal && supplyWbsCodes.has(wbsVal);
+  const wbsOk          = wbsVal && !wbsInCatalogue;
+
+  const filtered = useMemo(() => allItems.filter(e => {
+    const mt = typeFilter === "All" || e.type === typeFilter;
+    const mc = catFilter  === "All" || e.category === catFilter;
     const ms = !search || e.description?.toLowerCase().includes(search.toLowerCase())
       || e.wbs_code?.toLowerCase().includes(search.toLowerCase())
       || e.make_model?.toLowerCase().includes(search.toLowerCase());
     return mt && mc && ms;
-  }),[allItems, typeFilter, catFilter, search]);
-
+  }), [allItems, typeFilter, catFilter, search]);
 
   const startEdit = (item) => {
     setEditing(item.id);
-    setEditVals({ price: item.price, wbs_code: item.wbs_code, contract_no: item.contract_no||"",
-                  lead_time_weeks: item.lead_time_weeks||"", comments: item.comments||"" });
+    setEditVals({
+      price: item.price, wbs_code: item.wbs_code, contract_no: item.contract_no||"",
+      lead_time_weeks: item.lead_time_weeks||"", comments: item.comments||""
+    });
   };
+
   const saveEdit = (itemId) => {
     const base = localItems || equipment;
-    setLocalItems(base.map(e => e.id===itemId ? {
+    setLocalItems(base.map(e => e.id === itemId ? {
       ...e,
-      price: parseFloat(editVals.price)||e.price,
-      wbs_code: editVals.wbs_code||e.wbs_code,
-      contract_no: editVals.contract_no,
-      lead_time_weeks: parseFloat(editVals.lead_time_weeks)||0,
-      is_llt: parseFloat(editVals.lead_time_weeks)>20,
-      type: parseFloat(editVals.lead_time_weeks)>20 ? "LLT" : (e.source==="SCADA"?"SCADA":e.source==="Comms"?"COMMS":"PCE"),
-      comments: editVals.comments,
+      price:            parseFloat(editVals.price) || e.price,
+      wbs_code:         editVals.wbs_code || e.wbs_code,
+      contract_no:      editVals.contract_no,
+      lead_time_weeks:  parseFloat(editVals.lead_time_weeks) || 0,
+      is_llt:           parseFloat(editVals.lead_time_weeks) > 20,
+      type:             parseFloat(editVals.lead_time_weeks) > 20 ? "LLT" : (e.source==="SCADA"?"SCADA":e.source==="Comms"?"COMMS":"PCE"),
+      comments:         editVals.comments,
     } : e));
     setEditing(null);
   };
+
   const addNewItem = () => {
-    if (!newItem.description.trim()) return;
+    if (!newItem.description.trim() || wbsInCatalogue) return;
     const base = localItems || equipment;
-    const id = `CUSTOM-${Date.now()}`;
+    const id   = `CUSTOM-${Date.now()}`;
     setLocalItems([...base, {
-      ...newItem, id, source:"Custom",
-      price: parseFloat(newItem.price)||0,
-      lead_time_weeks: parseFloat(newItem.lead_time_weeks)||0,
-      is_llt: parseFloat(newItem.lead_time_weeks)>20,
-      type: parseFloat(newItem.lead_time_weeks)>20 ? "LLT" : newItem.type,
-      make_model: newItem.make_model, voltage:"", is_poa: !newItem.price,
-      current_price: parseFloat(newItem.price)||0, escalated_price: parseFloat(newItem.price)||0,
+      ...newItem, id, source: "Custom",
+      price:           parseFloat(newItem.price) || 0,
+      lead_time_weeks: parseFloat(newItem.lead_time_weeks) || 0,
+      is_llt:          parseFloat(newItem.lead_time_weeks) > 20,
+      type:            parseFloat(newItem.lead_time_weeks) > 20 ? "LLT" : newItem.type,
+      make_model:      newItem.make_model, voltage: "", is_poa: !newItem.price,
+      current_price:   parseFloat(newItem.price) || 0,
+      escalated_price: parseFloat(newItem.price) || 0,
     }]);
     setShowAdd(false);
-    setNewItem({type:"PCE",description:"",category:"",make_model:"",wbs_code:"",contract_no:"",price:"",lead_time_weeks:"",unit:"EA",comments:""});
+    setNewItem({ type:"PCE", description:"", category:"", make_model:"", wbs_code:"", contract_no:"", price:"", lead_time_weeks:"", unit:"EA", comments:"" });
+  };
+
+  const addCategory = () => {
+    const trimmed = newCategoryInput.trim();
+    if (!trimmed) return;
+    const existing = customCategories || allCategories;
+    if (!existing.includes(trimmed)) {
+      saveCustomCategories([...existing, trimmed]);
+    }
+    setNewCategoryInput("");
+    setShowAddCategory(false);
+    setNewItem(p => ({...p, category: trimmed}));
   };
 
   if (loading) return <div className="flex-1 flex items-center justify-center text-gray-400 text-sm animate-pulse">Loading catalogue…</div>;
@@ -6454,24 +6509,42 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
         </div>
         <div className="px-3 py-2 border-b flex-shrink-0">
           <div className="text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Type</div>
-          {["All","PCE","LLT","SCADA","COMMS"].map(t=>(
-            <button key={t} onClick={()=>{setTypeFilter(t);setCatFilter("All");}}
+          {["All","PCE","LLT","SCADA","COMMS"].map(t => (
+            <button key={t} onClick={() => { setTypeFilter(t); setCatFilter("All"); }}
               className={`w-full text-left flex items-center justify-between px-2 py-1 rounded text-xs mb-0.5 ${typeFilter===t?"bg-teal-600 text-white":"text-gray-700 hover:bg-gray-100"}`}>
-              <span>{t==="All"?"All Types":`${TYPE_COLORS[t]?.icon} ${TYPE_COLORS[t]?.label}`}</span>
+              <span>{t==="All" ? "All Types" : `${TYPE_COLORS[t]?.icon} ${TYPE_COLORS[t]?.label}`}</span>
               <span className={`text-xs px-1 rounded font-mono ${typeFilter===t?"bg-teal-500 text-white":"bg-gray-100 text-gray-500"}`}>
-                {t==="All"?allItems.length:allItems.filter(e=>e.type===t).length}
+                {t==="All" ? allItems.length : allItems.filter(e=>e.type===t).length}
               </span>
             </button>
           ))}
         </div>
         <div className="px-3 py-2 flex-1 overflow-y-auto">
-          <div className="text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Category</div>
-          <button onClick={()=>setCatFilter("All")}
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</div>
+            <button onClick={() => setShowAddCategory(s => !s)}
+              className="text-xs text-teal-600 hover:text-teal-800 font-semibold" title="Add new category">+ Add</button>
+          </div>
+          {showAddCategory && (
+            <div className="mb-2">
+              <input autoFocus value={newCategoryInput} onChange={e => setNewCategoryInput(e.target.value)}
+                onKeyDown={e => { if(e.key==="Enter") addCategory(); if(e.key==="Escape") setShowAddCategory(false); }}
+                placeholder="New category name…"
+                className="w-full border border-teal-300 rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400 mb-1"/>
+              <div className="flex gap-1">
+                <button onClick={addCategory} disabled={!newCategoryInput.trim()}
+                  className="flex-1 text-[10px] bg-teal-700 disabled:opacity-40 hover:bg-teal-600 text-white rounded px-1 py-0.5 font-semibold">Add</button>
+                <button onClick={() => { setShowAddCategory(false); setNewCategoryInput(""); }}
+                  className="flex-1 text-[10px] border border-gray-300 text-gray-600 hover:bg-gray-50 rounded px-1 py-0.5">Cancel</button>
+              </div>
+            </div>
+          )}
+          <button onClick={() => setCatFilter("All")}
             className={`w-full text-left px-2 py-1 rounded text-xs mb-0.5 ${catFilter==="All"?"bg-teal-50 text-teal-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>
             All Categories
           </button>
-          {categories.map(c=>(
-            <button key={c} onClick={()=>setCatFilter(c)}
+          {filteredCategories.map(c => (
+            <button key={c} onClick={() => setCatFilter(c)}
               className={`w-full text-left px-2 py-1 rounded text-xs mb-0.5 truncate ${catFilter===c?"bg-teal-50 text-teal-700 font-semibold":"text-gray-600 hover:bg-gray-50"}`}>
               {c}
             </button>
@@ -6483,15 +6556,15 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Toolbar */}
         <div className="bg-white border-b px-3 py-2 flex items-center gap-2 flex-shrink-0">
-          <input value={search} onChange={e=>setSearch(e.target.value)}
+          <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search description, WBS, make/part…"
             className="border border-gray-300 rounded px-2 py-1.5 text-xs w-64 focus:outline-none focus:ring-1 focus:ring-teal-400"/>
-          {search && <button onClick={()=>setSearch("")} className="text-xs text-gray-400 hover:text-gray-600">✕</button>}
+          {search && <button onClick={() => setSearch("")} className="text-xs text-gray-400 hover:text-gray-600">✕</button>}
           <span className="text-xs text-gray-400">{filtered.length} items</span>
           <div className="flex-1"/>
-          <button onClick={()=>setShowAdd(s=>!s)}
-            className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded font-semibold">
-            {showAdd?"Cancel":"+ Add Item"}
+          <button onClick={() => setShowAdd(s => !s)}
+            className={`text-xs px-3 py-1.5 rounded font-semibold ${showAdd?"bg-gray-200 text-gray-700":"bg-green-700 hover:bg-green-600 text-white"}`}>
+            {showAdd ? "✕ Cancel" : "+ Add Item"}
           </button>
         </div>
 
@@ -6499,61 +6572,112 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
         {showAdd && (
           <div className="bg-green-50 border-b border-green-200 px-4 py-3 flex-shrink-0">
             <div className="text-xs font-bold text-green-800 mb-2 uppercase tracking-wide">Add New Equipment Item</div>
-            <div className="grid grid-cols-6 gap-2 items-end">
+            <div className="grid grid-cols-6 gap-2 items-start">
+
+              {/* Row 1 */}
               <div className="col-span-2">
                 <label className="text-xs text-gray-500 block mb-0.5">Description *</label>
-                <input value={newItem.description} onChange={e=>setNewItem(p=>({...p,description:e.target.value}))}
+                <input value={newItem.description} onChange={e => setNewItem(p => ({...p, description:e.target.value}))}
                   className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400"/>
               </div>
+
               <div>
                 <label className="text-xs text-gray-500 block mb-0.5">Type</label>
-                <select value={newItem.type} onChange={e=>setNewItem(p=>({...p,type:e.target.value}))}
+                <select value={newItem.type} onChange={e => setNewItem(p => ({...p, type:e.target.value, category:""}))}
                   className="w-full border rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-400">
-                  {["PCE","SCADA","COMMS"].map(t=><option key={t}>{t}</option>)}
+                  {["PCE","SCADA","COMMS","LLT"].map(t => (
+                    <option key={t} value={t}>{TYPE_COLORS[t]?.icon} {TYPE_COLORS[t]?.label||t}</option>
+                  ))}
                 </select>
               </div>
+
               <div>
-                <label className="text-xs text-gray-500 block mb-0.5">Category</label>
-                <input value={newItem.category} onChange={e=>setNewItem(p=>({...p,category:e.target.value}))}
-                  className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400"/>
+                <label className="text-xs text-gray-500 block mb-0.5">
+                  Category
+                  <button onClick={() => setShowAddCategory(s => !s)}
+                    className="ml-1 text-teal-600 hover:text-teal-800 font-semibold" title="Add new category">+ new</button>
+                </label>
+                {showAddCategory ? (
+                  <div className="flex gap-1">
+                    <input autoFocus value={newCategoryInput}
+                      onChange={e => setNewCategoryInput(e.target.value)}
+                      onKeyDown={e => { if(e.key==="Enter") addCategory(); if(e.key==="Escape") setShowAddCategory(false); }}
+                      placeholder="New category…"
+                      className="flex-1 border border-teal-300 rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400"/>
+                    <button onClick={addCategory} disabled={!newCategoryInput.trim()}
+                      className="text-[10px] bg-teal-700 disabled:opacity-40 text-white rounded px-1.5 py-1 font-semibold">✓</button>
+                    <button onClick={() => { setShowAddCategory(false); setNewCategoryInput(""); }}
+                      className="text-[10px] border border-gray-300 text-gray-600 hover:bg-gray-50 rounded px-1.5 py-1">✕</button>
+                  </div>
+                ) : (
+                  <select value={newItem.category} onChange={e => setNewItem(p => ({...p, category:e.target.value}))}
+                    className="w-full border rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-400">
+                    <option value="">— select category —</option>
+                    {filteredCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                )}
               </div>
+
               <div>
                 <label className="text-xs text-gray-500 block mb-0.5">Make / Part No.</label>
-                <input value={newItem.make_model} onChange={e=>setNewItem(p=>({...p,make_model:e.target.value}))}
+                <input value={newItem.make_model} onChange={e => setNewItem(p => ({...p, make_model:e.target.value}))}
                   className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400"/>
               </div>
+
               <div>
                 <label className="text-xs text-gray-500 block mb-0.5">WBS Code</label>
-                <input value={newItem.wbs_code} onChange={e=>setNewItem(p=>({...p,wbs_code:e.target.value}))}
+                <input value={newItem.wbs_code} onChange={e => setNewItem(p => ({...p, wbs_code:e.target.value}))}
                   placeholder="e.g. 3.2.1.02.1.05"
-                  className="w-full border rounded px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-green-400"/>
+                  className={`w-full border rounded px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 ${
+                    wbsInCatalogue ? "border-red-400 bg-red-50 focus:ring-red-400"
+                    : wbsInSupply  ? "border-amber-400 bg-amber-50 focus:ring-amber-400"
+                    : wbsOk        ? "border-green-400 bg-green-50 focus:ring-green-400"
+                    : "focus:ring-green-400"
+                  }`}/>
+                {wbsInCatalogue && (
+                  <div className="text-xs text-red-600 mt-0.5 flex items-center gap-1">
+                    🚫 WBS code already in catalogue — cannot add duplicate
+                  </div>
+                )}
+                {wbsInSupply && !wbsInCatalogue && (
+                  <div className="text-xs text-amber-700 mt-0.5 flex items-center gap-1">
+                    ℹ️ This WBS code exists in supply items — linking is allowed
+                  </div>
+                )}
+                {wbsOk && !wbsInSupply && (
+                  <div className="text-xs text-green-700 mt-0.5">✓ WBS code available</div>
+                )}
               </div>
+
+              {/* Row 2 */}
               <div>
                 <label className="text-xs text-gray-500 block mb-0.5">Contract No.</label>
-                <input value={newItem.contract_no} onChange={e=>setNewItem(p=>({...p,contract_no:e.target.value}))}
+                <input value={newItem.contract_no} onChange={e => setNewItem(p => ({...p, contract_no:e.target.value}))}
                   className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400"/>
               </div>
               <div>
                 <label className="text-xs text-gray-500 block mb-0.5">Price ($)</label>
-                <input type="number" value={newItem.price} onChange={e=>setNewItem(p=>({...p,price:e.target.value}))}
+                <input type="number" value={newItem.price} onChange={e => setNewItem(p => ({...p, price:e.target.value}))}
                   placeholder="0 = POA"
                   className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400"/>
               </div>
               <div>
-                <label className="text-xs text-gray-500 block mb-0.5">Lead Time (weeks)</label>
-                <input type="number" value={newItem.lead_time_weeks} onChange={e=>setNewItem(p=>({...p,lead_time_weeks:e.target.value}))}
+                <label className="text-xs text-gray-500 block mb-0.5">Lead Time (wks)</label>
+                <input type="number" value={newItem.lead_time_weeks} onChange={e => setNewItem(p => ({...p, lead_time_weeks:e.target.value}))}
                   placeholder=">20 = LLT"
                   className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400"/>
               </div>
               <div className="col-span-2">
                 <label className="text-xs text-gray-500 block mb-0.5">Comments</label>
-                <input value={newItem.comments} onChange={e=>setNewItem(p=>({...p,comments:e.target.value}))}
+                <input value={newItem.comments} onChange={e => setNewItem(p => ({...p, comments:e.target.value}))}
                   className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400"/>
               </div>
               <div className="flex items-end">
-                <button onClick={addNewItem} disabled={!newItem.description.trim()}
-                  className="w-full text-xs bg-green-700 hover:bg-green-600 disabled:bg-gray-300 text-white px-3 py-1.5 rounded font-semibold">
-                  Add Item
+                <button onClick={addNewItem}
+                  disabled={!newItem.description.trim() || wbsInCatalogue}
+                  title={wbsInCatalogue ? "WBS code already in catalogue" : !newItem.description.trim() ? "Description required" : ""}
+                  className="w-full text-xs bg-green-700 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded font-semibold">
+                  {wbsInCatalogue ? "🚫 Duplicate WBS" : "Add Item"}
                 </button>
               </div>
             </div>
@@ -6578,8 +6702,8 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
             </thead>
             <tbody>
               {filtered.map((item, idx) => {
-                const isEd  = editing === item.id;
-                const tc    = TYPE_COLORS[item.type]||{badge:"bg-gray-100 text-gray-500",icon:"•"};
+                const isEd = editing === item.id;
+                const tc   = TYPE_COLORS[item.type] || {badge:"bg-gray-100 text-gray-500", icon:"•"};
                 return (
                   <tr key={item.id}
                     className={`border-b transition-colors ${idx%2===0?"bg-white":"bg-gray-50"} hover:bg-blue-50`}>
@@ -6588,86 +6712,75 @@ function EquipmentCatalogueManager({ equipSel, setEquipSel }) {
                     </td>
                     <td className="px-2 py-1.5">
                       {isEd
-                        ? <input value={editVals.wbs_code} onChange={e=>setEditVals(p=>({...p,wbs_code:e.target.value}))}
+                        ? <input value={editVals.wbs_code} onChange={e => setEditVals(p => ({...p, wbs_code:e.target.value}))}
                             className="w-full border border-blue-300 rounded px-1 py-0.5 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"/>
-                        : <span className="font-mono text-blue-600">{item.wbs_code||<span className="text-orange-400 italic">TBA</span>}</span>
+                        : <span className="font-mono text-blue-600">{item.wbs_code || <span className="text-orange-400 italic">TBA</span>}</span>
                       }
                     </td>
                     <td className="px-2 py-1.5 text-gray-800 max-w-xs">
                       <div className="truncate font-medium">{item.description}</div>
                       {isEd
-                        ? <input value={editVals.comments} onChange={e=>setEditVals(p=>({...p,comments:e.target.value}))}
+                        ? <input value={editVals.comments} onChange={e => setEditVals(p => ({...p, comments:e.target.value}))}
                             placeholder="Comments…"
-                            className="w-full mt-0.5 border border-gray-200 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-300"/>
-                        : item.comments && <div className="text-gray-400 text-xs truncate">{item.comments}</div>
+                            className="w-full mt-0.5 border border-gray-300 rounded px-1 py-0.5 text-xs text-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400"/>
+                        : item.comments && <div className="text-gray-400 text-[10px] truncate">{item.comments}</div>
                       }
                     </td>
-                    <td className="px-2 py-1.5 text-gray-500 truncate">{item.category}</td>
-                    <td className="px-2 py-1.5 text-gray-500 font-mono text-xs truncate">{item.make_model}</td>
+                    <td className="px-2 py-1.5 text-gray-500 text-[11px]">{item.category||"—"}</td>
+                    <td className="px-2 py-1.5 text-gray-600 text-[11px] truncate max-w-[110px]">{item.make_model||"—"}</td>
                     <td className="px-2 py-1.5">
                       {isEd
-                        ? <input value={editVals.contract_no} onChange={e=>setEditVals(p=>({...p,contract_no:e.target.value}))}
-                            className="w-full border border-gray-200 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-300"/>
-                        : <span className="text-gray-500 font-mono">{item.contract_no}</span>
+                        ? <input value={editVals.contract_no} onChange={e => setEditVals(p => ({...p, contract_no:e.target.value}))}
+                            className="w-full border border-gray-300 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-gray-400"/>
+                        : <span className="text-gray-500 text-[11px]">{item.contract_no||"—"}</span>
                       }
                     </td>
                     <td className="px-2 py-1.5 text-center">
                       {isEd
-                        ? <input type="number" value={editVals.lead_time_weeks} onChange={e=>setEditVals(p=>({...p,lead_time_weeks:e.target.value}))}
-                            className="w-12 border border-gray-200 rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-300"/>
-                        : item.lead_time_weeks>0 && (
-                          <span className={`px-1 py-0.5 rounded text-xs font-medium ${item.is_llt?"bg-red-100 text-red-700":"bg-gray-100 text-gray-500"}`}>
-                            {item.lead_time_weeks}w
-                          </span>
-                        )
+                        ? <input type="number" value={editVals.lead_time_weeks}
+                            onChange={e => setEditVals(p => ({...p, lead_time_weeks:e.target.value}))}
+                            className="w-14 border border-red-300 rounded px-1 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-red-400"/>
+                        : item.lead_time_weeks > 0
+                          ? <span className={`font-semibold ${item.lead_time_weeks>20?"text-red-600":"text-gray-500"}`}>{item.lead_time_weeks}w</span>
+                          : <span className="text-gray-300">—</span>
                       }
                     </td>
-                    <td className="px-2 py-1.5 text-right font-medium text-gray-800">
+                    <td className="px-2 py-1.5 text-right">
                       {isEd
-                        ? <input type="number" value={editVals.price} onChange={e=>setEditVals(p=>({...p,price:e.target.value}))}
-                            className="w-20 border border-green-300 bg-green-50 rounded px-1 py-0.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-green-400"/>
-                        : item.price>0 ? fmt(item.price) : <span className="text-orange-500">POA</span>
+                        ? <input type="number" value={editVals.price}
+                            onChange={e => setEditVals(p => ({...p, price:e.target.value}))}
+                            className="w-full border border-green-300 rounded px-1 py-0.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-green-400"/>
+                        : item.is_poa || !item.price
+                          ? <span className="text-amber-600 font-semibold text-[11px]">POA</span>
+                          : <span className="font-semibold text-gray-800">${(item.price||0).toLocaleString("en-AU")}</span>
                       }
                     </td>
-
                     <td className="px-2 py-1.5 text-center">
-                      {isEd
-                        ? <div className="flex gap-1 justify-center">
-                            <button onClick={()=>saveEdit(item.id)} className="text-xs text-green-600 hover:text-green-800 font-semibold">✓</button>
-                            <button onClick={()=>setEditing(null)} className="text-xs text-gray-400 hover:text-gray-600">✕</button>
-                          </div>
-                        : <button onClick={()=>startEdit(item)} className="text-xs text-blue-400 hover:text-blue-700">Edit</button>
-                      }
+                      {isEd ? (
+                        <div className="flex gap-1 justify-center">
+                          <button onClick={() => saveEdit(item.id)}
+                            className="bg-blue-700 hover:bg-blue-600 text-white px-1.5 py-0.5 rounded text-[10px] font-semibold">Save</button>
+                          <button onClick={() => setEditing(null)}
+                            className="border border-gray-300 text-gray-600 hover:bg-gray-50 px-1.5 py-0.5 rounded text-[10px]">✕</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => startEdit(item)}
+                          className="text-blue-500 hover:text-blue-700 text-[10px] border border-blue-200 hover:border-blue-400 px-1.5 py-0.5 rounded">Edit</button>
+                      )}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          {filtered.length===0 && (
-            <div className="flex items-center justify-center h-32 text-gray-400 text-sm">No items match filters</div>
+          {filtered.length === 0 && (
+            <div className="text-center text-gray-400 text-sm py-16">No items match your filters.</div>
           )}
         </div>
       </div>
     </div>
   );
 }
-
-const defaultInv = {
-  name:"Marulan 132kV 3-Way Switching Station", number:"10007569",
-  wacs:"N/A", type:"Commercially Funded", estClass:"Class 4", revision:"A",
-  milestones:[
-    {stage:"Acceptance of offer and commencement of works", month:"1",  pct:"15"},
-    {stage:"Long lead-time equipment ordered",              month:"4",  pct:"35"},
-    {stage:"Design completed, sub-contract works awarded",  month:"10", pct:"45"},
-    {stage:"Construction works 100% completed",             month:"15", pct:"5"},
-    {stage:"",                                              month:"",   pct:"0"},
-  ],
-  complexity:"High", newTech:"Moderate", estimatedBy:"Steven Hannigan",
-  reviewedBy:"Daniel Lawrence", startMonth:"Jul", startYear:"2025",
-  planStart:"1", planDur:"4", designStart:"1", designDur:"9",
-  constrStart:"6", constrDur:"15", contInt:"10", contComm:"10",
-};
 
 const APP_TABS = [
   {id:"hub",        label:"🔍 Investment Hub"},
