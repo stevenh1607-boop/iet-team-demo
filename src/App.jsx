@@ -129,7 +129,8 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
     const totalOffset = startMonNum - 1 + monthNum - 1;
     const yr = startYr + Math.floor(totalOffset / 12);
     const mo = (totalOffset % 12) + 1;
-    return new Date(yr, mo - 1, 1); // month is 0-based in JS Date
+    // Return YYYY-MM-DD text string — Copperleaf requires text date headers, not Excel date serials
+    return `${yr}-${String(mo).padStart(2,"0")}-01`;
   };
 
   // ── Escalation ───────────────────────────────────────────────
@@ -370,7 +371,18 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
 
   // Convert rows to AOA (array of arrays) for SheetJS
   // Date values will be formatted as Excel date serials
-  const ws = XL.utils.aoa_to_sheet(rows, { cellDates: true, dateNF: "yyyy-mm-dd" });
+  const ws = XL.utils.aoa_to_sheet(rows);
+  // Force account code column (index 8) to text on every spend row so Excel
+  // does not strip leading zeros — Copperleaf requires e.g. '001000 not 1000
+  const acctColLetter = "I"; // col index 8 = column I
+  Object.keys(ws).filter(addr => !addr.startsWith("!") && addr.startsWith(acctColLetter)).forEach(addr => {
+    const cell = ws[addr];
+    if (cell && cell.v && String(cell.v).match(/^\d+$/)) {
+      cell.t = "s";
+      cell.v = String(cell.v);
+      delete cell.w;
+    }
+  });
 
   // Set column widths to match template
   ws["!cols"] = [
