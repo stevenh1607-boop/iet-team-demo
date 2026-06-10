@@ -8117,17 +8117,6 @@ function EquipmentPricingEditor({ managerMode, onUnlock, onPriceUpdate }) {
       </div>
 
       {/* Footer */}
-      <div className="flex-shrink-0 border-t bg-gray-50 px-3 py-1.5 flex items-center gap-4 text-[10px] text-gray-500 flex-wrap">
-        <span><span className="bg-blue-100 text-blue-800 px-1 rounded font-semibold border border-blue-200">PCE</span> Period Contract</span>
-        <span><span className="bg-purple-100 text-purple-800 px-1 rounded font-semibold border border-purple-200">SCADA</span> SCADA BOM</span>
-        <span><span className="bg-teal-100 text-teal-800 px-1 rounded font-semibold border border-teal-200">Comms</span> Comms Price List</span>
-        <span className="text-amber-700">Amber = &gt;2yr old</span>
-        <span className="text-gray-400">Hist = price history | Esc = escalation preview</span>
-        {editedCount > 0 && (
-          <span className="ml-auto text-orange-600 font-semibold">{editedCount} prices edited this session -- raise WBS governance change for permanent update</span>
-        )}
-      </div>
-    </div>
 
       {/* EP: path-choice modal */}
       {epShowAddPath === "path-choice" && (
@@ -8189,6 +8178,17 @@ function EquipmentPricingEditor({ managerMode, onUnlock, onPriceUpdate }) {
           onSave={()=>setEpShowAddPath(null)}
         />
       )}
+      <div className="flex-shrink-0 border-t bg-gray-50 px-3 py-1.5 flex items-center gap-4 text-[10px] text-gray-500 flex-wrap">
+        <span><span className="bg-blue-100 text-blue-800 px-1 rounded font-semibold border border-blue-200">PCE</span> Period Contract</span>
+        <span><span className="bg-purple-100 text-purple-800 px-1 rounded font-semibold border border-purple-200">SCADA</span> SCADA BOM</span>
+        <span><span className="bg-teal-100 text-teal-800 px-1 rounded font-semibold border border-teal-200">Comms</span> Comms Price List</span>
+        <span className="text-amber-700">Amber = &gt;2yr old</span>
+        <span className="text-gray-400">Hist = price history | Esc = escalation preview</span>
+        {editedCount > 0 && (
+          <span className="ml-auto text-orange-600 font-semibold">{editedCount} prices edited this session -- raise WBS governance change for permanent update</span>
+        )}
+      </div>
+    </div>
   );
 }
 
