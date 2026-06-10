@@ -2136,11 +2136,6 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                               </div>
                             );
                           })()}
-                          <div className="bg-purple-50 border border-purple-200 rounded p-2.5 grid grid-cols-3 gap-3 text-xs">
-                            <div className="text-center"><div className="text-gray-500 text-[10px] uppercase font-semibold mb-0.5">Active Hrs</div><div className={`font-bold text-lg ${agg.isOverridden?"text-orange-600":"text-purple-700"}`}>{agg.activeHrs.toFixed(1)}</div><div className="text-[10px] text-gray-400">{agg.isOverridden?"manual":"auto"}</div></div>
-                            <div className="text-center"><div className="text-gray-500 text-[10px] uppercase font-semibold mb-0.5">EE Internal</div><div className="font-bold text-blue-800">{fmt(agg.eeInt)}</div><div className="text-[10px] text-gray-400">{agg.isContr?"contractor":"EE labour"}</div></div>
-                            <div className="text-center"><div className="text-gray-500 text-[10px] uppercase font-semibold mb-0.5">Commercial</div><div className="font-bold text-orange-700">{fmt(agg.comm)}</div></div>
-                          </div>
                         </div>
                       </div>
                     )}
