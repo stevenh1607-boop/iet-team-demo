@@ -7069,15 +7069,17 @@ function WBSWizard({ onClose, onSave, prefill, existingCodes, supplyItems }) {
         <div className="bg-[#1e3a5f] text-white px-5 py-3 rounded-t-xl flex items-center gap-4 flex-shrink-0">
           <span className="font-semibold text-sm">New WBS item wizard</span>
           <div className="flex items-center gap-1.5 flex-1">
-            {WIZ_STEPS.map((s, i) => [
-              <div key={s.id+"-dot"} className="flex items-center gap-1.5 text-xs">
-                <div className={`w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-bold ${STEP_CLS(i)}`}>
-                  {i < step ? "v" : s.short}
+            {WIZ_STEPS.map((s, i) => (
+              <React.Fragment key={s.id}>
+                <div className={`flex items-center gap-1.5 text-xs`}>
+                  <div className={`w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-bold ${STEP_CLS(i)}`}>
+                    {i < step ? "✓" : s.short}
+                  </div>
+                  <span className={i === step ? "text-white font-medium" : "text-blue-300"}>{s.label}</span>
                 </div>
-                <span className={i === step ? "text-white font-medium" : "text-blue-300 text-xs"}>{s.label}</span>
-              </div>,
-              i < WIZ_STEPS.length-1 ? <div key={s.id+"-ln"} className="flex-1 h-px bg-blue-700 mx-1"/> : null
-            ])}
+                {i < WIZ_STEPS.length-1 && <div className="flex-1 h-px bg-blue-700 min-w-[20px]"/>}
+              </React.Fragment>
+            ))}
           </div>
           <button onClick={onClose} className="text-blue-300 hover:text-white text-lg leading-none ml-2">x</button>
         </div>
@@ -7580,7 +7582,7 @@ function EquipmentPricingEditor({ managerMode, onUnlock, onPriceUpdate }) {
   const [editEscStream,   setEditEscStream]   = useState("Materials");
   const [editManualRates, setEditManualRates] = useState([0, 0.049, 0.040, 0.040, 0.040]);
   const [epShowAddPath, setEpShowAddPath] = useState(null);
-  const [epWizardPrefill, setEpWizardPrefill] = useState(null);
+  const [epWizardPrefill, setEpWizardPrefill] = useState({});
 
   const basePricing = localPricing || ctxPricing || {};
 
@@ -7718,9 +7720,11 @@ function EquipmentPricingEditor({ managerMode, onUnlock, onPriceUpdate }) {
         )}
         <div className="flex-1"/>
         {managerMode ? (
-          <button onClick={() => setEpShowAddPath("path-choice")}
-            className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded font-semibold">+ Add Item</button>
-          <span className="text-xs bg-orange-100 text-orange-700 border border-orange-300 px-3 py-1.5 rounded font-semibold">Manager Mode</span>
+          <>
+            <button onClick={() => setEpShowAddPath("path-choice")}
+              className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded font-semibold">+ Add Item</button>
+            <span className="text-xs bg-orange-100 text-orange-700 border border-orange-300 px-3 py-1.5 rounded font-semibold">Manager Mode</span>
+          </>
         ) : (
           <button onClick={onUnlock} className="text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 px-3 py-1.5 rounded">Manager Mode</button>
         )}
@@ -8123,8 +8127,9 @@ function EquipmentPricingEditor({ managerMode, onUnlock, onPriceUpdate }) {
           <span className="ml-auto text-orange-600 font-semibold">{editedCount} prices edited this session -- raise WBS governance change for permanent update</span>
         )}
       </div>
+    </div>
 
-      {/* EquipmentPricingEditor: path-choice + wizard modals */}
+      {/* EP: path-choice modal */}
       {epShowAddPath === "path-choice" && (
         <div className="fixed inset-0 z-40 bg-black/30 flex items-center justify-center">
           <div className="bg-white rounded-xl shadow-2xl p-6 w-96">
@@ -8133,18 +8138,18 @@ function EquipmentPricingEditor({ managerMode, onUnlock, onPriceUpdate }) {
             <div className="flex flex-col gap-2">
               <button onClick={() => setEpShowAddPath("fast")}
                 className="flex items-start gap-3 p-3 border-2 border-green-300 rounded-lg hover:bg-green-50 text-left">
-                <span className="text-green-600 text-base font-bold mt-0.5">A</span>
+                <span className="text-green-600 font-bold text-base mt-0.5">A</span>
                 <div>
                   <div className="text-xs font-semibold text-green-800">Yes -- existing WBS code</div>
-                  <div className="text-[10px] text-gray-500 mt-0.5">Fast path: link to existing supply WBS row. No governance needed.</div>
+                  <div className="text-[10px] text-gray-500 mt-0.5">Fast path: add pricing metadata linked to an existing supply row.</div>
                 </div>
               </button>
-              <button onClick={() => { setEpShowAddPath("wizard"); setEpWizardPrefill(null); }}
+              <button onClick={() => { setEpShowAddPath("wizard"); setEpWizardPrefill({}); }}
                 className="flex items-start gap-3 p-3 border-2 border-amber-300 rounded-lg hover:bg-amber-50 text-left">
-                <span className="text-amber-600 text-base font-bold mt-0.5">B</span>
+                <span className="text-amber-600 font-bold text-base mt-0.5">B</span>
                 <div>
                   <div className="text-xs font-semibold text-amber-800">No -- needs a new WBS code</div>
-                  <div className="text-[10px] text-gray-500 mt-0.5">Wizard: creates Supply, Install and Commission rows with governance PIN.</div>
+                  <div className="text-[10px] text-gray-500 mt-0.5">Wizard: creates Supply, Install and Commission rows with governance PIN gate.</div>
                 </div>
               </button>
             </div>
@@ -8156,22 +8161,21 @@ function EquipmentPricingEditor({ managerMode, onUnlock, onPriceUpdate }) {
       {epShowAddPath === "fast" && (
         <div className="fixed inset-0 z-40 bg-black/30 flex items-center justify-center">
           <div className="bg-white rounded-xl shadow-2xl p-5 w-[480px]">
-            <div className="text-sm font-bold text-gray-800 mb-3">Add item (Path A -- existing WBS)</div>
-            <div className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1.5 mb-3">This adds catalogue metadata only. The item will link to an existing supply WBS row and appear in pricing immediately.</div>
+            <div className="text-sm font-bold text-gray-800 mb-2">Add item -- Path A (existing WBS)</div>
+            <div className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1.5 mb-3">Adds catalogue pricing metadata. Links to an existing supply WBS row. Active immediately.</div>
             <div className="grid grid-cols-2 gap-2 mb-3">
-              {[["Description *","desc","text"],["Make / Model","make","text"],["WBS Code *","wbs","text"],["Price ($)","price","number"],["Contract No.","contract","text"],["Lead time (wks)","lead","number"]].map(([lbl,key,type])=>(
+              {[["Description *","desc","text"],["Make / Model","make","text"],["WBS Code *","wbs","text"],["Price ($)","price","number"],["Contract No.","contract","text"],["Lead time (wks)","lead","number"]].map(([lbl,key,typ])=>(
                 <div key={key}>
                   <label className="text-[10px] text-gray-500 block mb-0.5">{lbl}</label>
-                  <input type={type} min="0"
-                    value={epWizardPrefill?.[key]||""}
+                  <input type={typ} min="0" value={epWizardPrefill[key]||""}
                     onChange={e=>setEpWizardPrefill(p=>({...p,[key]:e.target.value}))}
                     className="w-full border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-400"/>
                 </div>
               ))}
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setEpShowAddPath(null)} className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5">Cancel</button>
-              <button onClick={() => { setEpShowAddPath(null); setEpWizardPrefill(null); }}
+              <button onClick={()=>setEpShowAddPath(null)} className="text-xs text-gray-500 px-3 py-1.5">Cancel</button>
+              <button onClick={()=>{setEpShowAddPath(null);setEpWizardPrefill({});}}
                 className="text-xs bg-green-700 hover:bg-green-600 text-white px-4 py-1.5 rounded font-bold">Add to Pricing</button>
             </div>
           </div>
@@ -8179,13 +8183,12 @@ function EquipmentPricingEditor({ managerMode, onUnlock, onPriceUpdate }) {
       )}
       {epShowAddPath === "wizard" && (
         <WBSWizard
-          onClose={() => setEpShowAddPath(null)}
+          onClose={()=>setEpShowAddPath(null)}
           prefill={epWizardPrefill}
           existingCodes={new Set(Object.keys(basePricing))}
-          onSave={() => setEpShowAddPath(null)}
+          onSave={()=>setEpShowAddPath(null)}
         />
       )}
-    </div>
   );
 }
 
