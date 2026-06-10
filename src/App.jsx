@@ -8097,6 +8097,48 @@ function WBSWizard({ onClose, onSave, prefill, existingCodes }) {
 }
 
 
+// ── Escalation constants ──────────────────────────────────────────
+// FY labels: index 0 = current base (FY26), 1-4 = FY27-FY30
+const ESC_FY_LABELS = ["FY26","FY27","FY28","FY29","FY30"];
+const ESC_STREAMS = {
+  Materials:   { label:"Materials",    rates:[0, 0.049, 0.040, 0.040, 0.040] },
+  Contractors: { label:"Contractors",  rates:[0, 0.049, 0.045, 0.040, 0.035] },
+  EEInternal:  { label:"EE Internal",  rates:[0, 0.045, 0.038, 0.035, 0.035] },
+  Manual:      { label:"Manual",       rates:null },
+};
+
+// Table showing escalated price across FYs for a given base price and stream
+function EscPreviewTable({ basePrice, streamKey, manualRates, highlightFY }) {
+  if (!basePrice || basePrice <= 0) return null;
+  const streamRates = (ESC_STREAMS[streamKey]?.rates) || manualRates || [0,0,0,0,0];
+  const rows = ESC_FY_LABELS.map((fy, idx) => {
+    let cf = 1;
+    for (let i = 1; i <= idx; i++) cf *= (1 + (streamRates[i] || 0));
+    return { fy, price: basePrice * cf, rate: streamRates[idx] || 0 };
+  });
+  return (
+    <table className="w-full text-[10px] border-collapse mt-2">
+      <thead>
+        <tr>
+          {rows.map(({fy})=>(
+            <th key={fy} className={`text-center py-1 px-2 font-semibold border border-gray-100 ${fy===highlightFY?"bg-amber-100 text-amber-800":"bg-gray-50 text-gray-500"}`}>{fy}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          {rows.map(({fy, price, rate}, i)=>(
+            <td key={fy} className={`text-center py-1 px-2 border border-gray-100 font-mono ${fy===highlightFY?"bg-amber-50 text-amber-900 font-semibold":"text-gray-700"}`}>
+              ${Math.round(price).toLocaleString("en-AU")}
+              {i>0 && <div className="text-[8px] text-gray-400 font-normal">+{(rate*100).toFixed(1)}%</div>}
+            </td>
+          ))}
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
 // Sub-component: escalation stream selector
 function EscStreamSelector({ streamKey, setStreamKey, manualRates, setManualRates, compact=false }) {
   const streamColors = {
