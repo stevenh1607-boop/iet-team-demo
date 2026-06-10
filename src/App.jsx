@@ -646,6 +646,39 @@ const ESTIMATORS = [
 const REVIEWERS = ["Daniel Lawrence","Jeremy Whitford","Joshua Walker","Matt Baker",
   "Richard Gonzalez","Ryan Evans","Steven Hannigan","Stuart Harland","Wayne Trezise"];
 
+// PIN field for team-leader unlock of approved estimates
+// In the demo the PIN is the same manager PIN "1607" — in Power Platform this would be AD role check
+function UnlockPinField({ onConfirm, onCancel }) {
+  const TEAM_LEADER_PIN = "1607";
+  const [pin, setPin] = useState("");
+  const [err, setErr] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => { ref.current?.focus(); }, []);
+  const tryConfirm = () => {
+    if (pin === TEAM_LEADER_PIN) { onConfirm(); }
+    else { setErr(true); setPin(""); setTimeout(()=>setErr(false),1500); }
+  };
+  return (
+    <div className="space-y-3">
+      <input ref={ref} type="password" value={pin} onChange={e=>{setPin(e.target.value);setErr(false);}}
+        onKeyDown={e=>{ if(e.key==="Enter") tryConfirm(); if(e.key==="Escape") onCancel(); }}
+        placeholder="Enter team leader PIN"
+        className={`w-full border rounded px-3 py-2 text-sm text-center tracking-widest font-mono focus:outline-none focus:ring-2 ${err?"border-red-400 ring-red-300 bg-red-50":"border-gray-300 focus:ring-green-400"}`}/>
+      {err && <div className="text-xs text-red-600 text-center">Incorrect PIN — try again</div>}
+      <div className="flex gap-2">
+        <button onClick={onCancel}
+          className="flex-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 py-2 rounded font-semibold">
+          Cancel
+        </button>
+        <button onClick={tryConfirm} disabled={!pin}
+          className="flex-1 text-xs bg-green-700 hover:bg-green-600 disabled:bg-gray-200 disabled:text-gray-400 text-white py-2 rounded font-bold">
+          🔓 Confirm &amp; Create Amendment
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function InvestmentSetup({ inv, onChange }) {
   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const upd = (k,v) => onChange({...inv, [k]:v});
@@ -2270,7 +2303,7 @@ function ReviewLines({ lines, isCommercial }) {
 }
 
 // ── SUMMARY SCREEN ───────────────────────────────────────────────
-function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }) {
+function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, estimateLocked }) {
   const { supply, wbs: wbsMaster, commLookup, commProfiles, escRates, resourceCodes, equipLookup } = useData();
   const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
   const [openNodes, setOpenNodes] = useState({}); // {wbs_code: bool}
@@ -2486,7 +2519,10 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved }
             </div>
             <div className="flex items-center gap-3">
               {lastSaved && <span className="text-xs text-green-600">✓ Saved {lastSaved}</span>}
-              <button onClick={onSave} className="bg-green-700 hover:bg-green-600 text-white text-xs px-4 py-2 rounded font-semibold shadow">💾 Save Investment</button>
+              {estimateLocked
+                ? <span className="text-xs bg-green-100 text-green-700 border border-green-300 px-3 py-2 rounded font-semibold flex items-center gap-1.5">🔒 Approved — read only</span>
+                : <button onClick={onSave} className="bg-green-700 hover:bg-green-600 text-white text-xs px-4 py-2 rounded font-semibold shadow">💾 Save Investment</button>
+              }
               <button onClick={()=>{
                 const suffix = isCommercial ? "ANS_RATES" : "EE_RATES";
                 const filename = `${inv.number||"IET"}_${suffix}_Copperleaf.xlsx`;
@@ -4140,7 +4176,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
 
 
             {/* Clone Lineage */}
-            {(selected.cloned_from_id || saved.some(s=>s.cloned_from_id===selected.id)) && (
+            {(selected.cloned_from_id || selected._amendmentOf || saved.some(s=>s.cloned_from_id===selected.id||s._amendmentOf===selected.id)) && (
               <div className="px-3 py-3 border-b">
                 <div className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">Estimate Lineage</div>
                 {selected.cloned_from_id && (()=>{
@@ -4151,12 +4187,29 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
                     {parent && <span className="text-gray-600 font-semibold truncate max-w-[120px]">{parent.inv.name}</span>}
                   </div>;
                 })()}
+                {selected._amendmentOf && (()=>{
+                  const origin = saved.find(s=>s.id===selected._amendmentOf);
+                  return <div className="flex items-center gap-2 text-xs mb-1.5">
+                    <span className="text-amber-600 font-semibold">✏️ Amendment of</span>
+                    <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-xs font-medium">Approved</span>
+                    <span className="text-gray-600 font-semibold truncate max-w-[100px]">{selected._amendmentOfName||origin?.inv?.name||"original"}</span>
+                    {origin && <button onClick={()=>setSelected(origin)} className="ml-auto text-blue-600 hover:underline text-[10px]">View approved</button>}
+                  </div>;
+                })()}
                 {saved.filter(s=>s.cloned_from_id===selected.id).map(child=>(
                   <div key={child.id} className="flex items-center gap-2 text-xs mt-1">
                     <span className="text-gray-400">↳ Promoted to</span>
                     <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${CLASS_COLOR[child.inv.estClass]||"bg-gray-100 text-gray-500"}`}>{child.inv.estClass}</span>
                     <span className="text-gray-600 font-semibold truncate max-w-[100px]">{child.inv.name}</span>
                     <button onClick={()=>setSelected(child)} className="ml-auto text-blue-600 hover:underline text-[10px]">View</button>
+                  </div>
+                ))}
+                {saved.filter(s=>s._amendmentOf===selected.id).map(amend=>(
+                  <div key={amend.id} className="flex items-center gap-2 text-xs mt-1">
+                    <span className="text-amber-600">↳ Amendment</span>
+                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${STATUS_CFG[amend.status||"Draft"]?.bg} ${STATUS_CFG[amend.status||"Draft"]?.text}`}>{amend.status||"Draft"}</span>
+                    <span className="text-gray-600 font-semibold truncate max-w-[100px]">{amend.inv.name}</span>
+                    <button onClick={()=>setSelected(amend)} className="ml-auto text-blue-600 hover:underline text-[10px]">View</button>
                   </div>
                 ))}
               </div>
@@ -9647,6 +9700,44 @@ export default function App() {
   const isCommercial = inv.type === "Commercially Funded";
   const [lastSaved,   setLastSaved]   = useState(null);
 
+  // Track the portfolio record ID currently loaded (null = new/unsaved)
+  const [currentRecordId, setCurrentRecordId] = useState(null);
+  // Lock state — true when loaded from an Approved record
+  const [estimateLocked,  setEstimateLocked]  = useState(false);
+  // Unlock-to-amend modal
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+
+  // Draft recovery — restore banner
+  const [draftRecovery, setDraftRecovery] = useState(null); // {inv, lines, savedAt} | null
+  // On mount, check for an interrupted session
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("iet_draft_recovery");
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      // Only offer if it has real data
+      const hasLines = draft.lines && Object.values(draft.lines).some(l => parseFloat(l.qty||"0") > 0);
+      if (hasLines) setDraftRecovery(draft);
+    } catch(e) {}
+  }, []);
+
+  // Autosave draft every 45s whenever lines or inv changes
+  const draftTimerRef = useRef(null);
+  useEffect(() => {
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      try {
+        const hasLines = Object.values(lines).some(l => parseFloat(l.qty||"0") > 0);
+        if (hasLines) {
+          localStorage.setItem("iet_draft_recovery", JSON.stringify({
+            inv, lines, savedAt: new Date().toISOString(), recordId: currentRecordId,
+          }));
+        }
+      } catch(e) {}
+    }, 45000);
+    return () => clearTimeout(draftTimerRef.current);
+  }, [inv, lines, currentRecordId]);
+
   // Live data
   const [wbsData,     setWbsData]     = useState([]);
   const [ratesData,   setRatesData]   = useState([]);
@@ -9732,7 +9823,7 @@ export default function App() {
     .catch(err=>{setError(err.message);setLoading(false);});
   },[]);
 
-  const saveInvestment = useCallback(()=>{
+  const saveInvestment = useCallback(()=>{\
     const supply = supplyData;
     const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
     const totals = entered.reduce((a,item)=>{
@@ -9745,10 +9836,11 @@ export default function App() {
       return {eeInt:a.eeInt+c.eeInt,comm:a.comm+c.comm,installHrs:a.installHrs+c.installHrs,byPhase:bp};
     },{eeInt:0,comm:0,installHrs:0,byPhase:{}});
 
+    const now = new Date();
     const record = {
-      id: Date.now(),
-      savedAt: new Date().toLocaleString("en-AU",{dateStyle:"short",timeStyle:"short"}),
-      savedAtISO: new Date().toISOString(),
+      id: currentRecordId || Date.now(),
+      savedAt: now.toLocaleString("en-AU",{dateStyle:"short",timeStyle:"short"}),
+      savedAtISO: now.toISOString(),
       status: "Draft",
       inv, lines, linesCount:entered.length,
       totalSupplyLines: supply.filter(s=>s.scope==="Supply"||s.scope==="Supply & Install").length,
@@ -9758,18 +9850,29 @@ export default function App() {
     };
     try {
       const existing = JSON.parse(localStorage.getItem("iet_investments")||"[]");
-      const updated = [record, ...existing.filter(s=>s.inv.number!==inv.number||s.inv.revision!==inv.revision)];
+      const updated = [record, ...existing.filter(s=>s.id!==record.id&&(s.inv.number!==inv.number||s.inv.revision!==inv.revision))];
       localStorage.setItem("iet_investments", JSON.stringify(updated));
+      setCurrentRecordId(record.id);
       setLastSaved(record.savedAt);
+      // Clear draft recovery — estimate is now formally saved
+      localStorage.removeItem("iet_draft_recovery");
+      setDraftRecovery(null);
     } catch(e) { alert("Save failed — localStorage may be full"); }
-  },[inv,lines,isCommercial,supplyData]);
+  },[inv,lines,isCommercial,supplyData,currentRecordId]);
 
   const loadInvestment = useCallback((record)=>{
     setInv(record.inv);
     setLines(record.lines||{});
     setLastSaved(record.savedAt);
+    setCurrentRecordId(record.id || null);
+    // Lock if Approved
+    const isApproved = record.status === "Approved";
+    setEstimateLocked(isApproved);
     setAppTab("estimation");
-    setEstTab("summary");
+    setEstTab(isApproved ? "summary" : "summary");
+    // Clear draft recovery once deliberately loading a record
+    localStorage.removeItem("iet_draft_recovery");
+    setDraftRecovery(null);
   },[]);
 
   const [pendingNew,    setPendingNew]    = useState(false); // waiting for save-prompt confirm
@@ -9783,6 +9886,8 @@ export default function App() {
       setInv({...defaultInv, name:"", number:""});
       setLines({});
       setLastSaved(null);
+      setCurrentRecordId(null);
+      setEstimateLocked(false);
       setAppTab("estimation");
       setEstTab("setup");
     }
@@ -9793,12 +9898,48 @@ export default function App() {
     setInv({...defaultInv, name:"", number:""});
     setLines({});
     setLastSaved(null);
+    setCurrentRecordId(null);
+    setEstimateLocked(false);
     setPendingNew(false);
     setAppTab("estimation");
     setEstTab("setup");
   },[saveInvestment]);
 
-  const equipSelected = Object.values(equipSel).filter(q=>parseFloat(q)>0).length;
+  // Unlock approved estimate — clone to new Draft, keep original intact
+  const amendEstimate = useCallback(()=>{
+    const amendedInv = {
+      ...inv,
+      name: inv.name + " (Amendment)",
+      estClass: "Class 5", // revisions start as Class 5
+    };
+    const now = new Date();
+    const newId = Date.now();
+    const amendRecord = {
+      id: newId,
+      savedAt: now.toLocaleString("en-AU",{dateStyle:"short",timeStyle:"short"}),
+      savedAtISO: now.toISOString(),
+      status: "Draft",
+      inv: amendedInv,
+      lines: JSON.parse(JSON.stringify(lines)), // deep copy
+      linesCount: Object.values(lines).filter(l=>parseFloat(l.qty||"0")>0).length,
+      totalSupplyLines: 0,
+      totalEE: 0, totalComm: 0,
+      _amendmentOf: currentRecordId,
+      _amendmentOfName: inv.name,
+    };
+    try {
+      const existing = JSON.parse(localStorage.getItem("iet_investments")||"[]");
+      localStorage.setItem("iet_investments", JSON.stringify([amendRecord, ...existing]));
+    } catch(e) {}
+    // Load the new amendment draft
+    setInv(amendedInv);
+    setCurrentRecordId(newId);
+    setEstimateLocked(false);
+    setShowUnlockModal(false);
+    setLastSaved(amendRecord.savedAt);
+    setAppTab("estimation");
+    setEstTab("estimate");
+  },[inv, lines, currentRecordId]);
   const linesEntered = Object.values(lines).filter(l=>parseFloat(l.qty)>0).length;
 
   // ── Resolve equipment pricing into supply items ─────────────────────
@@ -9879,6 +10020,82 @@ export default function App() {
           {error&&<span className="text-xs text-red-400 pr-4">⚠ Data error — {error}</span>}
         </div>
 
+        {/* Draft recovery banner */}
+        {draftRecovery && (
+          <div className="bg-amber-50 border-b border-amber-300 px-4 py-2 flex items-center gap-3 flex-shrink-0 z-40">
+            <span className="text-lg">⚠️</span>
+            <div className="flex-1 min-w-0">
+              <span className="text-xs font-semibold text-amber-800">Unsaved draft recovered — </span>
+              <span className="text-xs text-amber-700">
+                {draftRecovery.inv?.name || "unnamed estimate"} · {Object.values(draftRecovery.lines||{}).filter(l=>parseFloat(l.qty||"0")>0).length} lines ·
+                last autosaved {draftRecovery.savedAt ? new Date(draftRecovery.savedAt).toLocaleTimeString("en-AU",{hour:"2-digit",minute:"2-digit"}) : "recently"}
+              </span>
+            </div>
+            <button
+              onClick={()=>{
+                setInv(draftRecovery.inv);
+                setLines(draftRecovery.lines||{});
+                setCurrentRecordId(draftRecovery.recordId||null);
+                setEstimateLocked(false);
+                setDraftRecovery(null);
+                localStorage.removeItem("iet_draft_recovery");
+                setAppTab("estimation");
+                setEstTab("estimate");
+              }}
+              className="text-xs bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded font-semibold flex-shrink-0">
+              ↩ Restore Draft
+            </button>
+            <button
+              onClick={()=>{ setDraftRecovery(null); localStorage.removeItem("iet_draft_recovery"); }}
+              className="text-xs text-amber-600 hover:text-amber-800 px-2 py-1 rounded flex-shrink-0">
+              Discard
+            </button>
+          </div>
+        )}
+
+        {/* Approved lock banner */}
+        {estimateLocked && appTab==="estimation" && (
+          <div className="bg-green-50 border-b border-green-300 px-4 py-2 flex items-center gap-3 flex-shrink-0 z-40">
+            <span className="text-base">🔒</span>
+            <div className="flex-1 min-w-0">
+              <span className="text-xs font-semibold text-green-800">Approved — estimate is locked. </span>
+              <span className="text-xs text-green-700">This record is read-only. To make changes, a team leader must unlock it — this will create a new Draft amendment and preserve the approved version.</span>
+            </div>
+            <button
+              onClick={()=>setShowUnlockModal(true)}
+              className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded font-semibold flex-shrink-0 flex items-center gap-1.5">
+              🔓 Unlock to Amend
+            </button>
+          </div>
+        )}
+
+        {/* Unlock-to-amend modal */}
+        {showUnlockModal && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={()=>setShowUnlockModal(false)}>
+            <div className="bg-white rounded-xl shadow-2xl w-[440px]" onClick={e=>e.stopPropagation()}>
+              <div className="bg-green-800 text-white px-5 py-4 rounded-t-xl">
+                <div className="font-bold text-base">🔓 Unlock Approved Estimate</div>
+                <div className="text-green-200 text-xs mt-1">Team Leader authorisation required</div>
+              </div>
+              <div className="p-5 space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                  <div className="font-semibold mb-1">What happens when you unlock:</div>
+                  <ul className="space-y-1 list-disc list-inside text-amber-700">
+                    <li>The approved version <span className="font-semibold">stays locked and intact</span> as the audit record</li>
+                    <li>A new <span className="font-semibold">Draft amendment</span> is created with all current quantities copied across</li>
+                    <li>The amendment is labelled <span className="font-mono text-xs">{inv.name} (Amendment)</span></li>
+                    <li>It resets to <span className="font-semibold">Class 5</span> and must go through review again</li>
+                  </ul>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1.5">Team Leader PIN *</label>
+                  <UnlockPinField onConfirm={amendEstimate} onCancel={()=>setShowUnlockModal(false)}/>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Content */}
         <div className="flex-1 overflow-hidden flex flex-col">
           {appTab==="estimation" && (
@@ -9912,16 +10129,16 @@ export default function App() {
               </div>
 
               <div className="flex-1 overflow-hidden flex flex-col">
-                {estTab==="setup"        && <InvestmentSetup inv={inv} onChange={setInv}/>}
+                {estTab==="setup"        && <InvestmentSetup inv={inv} onChange={estimateLocked ? ()=>{} : setInv}/>}
                 {estTab==="estimate"     && (
                   <div className="flex flex-1 overflow-hidden">
-                    <EstimationScreen isCommercial={isCommercial} lines={lines} setLines={setLines}/>
+                    <EstimationScreen isCommercial={isCommercial} lines={lines} setLines={estimateLocked ? ()=>{} : setLines}/>
                   </div>
                 )}
 
-                {estTab==="equipment"    && <EquipmentScreen lines={lines} setLines={setLines} isCommercial={isCommercial} inv={inv}/>}
+                {estTab==="equipment"    && <EquipmentScreen lines={lines} setLines={estimateLocked ? ()=>{} : setLines} isCommercial={isCommercial} inv={inv}/>}
                 {estTab==="review"    && <ReviewLines lines={lines} isCommercial={isCommercial}/>}
-                {estTab==="summary"   && <SummaryScreen inv={inv} lines={lines} isCommercial={isCommercial} equipSel={equipSel} onSave={saveInvestment} lastSaved={lastSaved}/>}
+                {estTab==="summary"   && <SummaryScreen inv={inv} lines={lines} isCommercial={isCommercial} equipSel={equipSel} onSave={estimateLocked ? null : saveInvestment} lastSaved={lastSaved} estimateLocked={estimateLocked}/>}
                 {estTab==="financial" && <FinancialScreen inv={inv} lines={lines} isCommercial={isCommercial}/>}
               </div>
             </>
