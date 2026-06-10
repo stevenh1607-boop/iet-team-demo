@@ -2381,6 +2381,423 @@ function ReviewLines({ lines, isCommercial }) {
 }
 
 // ── SUMMARY SCREEN ───────────────────────────────────────────────
+// ── SUMMARY SCREEN PDF EXPORT ────────────────────────────────────
+function exportSummaryPDF(ctx) {
+  const {
+    inv, lines, isCommercial, byPhase, grandEE, grandComm,
+    contPct, contAmt, escResult, finalTotal, commGrandHrs,
+    nodeRollup, phaseNodes, openNodes, phaseNames, descMap, entered,
+    supply, commTotals, commProfiles, ANS_LAB, ANS_MAT, ANS_CON,
+  } = ctx;
+
+  // ── Modal for options ──────────────────────────────────────────
+  const modalDiv = document.createElement('div');
+  modalDiv.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;
+    display:flex;align-items:center;justify-content:center;`;
+  modalDiv.innerHTML = `
+    <div style="background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.3);width:420px;overflow:hidden;">
+      <div style="background:#1e3a5f;color:white;padding:16px 20px;">
+        <div style="font-weight:700;font-size:15px;">📄 Export Summary PDF</div>
+        <div style="font-size:11px;color:#93c5fd;margin-top:3px;">${inv.name||'Investment'} · ${inv.estClass} · Rev ${inv.revision||'A'}</div>
+      </div>
+      <div style="padding:20px;font-family:Arial,sans-serif;">
+        <div style="font-size:12px;color:#374151;font-weight:600;margin-bottom:12px;">Export options</div>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px;background:#f9fafb;">
+          <input type="checkbox" id="opt-wbs-expanded" checked style="margin-top:2px;width:14px;height:14px;accent-color:#1e3a5f;">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#111827;">WBS tree — current expanded state</div>
+            <div style="font-size:11px;color:#6b7280;margin-top:2px;">Shows WBS nodes exactly as they appear on screen (open/closed). Uncheck to include all nodes fully expanded.</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px;background:#f9fafb;">
+          <input type="checkbox" id="opt-line-detail" style="margin-top:2px;width:14px;height:14px;accent-color:#1e3a5f;">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#111827;">Include line detail</div>
+            <div style="font-size:11px;color:#6b7280;margin-top:2px;">Append a table of all entered supply lines with qty, factor, and cost.</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px;border:1px solid #dbeafe;border-radius:8px;background:#eff6ff;">
+          <input type="checkbox" id="opt-financial" style="margin-top:2px;width:14px;height:14px;accent-color:#1e3a5f;">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#1d4ed8;">Include Financial Report</div>
+            <div style="font-size:11px;color:#3b82f6;margin-top:2px;">Appends the PA breakdown, Sub-Contract / Materials / EE split, Contract Value, and ERP with overhead — same as the Financial Report tab.</div>
+          </div>
+        </label>
+      </div>
+      <div style="padding:0 20px 16px;display:flex;gap:8px;">
+        <button id="btn-cancel" style="flex:1;border:1px solid #d1d5db;background:#f9fafb;color:#374151;padding:9px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Cancel</button>
+        <button id="btn-export" style="flex:2;background:#1e3a5f;color:white;padding:9px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;border:none;">Generate PDF</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modalDiv);
+
+  document.getElementById('btn-cancel').onclick = () => document.body.removeChild(modalDiv);
+
+  document.getElementById('btn-export').onclick = () => {
+    const useCurrentExpand = document.getElementById('opt-wbs-expanded').checked;
+    const includeLines     = document.getElementById('opt-line-detail').checked;
+    const includeFinancial = document.getElementById('opt-financial').checked;
+    document.body.removeChild(modalDiv);
+    doGeneratePDF({ inv, lines, isCommercial, byPhase, grandEE, grandComm,
+      contPct, contAmt, escResult, finalTotal, commGrandHrs, nodeRollup,
+      phaseNodes, openNodes, phaseNames, descMap, entered, supply, commTotals,
+      commProfiles, ANS_LAB, ANS_MAT, ANS_CON,
+      useCurrentExpand, includeLines, includeFinancial });
+  };
+}
+
+function doGeneratePDF(ctx) {
+  const {
+    inv, lines, isCommercial, byPhase, grandEE, grandComm,
+    contPct, contAmt, escResult, finalTotal, commGrandHrs, nodeRollup,
+    phaseNodes, openNodes, phaseNames, descMap, entered, supply, commTotals,
+    commProfiles, ANS_LAB, ANS_MAT, ANS_CON,
+    useCurrentExpand, includeLines, includeFinancial,
+  } = ctx;
+
+  const fmt  = (v) => '$' + Math.round(v||0).toLocaleString('en-AU');
+  const fmtH = (v) => Math.round(v||0).toLocaleString('en-AU') + ' hrs';
+
+  // ── WBS tree rendering ──────────────────────────────────────────
+  const allOpenExpanded = {};
+  Object.keys(nodeRollup).filter(k=>k.split('.').length<5).forEach(k=>{ allOpenExpanded[k]=true; });
+  const activeOpen = useCurrentExpand ? openNodes : allOpenExpanded;
+
+  const renderWBSRows = (code, depth) => {
+    const roll = nodeRollup[code];
+    if (!roll) return '';
+    const isOpen = !!activeOpen[code];
+    const childCodes = Object.keys(nodeRollup).filter(k => {
+      const parts = k.split('.');
+      return parts.length === depth+1 && k.startsWith(code+'.');
+    }).sort();
+    const isLeaf = depth >= 5 || childCodes.length === 0;
+    const indent = (depth-1)*14;
+    const bgColors = ['','#eff6ff','#eef2ff','#f9fafb','#ffffff','#ffffff'];
+    const fwBold   = depth<=2 ? 'font-weight:700;' : depth===3 ? 'font-weight:600;' : '';
+    const toggle   = (!isLeaf && childCodes.length>0) ? (isOpen?'▾ ':'▸ ') : '  ';
+    const desc     = descMap[code] || code;
+    const cols     = isCommercial
+      ? `<td style="padding:4px 6px;text-align:right;color:#7c3aed;">${roll.installHrs>0?fmtH(roll.installHrs):'—'}</td>
+         <td style="padding:4px 6px;text-align:right;color:#0f766e;">${code==='4'&&commGrandHrs>0?fmtH(commGrandHrs):'—'}</td>
+         <td style="padding:4px 6px;text-align:right;${fwBold}color:#1e40af;">${fmt(roll.eeInt)}</td>
+         <td style="padding:4px 6px;text-align:right;${fwBold}color:#c2410c;">${fmt(roll.comm)}</td>`
+      : `<td style="padding:4px 6px;text-align:right;color:#7c3aed;">${roll.installHrs>0?fmtH(roll.installHrs):'—'}</td>
+         <td style="padding:4px 6px;text-align:right;color:#0f766e;">${code==='4'&&commGrandHrs>0?fmtH(commGrandHrs):'—'}</td>
+         <td style="padding:4px 6px;text-align:right;${fwBold}color:#1e40af;">${fmt(roll.eeInt)}</td>`;
+    let html = `<tr style="background:${bgColors[depth]||'#fff'};border-bottom:1px solid #e5e7eb;">
+      <td style="padding:4px 6px;padding-left:${6+indent}px;${fwBold}font-size:10px;">
+        <span style="color:#9ca3af;">${toggle}</span>
+        <span style="font-family:monospace;color:#9ca3af;font-size:9px;">${code}</span>
+        <span style="margin-left:4px;">${desc}</span>
+      </td>${cols}</tr>`;
+    if (isOpen && !isLeaf) {
+      childCodes.forEach(child => { html += renderWBSRows(child, depth+1); });
+    }
+    return html;
+  };
+
+  let wbsRows = '';
+  phaseNodes.forEach(ph => { wbsRows += renderWBSRows(ph, 1); });
+
+  // ── Phase cards ──────────────────────────────────────────────────
+  const phaseCards = Object.entries(byPhase).map(([ph,p]) => `
+    <div style="border:1px solid #e5e7eb;border-radius:6px;padding:10px;text-align:center;flex:1;min-width:100px;">
+      <div style="font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Phase ${ph} — ${phaseNames[ph]||ph}</div>
+      ${ph==='4'?'<div style="font-size:9px;color:#0f766e;">auto-derived</div>':''}
+      <div style="font-size:13px;font-weight:700;color:#1e40af;">${fmt(p.eeInt)}</div>
+      ${isCommercial?`<div style="font-size:11px;font-weight:700;color:#c2410c;">${fmt(p.comm)}</div>`:''}
+      ${p.installHrs>0?`<div style="font-size:9px;color:#7c3aed;margin-top:2px;">${fmtH(p.installHrs)} install</div>`:''}
+      ${ph==='4'&&p.commHrs>0?`<div style="font-size:9px;color:#0f766e;">${fmtH(p.commHrs)} comm</div>`:''}
+    </div>`).join('');
+
+  // ── WBS column headers ────────────────────────────────────────────
+  const wbsColHdrs = isCommercial
+    ? `<th style="text-align:right;width:80px;color:#7c3aed;">Install Hrs</th>
+       <th style="text-align:right;width:80px;color:#0f766e;">Comm Hrs</th>
+       <th style="text-align:right;width:90px;color:#1d4ed8;">EE Internal</th>
+       <th style="text-align:right;width:90px;color:#c2410c;">Commercial</th>`
+    : `<th style="text-align:right;width:80px;color:#7c3aed;">Install Hrs</th>
+       <th style="text-align:right;width:80px;color:#0f766e;">Comm Hrs</th>
+       <th style="text-align:right;width:90px;color:#1d4ed8;">EE Internal</th>`;
+
+  // ── Grand total footer ─────────────────────────────────────────────
+  const totalInstHrs = Object.entries(nodeRollup).filter(([k])=>k.split('.').length===1).reduce((a,[,v])=>a+v.installHrs,0);
+  const wbsFooterCols = isCommercial
+    ? `<td style="text-align:right;padding:6px;">${totalInstHrs>0?fmtH(totalInstHrs):'—'}</td>
+       <td style="text-align:right;padding:6px;">${commGrandHrs>0?fmtH(commGrandHrs):'—'}</td>
+       <td style="text-align:right;padding:6px;font-weight:700;color:#1e40af;">${fmt(grandEE)}</td>
+       <td style="text-align:right;padding:6px;font-weight:700;color:#c2410c;">${fmt(grandComm)}</td>`
+    : `<td style="text-align:right;padding:6px;">${totalInstHrs>0?fmtH(totalInstHrs):'—'}</td>
+       <td style="text-align:right;padding:6px;">${commGrandHrs>0?fmtH(commGrandHrs):'—'}</td>
+       <td style="text-align:right;padding:6px;font-weight:700;color:#1e40af;">${fmt(grandEE)}</td>`;
+
+  // ── Line detail table ─────────────────────────────────────────────
+  let lineDetailSection = '';
+  if (includeLines) {
+    const lineRows = entered.map(item => {
+      const ln = lines[item.wbs_code]||{};
+      const qty = parseFloat(ln.qty||'0');
+      const factor = parseFloat(ln.factor||'1');
+      const delivery = ln.delivery||item.delivery_method||'EE Delivered';
+      const desc = item.description||item.wbs_code;
+      // simple cost display
+      const eeHrs = qty * factor * (item.install_hrs_per||0);
+      return `<tr style="border-bottom:1px solid #f3f4f6;font-size:10px;">
+        <td style="padding:3px 6px;font-family:monospace;color:#9ca3af;font-size:9px;">${item.wbs_code}</td>
+        <td style="padding:3px 6px;max-width:280px;overflow:hidden;">${desc}</td>
+        <td style="padding:3px 6px;text-align:center;">${item.uom||'EA'}</td>
+        <td style="padding:3px 6px;text-align:center;font-weight:600;">${qty}</td>
+        <td style="padding:3px 6px;text-align:center;">${factor!==1?factor:''}</td>
+        <td style="padding:3px 6px;text-align:center;font-size:9px;color:#6b7280;">${delivery==='Contractor Delivered'?'Contr.':'EE'}</td>
+        <td style="padding:3px 6px;text-align:right;color:#7c3aed;">${eeHrs>0?fmtH(eeHrs):''}</td>
+      </tr>`;
+    }).join('');
+    lineDetailSection = `
+      <div style="page-break-before:always;"></div>
+      <h2 style="font-size:13px;color:#1e3a5f;margin:0 0 8px;">Entered Supply Lines (${entered.length} items)</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:16px;">
+        <thead>
+          <tr style="background:#1e3a5f;color:white;">
+            <th style="padding:5px 6px;text-align:left;font-size:9px;">WBS</th>
+            <th style="padding:5px 6px;text-align:left;font-size:9px;">Description</th>
+            <th style="padding:5px 6px;text-align:center;width:40px;">UOM</th>
+            <th style="padding:5px 6px;text-align:center;width:40px;">Qty</th>
+            <th style="padding:5px 6px;text-align:center;width:50px;">Factor</th>
+            <th style="padding:5px 6px;text-align:center;width:50px;">Delivery</th>
+            <th style="padding:5px 6px;text-align:right;width:70px;">Est. Install Hrs</th>
+          </tr>
+        </thead>
+        <tbody>${lineRows}</tbody>
+      </table>`;
+  }
+
+  // ── Financial Report section ──────────────────────────────────────
+  let financialSection = '';
+  if (includeFinancial) {
+    let subCost=0,matCost=0,eeCost=0,subANS=0,matANS=0,eeANS=0;
+    supply.forEach(item => {
+      const ln = lines[item.wbs_code]||{};
+      if(!parseFloat(ln.qty||'0')) return;
+      const c = calcLine(item,ln.qty||'',ln.factor||'1',ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
+      const isContr=(ln.delivery||item.delivery_method||'')==='Contractor Delivered';
+      if(isContr){subCost+=(c.contrCost||0)+(c.plantFact||0);subANS+=(c.contrCost||0)*ANS_CON;}
+      else{eeCost+=(c.eeLabCost||0)+(c.plantFact||0);eeANS+=(c.eeLabCost||0)*ANS_LAB;}
+      matCost+=c.equipCost||0; matANS+=(c.equipCost||0)*ANS_MAT;
+    });
+    const contPctF=parseFloat(inv.contingency||'0')/100;
+    const base=subCost+matCost+eeCost;
+    const cont=base*contPctF;
+    const totalCost=base+cont;
+    const totalANS=subANS+matANS+eeANS;
+    const cv=totalCost+totalANS;
+    const OVERHEAD=1.866;
+    const eeOH=totalCost*OVERHEAD;
+    const gst=cv*0.1;
+    const gstInc=cv+gst;
+    const paDesign=eeCost*0.12;
+    const paConstruction=eeCost*0.63;
+    const paManagement=eeCost*0.25;
+
+    const finRow=(label,costStar,admin,total,bold)=>`
+      <tr style="border-bottom:1px solid #e5e7eb;${bold?'font-weight:700;background:#f8fafc;':''}">
+        <td style="padding:5px 8px;font-size:10px;">${label}</td>
+        <td style="padding:5px 8px;text-align:right;font-size:10px;">${costStar!==null?fmt(costStar):''}</td>
+        <td style="padding:5px 8px;text-align:right;font-size:10px;color:#6b7280;">${admin!==null?fmt(admin):''}</td>
+        <td style="padding:5px 8px;text-align:right;font-size:10px;font-weight:600;">${total!==null?fmt(total):''}</td>
+      </tr>`;
+
+    financialSection = `
+      <div style="page-break-before:always;"></div>
+      <h2 style="font-size:13px;color:#1e3a5f;margin:0 0 8px;">Financial Report</h2>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+        <thead>
+          <tr style="background:#1e3a5f;color:white;">
+            <th style="padding:6px 8px;text-align:left;font-size:9px;text-transform:uppercase;">Category</th>
+            <th style="padding:6px 8px;text-align:right;font-size:9px;text-transform:uppercase;">Cost *</th>
+            <th style="padding:6px 8px;text-align:right;font-size:9px;text-transform:uppercase;">Admin / ANS Burden</th>
+            <th style="padding:6px 8px;text-align:right;font-size:9px;text-transform:uppercase;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${finRow('Sub-Contract (Contractor Delivered)',subCost,subANS,subCost+subANS,false)}
+          ${finRow('Materials (PCE/Equipment)',matCost,matANS,matCost+matANS,false)}
+          ${finRow('EE Internal Works',eeCost,eeANS,eeCost+eeANS,false)}
+          ${finRow('Contingency ('+parseFloat(inv.contingency||'0')+'%)',cont,0,cont,false)}
+          ${finRow('Total Estimated Cost',totalCost,null,null,true)}
+          ${finRow('Admin / ANS Burden',null,totalANS,null,false)}
+          ${finRow('Contract Value (excl. GST)',null,null,cv,true)}
+          ${finRow('GST (10%)',null,null,gst,false)}
+          ${finRow('Contract Value (incl. GST)',null,null,gstInc,true)}
+        </tbody>
+      </table>
+      <h3 style="font-size:11px;color:#1e3a5f;margin:12px 0 6px;">EE Internal Cost</h3>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
+        <thead><tr style="background:#374151;color:white;">
+          <th style="padding:5px 8px;text-align:left;font-size:9px;">Metric</th>
+          <th style="padding:5px 8px;text-align:right;font-size:9px;">Value</th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;font-size:10px;">Direct Spend (Cost*)</td><td style="padding:4px 8px;text-align:right;font-size:10px;font-weight:600;">${fmt(totalCost)}</td></tr>
+          <tr style="border-bottom:1px solid #e5e7eb;background:#f8fafc;"><td style="padding:4px 8px;font-size:10px;">Direct Spend incl. Overheads (×1.866)</td><td style="padding:4px 8px;text-align:right;font-size:10px;font-weight:700;color:#1e40af;">${fmt(eeOH)}</td></tr>
+        </tbody>
+      </table>
+      <h3 style="font-size:11px;color:#1e3a5f;margin:12px 0 6px;">PA Breakdown (indicative)</h3>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
+        <thead><tr style="background:#374151;color:white;">
+          <th style="padding:5px 8px;text-align:left;font-size:9px;">PA Category</th>
+          <th style="padding:5px 8px;text-align:right;font-size:9px;">Estimated Amount</th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;font-size:10px;">Design</td><td style="padding:4px 8px;text-align:right;font-size:10px;">${fmt(paDesign)}</td></tr>
+          <tr style="border-bottom:1px solid #e5e7eb;background:#f8fafc;"><td style="padding:4px 8px;font-size:10px;">Construction Labour</td><td style="padding:4px 8px;text-align:right;font-size:10px;">${fmt(paConstruction)}</td></tr>
+          <tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;font-size:10px;">Project Management</td><td style="padding:4px 8px;text-align:right;font-size:10px;">${fmt(paManagement)}</td></tr>
+        </tbody>
+      </table>`;
+  }
+
+  // ── Assemble full HTML ─────────────────────────────────────────────
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>IET Summary — ${inv.name||'Investment'}</title>
+  <style>
+    body { font-family:Arial,sans-serif;font-size:11px;color:#1f2937;margin:0;padding:20px; }
+    h1 { font-size:18px;color:#1e3a5f;margin:0 0 4px; }
+    h2 { font-size:13px;color:#1e3a5f;margin:16px 0 8px; }
+    .subtitle { color:#6b7280;font-size:11px;margin-bottom:14px; }
+    .header { display:flex;justify-content:space-between;align-items:flex-start;
+              border-bottom:2px solid #1e3a5f;padding-bottom:12px;margin-bottom:14px; }
+    table { width:100%;border-collapse:collapse;margin-bottom:14px; }
+    th { background:#1e3a5f;color:white;padding:6px 8px;text-align:left;
+         font-size:9px;text-transform:uppercase;letter-spacing:0.5px; }
+    td { border-bottom:1px solid #e5e7eb; }
+    tr:nth-child(even) td { background:#f8fafc; }
+    .meta-grid { display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px; }
+    .meta-box { border:1px solid #e5e7eb;border-radius:6px;padding:8px 10px; }
+    .meta-label { font-size:9px;text-transform:uppercase;color:#9ca3af;letter-spacing:0.5px;margin-bottom:2px; }
+    .meta-value { font-weight:600;color:#1f2937;font-size:11px; }
+    .phase-cards { display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap; }
+    .total-band { display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap; }
+    .total-box { background:#1e3a5f;color:white;padding:8px 12px;border-radius:6px;flex:1;min-width:120px; }
+    .total-box.orange { background:#ea580c; }
+    .total-box.gray { background:#374151; }
+    .total-label { font-size:9px;opacity:0.75;text-transform:uppercase; }
+    .total-value { font-size:15px;font-weight:700; }
+    .footer { margin-top:20px;padding-top:8px;border-top:1px solid #e5e7eb;color:#9ca3af;font-size:9px; }
+    .cont-row { background:#f0fdf4;border-left:3px solid #16a34a; }
+    .esc-row { background:#f0fdfa;border-left:3px solid #0f766e; }
+    .final-row { background:#1e3a5f;color:white;font-weight:700;font-size:13px; }
+    .final-row td { color:white;border-bottom:none;padding:10px 8px; }
+    @media print {
+      body { padding:8px; }
+      .page-break { page-break-before:always; }
+      @page { margin:12mm; }
+    }
+  </style></head><body>
+
+  <div class="header">
+    <div>
+      <h1>${inv.name||'Unnamed Investment'}</h1>
+      <div class="subtitle">
+        ${inv.number} &nbsp;·&nbsp; ${inv.type} &nbsp;·&nbsp;
+        ${inv.estClass} Rev ${inv.revision||'A'} &nbsp;·&nbsp;
+        ${isCommercial ? 'Commercial + ANS Rates' : 'EE Internal Rates'}
+      </div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:9px;color:#9ca3af;">Essential Energy — IET</div>
+      <div style="font-size:9px;color:#9ca3af;">Generated ${new Date().toLocaleDateString('en-AU',{dateStyle:'long'})}</div>
+    </div>
+  </div>
+
+  <!-- Investment metadata -->
+  <div class="meta-grid">
+    <div class="meta-box"><div class="meta-label">Estimator</div><div class="meta-value">${inv.estimatedBy||'—'}</div></div>
+    <div class="meta-box"><div class="meta-label">Reviewer</div><div class="meta-value">${inv.reviewedBy||'—'}</div></div>
+    <div class="meta-box"><div class="meta-label">Complexity / New Tech</div><div class="meta-value">${inv.complexity||'—'} / ${inv.newTech||'—'}</div></div>
+    <div class="meta-box"><div class="meta-label">Timeline — Planning</div><div class="meta-value">${inv.planDur||'—'} months</div></div>
+    <div class="meta-box"><div class="meta-label">Timeline — Design</div><div class="meta-value">${inv.designDur||'—'} months</div></div>
+    <div class="meta-box"><div class="meta-label">Timeline — Construction</div><div class="meta-value">${inv.constrDur||'—'} months</div></div>
+  </div>
+
+  <!-- Phase summary cards -->
+  <h2>Phase Summary</h2>
+  <div class="phase-cards">${phaseCards}</div>
+
+  <!-- Financial totals -->
+  <div class="total-band">
+    <div class="total-box"><div class="total-label">EE Internal Total</div><div class="total-value">${fmt(grandEE)}</div></div>
+    ${isCommercial?`<div class="total-box orange"><div class="total-label">Commercial Total</div><div class="total-value">${fmt(grandComm)}</div></div>`:''}
+    ${grandComm>grandEE?`<div class="total-box gray"><div class="total-label">ANS Uplift</div><div class="total-value">${fmt(grandComm-grandEE)}</div></div>`:''}
+  </div>
+
+  <!-- WBS Cost Tree -->
+  <h2>WBS Cost Breakdown ${useCurrentExpand?'(current view)':'(fully expanded)'}</h2>
+  <table>
+    <thead><tr>
+      <th>WBS / Description</th>
+      ${wbsColHdrs}
+    </tr></thead>
+    <tbody>${wbsRows}</tbody>
+    <tfoot>
+      <tr style="font-weight:700;background:#f0f4ff;border-top:2px solid #1e3a5f;font-size:11px;">
+        <td style="padding:6px 8px;">Total (excl. contingency &amp; escalation)</td>
+        ${wbsFooterCols}
+      </tr>
+    </tfoot>
+  </table>
+
+  <!-- Contingency + Escalation + Final Total -->
+  <table>
+    <tbody>
+      <tr class="cont-row"><td style="padding:5px 8px;font-size:10px;">Base Estimate (excl. contingency &amp; escalation)</td>
+        <td style="padding:5px 8px;text-align:right;font-weight:700;color:#1e40af;">${fmt(grandEE)}</td>
+        ${isCommercial?`<td style="padding:5px 8px;text-align:right;font-weight:700;color:#c2410c;">${fmt(grandComm)}</td>`:''}
+      </tr>
+      <tr class="cont-row"><td style="padding:5px 8px;font-size:10px;">Contingency (${contPct}%)</td>
+        <td style="padding:5px 8px;text-align:right;">${fmt(contAmt*(grandEE/(grandComm||grandEE)))}</td>
+        ${isCommercial?`<td style="padding:5px 8px;text-align:right;">${fmt(contAmt)}</td>`:''}
+      </tr>
+      ${escResult.escTotal>0?`
+      <tr class="esc-row"><td style="padding:5px 8px;font-size:10px;">📈 Escalation (weighted avg)</td>
+        <td style="padding:5px 8px;text-align:right;color:#0f766e;font-weight:600;">${fmt(escResult.escTotal)}</td>
+        ${isCommercial?`<td style="padding:5px 8px;text-align:right;color:#0f766e;font-weight:600;">${fmt(escResult.escComm)}</td>`:''}
+      </tr>`:''}
+      <tr class="final-row">
+        <td>TOTAL — Base + Contingency + Escalation &nbsp;·&nbsp; ${inv.estClass} Rev ${inv.revision||'A'}</td>
+        <td style="text-align:right;">${fmt(finalTotal*(grandEE/(grandComm||grandEE)))}</td>
+        ${isCommercial?`<td style="text-align:right;color:#fed7aa;">${fmt(finalTotal)}</td>`:''}
+      </tr>
+    </tbody>
+  </table>
+
+  ${isCommercial&&grandComm>0?`
+  <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:8px 12px;font-size:10px;color:#92400e;margin-bottom:12px;">
+    <strong>ANS Margins:</strong> Labour ×${((ANS_LAB)*100).toFixed(0)}% &nbsp;·&nbsp;
+    Materials ×${((ANS_MAT)*100).toFixed(0)}% &nbsp;·&nbsp;
+    Contractor ×${((ANS_CON)*100).toFixed(0)}% &nbsp;·&nbsp;
+    EE Internal base: ${fmt(grandEE)} &nbsp;·&nbsp; Commercial uplift: ${fmt(grandComm-grandEE)}
+  </div>`:''}
+
+  ${lineDetailSection}
+  ${financialSection}
+
+  <div class="footer">
+    IET Estimation Tool — Essential Energy &nbsp;·&nbsp;
+    ${inv.number} Rev ${inv.revision||'A'} · ${inv.estClass} &nbsp;·&nbsp;
+    Estimator: ${inv.estimatedBy||'—'} &nbsp;·&nbsp; Generated ${new Date().toLocaleString('en-AU',{dateStyle:'medium',timeStyle:'short'})}
+    <br>This document is ${inv.status||'Draft'} status and ${inv.status==='Approved'?'has been formally approved.':'has not been formally approved.'}
+  </div>
+
+  <script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}</script>
+  </body></html>`;
+
+  const w = window.open('','_blank','width=1000,height=800');
+  w.document.write(html);
+  w.document.close();
+}
+
 function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, estimateLocked }) {
   const { supply, wbs: wbsMaster, commLookup, commProfiles, escRates, resourceCodes, equipLookup } = useData();
   const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
@@ -2595,12 +3012,16 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
               <div className="text-lg font-bold text-gray-900">{inv.name||"Unnamed Investment"}</div>
               <div className="text-xs text-gray-400 mt-0.5">{inv.number} · {inv.estClass} · Rev {inv.revision} · {inv.type}</div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap justify-end">
               {lastSaved && <span className="text-xs text-green-600">✓ Saved {lastSaved}</span>}
               {estimateLocked
                 ? <span className="text-xs bg-green-100 text-green-700 border border-green-300 px-3 py-2 rounded font-semibold flex items-center gap-1.5">🔒 Approved — read only</span>
                 : <button onClick={onSave} className="bg-green-700 hover:bg-green-600 text-white text-xs px-4 py-2 rounded font-semibold shadow">💾 Save Investment</button>
               }
+              <button onClick={()=>exportSummaryPDF({inv,lines,isCommercial,byPhase,grandEE,grandComm,contPct,contAmt,escResult,finalTotal,commGrandHrs,nodeRollup,phaseNodes,openNodes,phaseNames,descMap,entered,supply,commTotals,commProfiles,ANS_LAB,ANS_MAT,ANS_CON})}
+                className="bg-indigo-700 hover:bg-indigo-600 text-white text-xs px-4 py-2 rounded font-semibold shadow">
+                📄 Export Summary PDF
+              </button>
               <button onClick={()=>{
                 const suffix = isCommercial ? "ANS_RATES" : "EE_RATES";
                 const filename = `${inv.number||"IET"}_${suffix}_Copperleaf.xlsx`;
