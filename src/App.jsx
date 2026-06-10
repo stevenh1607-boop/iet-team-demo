@@ -2079,69 +2079,2085 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
             </div>
           )}
 
-          {/* Commission link summary — shows Phase 4 hrs that will be derived */}
-                          {(()=>{
-                            // Collect unique commission WBS codes from linked supply items
-                            const commMap = {};
-                            agg.linked.forEach(sup => {
-                              const cw = sup.commission_wbs;
-                              if (!cw) return;
-                              const ln = lines[sup.wbs_code] || {};
-                              const q  = parseFloat(ln.qty || "0");
-                              if (!commMap[cw]) commMap[cw] = { qty:0, data: commLookup[cw] };
-                              commMap[cw].qty += q;
-                            });
-                            const commEntries = Object.entries(commMap);
-                            if (!commEntries.length) return (
-                              <div className="text-[10px] text-gray-400 bg-gray-50 border border-gray-200 rounded px-2.5 py-1.5">
-                                ⚠ No commission WBS linked to supply items in this install group — commission hrs will not flow to Phase 4
-                              </div>
-                            );
-                            return (
-                              <div className="bg-teal-50 border border-teal-200 rounded overflow-hidden">
-                                <div className="bg-teal-700 text-white text-[10px] font-semibold px-2.5 py-1 flex items-center gap-2">
-                                  <span>↳ Phase 4 Commission (auto-derived)</span>
+
+          {/* Commission useEffect, useCallback, createContext, useContext, useRef, Component } from "react";
+
+// ═══════════════════════════════════════════════════════════════════
+// IET ESTIMATION TOOL — FULL SCALE DEMO
+// Live data from GitHub Pages /data/ JSON files
+// LocalStorage persistence for investment saves
+// ═══════════════════════════════════════════════════════════════════
+
+const BASE = import.meta.env.BASE_URL || "/";
+
+// ── DATA CONTEXT ────────────────────────────────────────────────
+const DataCtx = createContext({ wbs:[], rates:[], supply:[], equipment:[], equipLookup:{}, commLookup:{}, commProfiles:{}, escRates:null, resourceCodes:{}, invMats:[], matAssemblies:[], equipPricing:{}, loading:true, error:null });
+
+// ── COPPERLEAF CSV EXPORT ────────────────────────────────────────
+// Matches Sync_To_C55 macro structure exactly:
+//   - GROUP rows for each L1/L2/L3 WBS level
+//   - SPEND rows per labour/contractor resource type (Hours or Dollars)
+//   - Materials (Non-LLT): one aggregated Dollar row per L3.
+//     SCADA and Comms equipment costs roll into this row — NOT separate named lines.
+//   - Materials (LLT): one row per PCE item, Spend Name always "Materials (LLT)",
+//     no item description (matches original macro Spend_Template blank LLT rows).
+// ── WBS GROUP LABELS — exact text from Copperleaf Spend_Template ─────────────
+const WBS_GROUP_LABELS = {
+  "1":     "1 - PLANNING",
+  "1.1":   "1.1 - Major Network Connections (Commercial)",
+  "1.1.1": "1.1.1 - Commercial",
+  "1.2":   "1.2 - Network Planning",
+  "1.2.1": "1.2.1 - Network Planning",
+  "1.3":   "1.3 - Network  Development (Investment Development)",
+  "1.3.1": "1.3.1 - Investment Development",
+  "2":     "2 - DESIGN",
+  "2.1":   "2.1 - Zone Substation Design",
+  "2.1.1": "2.1.1 - Zone Substation Design",
+  "2.2":   "2.2 - Communications (Comms) Design",
+  "2.2.1": "2.2.1 - Communications (Comms) Design",
+  "2.3":   "2.3 - Subtransmission Mains Design",
+  "2.3.1": "2.3.1 - Subtransmission Mains Design",
+  "2.4":   "2.4 - Distribution Mains Design",
+  "2.4.1": "2.4.1 - Distribution Mains Design",
+  "2.5":   "2.5 - Land and Routes Design",
+  "2.5.1": "2.5.1 - Land and Routes Design",
+  "2.6":   "2.6 - Ancillary Design (Engineering Design)",
+  "2.6.1": "2.6.1 - Ancillary Design (Engineering Design)",
+  "3":     "3 - CONSTRUCTION",
+  "3.1":   "3.1 - Zone Substation Construction",
+  "3.1.1": "3.1.1 - Civil Construction",
+  "3.1.2": "3.1.2 - Building Construction",
+  "3.1.3": "3.1.3 - Electrical Construction",
+  "3.1.4": "3.1.4 - ZS Procurement",
+  "3.1.5": "3.1.5 - ZS Disposal",
+  "3.2":   "3.2 - Communications (Comms) Construction",
+  "3.2.1": "3.2.1 - Substations Communications (Comms) Construction",
+  "3.2.2": "3.2.2 - Optical Fibre Cabling/Construction",
+  "3.2.3": "3.2.3 - Comms Procurement",
+  "3.3":   "3.3 - Subtransmission Mains (SM) Construction",
+  "3.3.1": "3.3.1 - SM Construction",
+  "3.3.2": "3.3.2 - SM Procurement",
+  "3.3.3": "3.3.3 - SM Disposal (Placeholder Only)",
+  "3.4":   "3.4 - Distribution Mains Construction (Placeholder Only)",
+  "3.4.1": "3.4.1 - TBD (Placeholder Only)",
+  "3.4.2": "3.4.2 - DM Procurement (Placeholder Only)",
+  "3.4.3": "3.4.3 - DM Disposal (Placeholder Only)",
+  "3.5":   "3.5 - Ancillary Construction",
+  "3.5.1": "3.5.1 - Ancillary Construction",
+  "4":     "4 - COMMISSIONING",
+  "4.1":   "4.1 - EE's Commissioning",
+  "4.1.1": "4.1.1 - Commissioning of Zone Substation Civil Construction",
+  "4.1.2": "4.1.2 - Commissioning of Zone Substation Electrical Construction",
+  "4.1.3": "4.1.3 - Commissioning of  Communication (Comms) Construction: Comms Systems & Accessories (Substations)",
+  "4.1.4": "4.1.4 - Commissioning of Communication (Comms) Construction: Optical Fibre Cabling/Construction",
+  "4.1.5": "4.1.5 - Commissioning of  Subtransmission Mains (SM) Construction",
+  "4.1.6": "4.1.6 - Commissioning of Ancillary Construction",
+  "5":     "5 - MONITORING & CONTROL",
+  "5.1":   "5.1 - Monitoring & Control - General",
+  "5.1.1": "5.1.1 - Project Management",
+  "5.1.2": "5.1.2 - Project Management Procurement",
+  "5.2":   "5.2 - Project Close-Out",
+  "5.2.1": "5.2.1 - Project Close-Out",
+};
+
+// Build backslash-delimited group path with full descriptions
+function buildCLGroupPath(l3code) {
+  const parts = l3code.split(".");
+  const l1 = parts[0];
+  const l2 = parts.slice(0,2).join(".");
+  const l1label = WBS_GROUP_LABELS[l1] || l1;
+  const l2label = WBS_GROUP_LABELS[l2] || l2;
+  const l3label = WBS_GROUP_LABELS[l3code] || l3code;
+  return `${l1label}\\${l2label}\\${l3label}`;
+}
+
+// Generate Copperleaf-format XLSX (matches Spend_Template exactly)
+// Returns a Blob for download — uses SheetJS (xlsx) loaded at runtime
+async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfiles, escRates, resourceCodes, isCommercial, equipLookup) {
+  // Dynamically load SheetJS if not already present
+  if (!window.XLSX) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  const XL = window.XLSX;
+
+  const isComm = inv.type === "Commercially Funded";
+  // Account code is per-resource: Internal=001001, External/Commercial=001000
+
+  // ── Project timeline ─────────────────────────────────────────
+  const planStart = parseInt(inv.planStart||1),  planDur  = parseInt(inv.planDur||4);
+  const desStart  = parseInt(inv.designStart||1), desDur   = parseInt(inv.designDur||9);
+  const conStart  = parseInt(inv.constrStart||6), conDur   = parseInt(inv.constrDur||15);
+  const totalMonths = Math.max(planStart+planDur, desStart+desDur, conStart+conDur) - 1;
+
+  const phaseMonths = {
+    "1": Array.from({length:planDur}, (_,i)=>planStart+i),
+    "2": Array.from({length:desDur},  (_,i)=>desStart+i),
+    "3": Array.from({length:conDur},  (_,i)=>conStart+i),
+    "4": Array.from({length:conDur},  (_,i)=>conStart+i),
+    "5": [conStart+conDur-1, conStart+conDur],
+  };
+
+  const MON_IDX = {Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
+  const startMonNum = MON_IDX[inv.startMonth||"Jul"] || 7;
+  const startYr = parseInt(inv.startYear||2025);
+
+  // Returns a JS Date for the given project month number (1-based)
+  const monthDate = (monthNum) => {
+    const totalOffset = startMonNum - 1 + monthNum - 1;
+    const yr = startYr + Math.floor(totalOffset / 12);
+    const mo = (totalOffset % 12) + 1;
+    // Return Excel date serial (numeric) — Copperleaf requires plain numeric date serials, not ISO strings.
+    // Excel serial = days since 1900-01-00 (25569 offset from JS epoch + Lotus bug adds 1).
+    const d = new Date(Date.UTC(yr, mo - 1, 1));
+    return Math.round(d.getTime() / 86400000) + 25569;
+  };
+
+  // ── Escalation ───────────────────────────────────────────────
+  const escFactor = (phaseKey, cat) => {
+    if (!escRates) return 0;
+    const ratesArr = Object.values(escRates[cat].rates).map(r=>r/100);
+    const months = phaseMonths[phaseKey] || [];
+    if (!months.length) return 0;
+    return months.reduce((s,m) => s + escalationIndex(m, ratesArr), 0) / months.length;
+  };
+
+  // ── Resource helpers — resource_codes.json keyed by resource_name ──────────
+  // account codes: Internal=001001, External/Commercial=001000 (per workbook Spend_Template)
+  const rc          = (n) => resourceCodes[n] || {};
+  const getResCode      = (n) => rc(n).resource_code  || "GMAT";
+  const getCurrencyType = (n) => rc(n).currency_type  || "Dollar";
+  const getLabourType   = (n) => rc(n).labour_type    || "";
+  const getAcctCode     = (n) => isComm
+    ? (rc(n).account_code_external || "001000")
+    : (rc(n).account_code_internal || "001001");
+  const getEquipSource  = (wbs) => (equipLookup?.[wbs])?.source || "PCE";
+
+  // ── Rows accumulator ─────────────────────────────────────────
+  // Each row is an array of cell values (index 0-16 = static cols, 17+ = month dates)
+  // Date cells will be actual JS Date objects so SheetJS serialises them as Excel dates
+  const monthDates = Array.from({length:totalMonths}, (_,i) => monthDate(i+1));
+
+  // Header row: 17 static labels + Date objects for each month
+  const STATIC_HDRS = [
+    "Group Path","Group Description","Id","Row Type","Currency / Unit",
+    "Spend Name","Currency / Unit Type","Is Unshiftable","Account Code",
+    "Resource Code","Labour Type",
+    "LLT Description","LLT Item","LLT Quantity","Make / Model","Stock/Contract number","Voltage"
+  ];
+  const headerRow = [...STATIC_HDRS, ...monthDates];
+  const rows = [headerRow];
+
+  // ── Helper: write a GROUP row ─────────────────────────────────
+  const writtenL1 = new Set(), writtenL2 = new Set(), writtenL3 = new Set();
+
+  const writeGroup = (code) => {
+    const label = WBS_GROUP_LABELS[code] || code;
+    const parts = code.split(".");
+    const depth = parts.length;
+    const levelStr = depth === 1 ? "WBS Level 1" : depth === 2 ? "WBS Level 2" : "WBS Level 3";
+    // Build the full backslash path
+    let fullPath = label;
+    if (depth >= 2) {
+      const l1 = WBS_GROUP_LABELS[parts[0]] || parts[0];
+      const l2 = WBS_GROUP_LABELS[parts.slice(0,2).join(".")] || parts.slice(0,2).join(".");
+      fullPath = depth === 2 ? `${l1}\\${l2}` : `${l1}\\${l2}\\${label}`;
+    }
+    const row = new Array(17 + totalMonths).fill("");
+    row[0] = fullPath;   // Group Path
+    row[1] = levelStr;   // Group Description
+    row[2] = code;       // Id
+    row[3] = "Group";    // Row Type
+    // col 4 (Currency/Unit) blank for Group
+    row[5] = label;      // Spend Name = last segment label
+    rows.push(row);
+  };
+
+  const ensureGroups = (l3code) => {
+    const parts = l3code.split(".");
+    const l1 = parts[0];
+    const l2 = parts.slice(0,2).join(".");
+    if (!writtenL1.has(l1)) { writtenL1.add(l1); writeGroup(l1); }
+    if (!writtenL2.has(l2)) { writtenL2.add(l2); writeGroup(l2); }
+    if (!writtenL3.has(l3code)) { writtenL3.add(l3code); writeGroup(l3code); }
+  };
+
+  // ── Helper: write a SPEND row ─────────────────────────────────
+  const writeSpend = (l3code, spendName, currType, resCode, labourType, perMonthByMonthIdx, metaCols={}) => {
+    const row = new Array(17 + totalMonths).fill("");
+    // Cols A/B/C (group path/description/id) must be BLANK on Spend rows — working VBA export leaves these empty
+    row[3] = "Spend";
+    row[4] = "Unit";
+    row[5] = spendName;
+    row[6] = currType;
+    row[7] = 0;
+    row[8] = { t:"s", v:getAcctCode(spendName), z:"@" }; // text+@ — Copperleaf requires '001000 apostrophe prefix
+    row[9] = resCode;
+    row[10] = labourType;
+    // Optional LLT/material metadata cols 11-16
+    if (metaCols.lltDesc)     row[11] = metaCols.lltDesc;
+    if (metaCols.lltItem)     row[12] = metaCols.lltItem;
+    if (metaCols.lltQty)      row[13] = metaCols.lltQty;
+    if (metaCols.makeModel)   row[14] = metaCols.makeModel;
+    if (metaCols.contractNo)  row[15] = metaCols.contractNo;
+    if (metaCols.voltage)     row[16] = metaCols.voltage;
+    // Spread spend across month columns
+    perMonthByMonthIdx.forEach(([mIdx, val]) => {
+      // mIdx is 1-based project month; col index = 17 + (mIdx-1)
+      const ci = 17 + (mIdx - 1);
+      if (ci < row.length) row[ci] = val;
+    });
+    rows.push(row);
+  };
+
+  // ── Group entered supply items by L3 ─────────────────────────
+  const entered = supply.filter(s => parseFloat(lines[s.wbs_code]?.qty||"0") > 0);
+
+  const byL3 = {};
+  entered.forEach(item => {
+    const parts = item.wbs_code.split(".");
+    const l1 = parts[0], l3 = parts.slice(0,3).join(".");
+    if (!byL3[l3]) byL3[l3] = { l1, items:[] };
+    byL3[l3].items.push(item);
+  });
+
+  // ── COMMISSION aggregation by L3 ─────────────────────────────
+  const commByL3 = {};
+  entered.forEach(item => {
+    const cw = item.commission_wbs;
+    if (!cw || !commLookup[cw]) return;
+    const qty = parseFloat(lines[item.wbs_code]?.qty||"0") * parseFloat(lines[item.wbs_code]?.factor||"1");
+    const l3 = cw.split(".").slice(0,3).join(".");
+    if (!commByL3[l3]) commByL3[l3] = {};
+    commByL3[l3][cw] = (commByL3[l3][cw]||0) + qty;
+  });
+
+  // ── Write supply/install/design phases (1, 2, 3, 5) ──────────
+  Object.entries(byL3).sort().forEach(([l3, {l1, items}]) => {
+    const phase = l1;
+    const phMonths = phaseMonths[phase] || [];
+    if (!phMonths.length) return;
+
+    ensureGroups(l3);
+
+    // Aggregate labour/contractor by resource name
+    const costByRes = {};
+    items.forEach(item => {
+      const ln = lines[item.wbs_code] || {};
+      const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd,
+                         ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, null, 0);
+      const isContr = (ln.delivery||item.delivery_method||"") === "Contractor Delivered";
+      const res = isContr ? "Contractor" : (item.resource_main || "ZS Electrical Technician");
+      if (!costByRes[res]) costByRes[res] = {hours:0, dollars:0};
+      if (getCurrencyType(res) === "Hour") costByRes[res].hours  += c.installHrs || 0;
+      else                                  costByRes[res].dollars += c.contrCost  || 0;
+      // WAFHA days
+      if (isWAFHAItem(item) && (c.installHrs||0) > 0) {
+        const wDays = parseFloat(ln.qty||"0") * parseFloat(ln.factor||"1");
+        if (!costByRes["Work Away From Home"]) costByRes["Work Away From Home"] = {hours:0, dollars:0};
+        costByRes["Work Away From Home"].hours += wDays;
+      }
+    });
+
+    Object.entries(costByRes).forEach(([resName, costs]) => {
+      const currType = getCurrencyType(resName);
+      const isWAFHA  = resName === "Work Away From Home";
+      const totalVal = isWAFHA ? costs.hours : (currType === "Hour" ? costs.hours : costs.dollars);
+      if (totalVal <= 0) return;
+      const cat = currType !== "Hour" ? "contractors" : "internal_ee";
+      const ef  = escFactor(phase, cat);
+      const perMonth = (totalVal * (1+ef)) / phMonths.length;
+      const monthSpend = phMonths.map(m => [m, parseFloat(perMonth.toFixed(6))]);
+      writeSpend(l3, resName, isWAFHA ? "Day" : currType,
+                 getResCode(resName), getLabourType(resName), monthSpend);
+    });
+
+    // Material rows
+    let nonLLTTotal = 0;
+    const lltRows = [];
+
+    items.forEach(item => {
+      const ln = lines[item.wbs_code] || {};
+      const effQty = parseFloat(ln.qty||"0") * parseFloat(ln.factor||"1");
+      if (effQty <= 0) return;
+      const matPrice = parseFloat(ln.mats||"") || item.pce_price || 0;
+      if (matPrice <= 0) return;
+      const ef = escFactor(phase, "materials");
+      const totalMat = effQty * matPrice * (isCommercial ? 1+ANS_MAT : 1) * (1+ef);
+      const source = getEquipSource(item.wbs_code);
+      if (source === "SCADA" || source === "Comms") {
+        nonLLTTotal += totalMat;
+      } else {
+        const eq = equipLookup?.[item.wbs_code] || null;
+        lltRows.push({
+          totalMat, effQty,
+          desc:       (eq?.description || item.description || "").substring(0, 120),
+          category:   eq?.category    || "",
+          makeModel:  [eq?.make, eq?.model].map(v=>(!v||v==="nan"||v==="NaN")?"":String(v).trim()).filter(Boolean).join(" / "),
+          contractNo: (!eq?.contract_no||eq?.contract_no==="nan"||eq?.contract_no==="NaN")?"":String(eq.contract_no).trim(),
+          voltage:    (!eq?.voltage&&!eq?.family)?"":(!eq?.voltage||eq?.voltage==="nan")?String(eq?.family||"").trim():String(eq.voltage).trim(),
+        });
+      }
+    });
+
+    if (nonLLTTotal > 0) {
+      const perMonth = nonLLTTotal / phMonths.length;
+      writeSpend(l3, "Materials (Non-LLT)", "Dollar", "GMAT", "",
+                 phMonths.map(m=>[m, parseFloat(perMonth.toFixed(6))]));
+    }
+
+    lltRows.forEach(({totalMat, effQty, desc, category, makeModel, contractNo, voltage}) => {
+      const perMonth = totalMat / phMonths.length;
+      writeSpend(l3, "Materials (LLT)", "Dollar", "LLMAT", "",
+                 phMonths.map(m=>[m, parseFloat(perMonth.toFixed(6))]),
+                 { lltDesc:desc, lltItem:category, lltQty:String(effQty),
+                   makeModel, contractNo, voltage });
+    });
+  });
+
+  // ── Commissioning (Phase 4) ───────────────────────────────────
+  Object.entries(commByL3).sort().forEach(([l3, commWbsMap]) => {
+    const phMonths = phaseMonths["4"] || [];
+    if (!phMonths.length) return;
+
+    ensureGroups(l3);
+
+    // Aggregate hours per resource type in this L3
+    const hrsByRes = {};
+    Object.entries(commWbsMap).forEach(([cw, qty]) => {
+      const cd = commLookup[cw];
+      if (!cd) return;
+      const scale = getScaleFactor(commProfiles, cd.profile_id, qty);
+      const ovrd  = lines[`comm_ovrd_${cw}`]?.qty;
+      const hrs   = (ovrd !== undefined && ovrd !== "") ? (parseFloat(ovrd)||0) : qty*(cd.hrs_per_unit||0)*scale;
+      if (hrs <= 0) return;
+      const res = cd.resource_type || "ZS Specialist Technician";
+      hrsByRes[res] = (hrsByRes[res]||0) + hrs;
+    });
+
+    Object.entries(hrsByRes).forEach(([resName, totalHrs]) => {
+      if (totalHrs <= 0) return;
+      const ef = escFactor("4", "internal_ee");
+      const perMonth = (totalHrs * (1+ef)) / phMonths.length;
+      writeSpend(l3, resName, "Hour", getResCode(resName), getLabourType(resName),
+                 phMonths.map(m=>[m, parseFloat(perMonth.toFixed(6))]));
+    });
+  });
+
+  // ── Build workbook ────────────────────────────────────────────
+  const wb = XL.utils.book_new();
+
+  // Convert rows to AOA (array of arrays) for SheetJS
+  // Date values will be formatted as Excel date serials
+  const ws = XL.utils.aoa_to_sheet(rows);
+  // Post-process header row: month serials are plain numbers — stamp mmm-yy format
+  // and ensure type is numeric (n), NOT date (d) — Copperleaf reads the serial directly.
+  for (let m = 0; m < totalMonths; m++) {
+    const colIdx = 17 + m;
+    const colLetter = XL.utils.encode_col(colIdx);
+    const addr = colLetter + "1";
+    if (ws[addr]) {
+      ws[addr].t = "n";
+      ws[addr].z = "mmm-yy";
+      delete ws[addr].w;
+    }
+  }
+  // Stamp @ format on every cell in col I (Account Code) — including header and empty cells.
+  // The working VBA export applies @ to the whole column; Copperleaf validates this.
+  for (let r = 1; r <= rows.length; r++) {
+    const addr = "I" + r;
+    if (!ws[addr]) {
+      // Create empty cell with @ format so column-level format is present
+      ws[addr] = { t:"s", v:"", z:"@" };
+    } else {
+      ws[addr].t = "s";
+      ws[addr].v = ws[addr].v != null ? String(ws[addr].v) : "";
+      ws[addr].z = "@";
+      delete ws[addr].w;
+    }
+  }
+
+  // Set column widths — col I (index 8) gets numFmt @ to match working file
+  ws["!cols"] = [
+    {wch:80},{wch:20},{wch:12},{wch:10},{wch:12},
+    {wch:60},{wch:18},{wch:14},{wch:14,numFmt:"@"},{wch:20},{wch:14},
+    {wch:80},{wch:24},{wch:12},{wch:30},{wch:22},{wch:10},
+    ...Array(totalMonths).fill({wch:12}),
+  ];
+
+  // Freeze top row
+  ws["!freeze"] = { xSplit: 0, ySplit: 1, topLeftCell: "A2" };
+
+  XL.utils.book_append_sheet(wb, ws, "Spend");
+
+  // Summary sheet — matches template metadata
+  const now = new Date();
+  const fmtDMY = d => {
+    const dd = String(d.getDate()).padStart(2,"0");
+    const mm = String(d.getMonth()+1).padStart(2,"0");
+    const yyyy = d.getFullYear();
+    return dd+"/"+mm+"/"+yyyy;
+  };
+  const altStartStr = fmtDMY(new Date(startYr, startMonNum-1, 1));
+  const exportDateStr = fmtDMY(now);
+  const summaryData = [
+    ["Please do not edit this worksheet. This worksheet contains critical information for forecast import."],
+    ["Investment Name"],
+    ["Investment Code"],
+    ["Alternative"],
+    ["Alternative Start Date", altStartStr],
+    ["Export Date", exportDateStr],
+    ["Export User", inv.estimatedBy || ""],
+    ["Spend Amount", "Inflated"],
+    ["Uninflated Fiscal Year"],
+    ["Resource Display", "Unit"],
+    ["Export spend values as", "Monthly"],
+    ["Include loadings", "Yes"],
+    ["Alternative ID"],
+  ];
+  const ws2 = XL.utils.aoa_to_sheet(summaryData);
+  ws2["!cols"] = [{wch:70},{wch:20}];
+  XL.utils.book_append_sheet(wb, ws2, "Summary");
+
+  // Write to Blob
+  const wbout = XL.write(wb, { bookType:"xlsx", type:"array", cellDates:true, bookSST:true });
+  return new Blob([wbout], { type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Australian FY: July–June. Month 1 = project start = July of start year.
+// Compound monthly escalation index per the ABS-based formula.
+function escalationIndex(monthNum, annualRatesArr) {
+  // annualRatesArr: [r_y1, r_y2, r_y3, r_y4] as decimals (e.g. 0.045)
+  let cumulative = 1.0;
+  let remaining  = monthNum;
+  for (const rate of annualRatesArr) {
+    const m = Math.min(remaining, 12);
+    cumulative *= Math.pow(1 + rate, m / 12);
+    remaining  -= m;
+    if (remaining <= 0) break;
+  }
+  return cumulative - 1;
+}
+
+function calcEscalation(costBreakdown, escRates, inv) {
+  // costBreakdown: { byPhase: { "1":{eeLabCost,contrCost,matCost}, ... } }
+  // escRates: the escalation_rates.json object
+  // inv: investment setup with phase timeline
+  // Returns { escEE, escContr, escMat, escTotal, factors }
+  if (!escRates) return { escEE:0, escContr:0, escMat:0, escTotal:0 };
+
+  const startMonth = parseInt(inv.startMonth_num || 1); // fiscal month offset (always 1 for Jul start)
+  const phases = [
+    { key:"1", start: 1,                                  dur: parseInt(inv.planDur||4)  },
+    { key:"2", start: parseInt(inv.designStart||1),       dur: parseInt(inv.designDur||9) },
+    { key:"3", start: parseInt(inv.constrStart||6),       dur: parseInt(inv.constrDur||15) },
+    { key:"4", start: parseInt(inv.constrStart||6),       dur: parseInt(inv.constrDur||15) }, // commission aligned to construction
+    { key:"5", start: parseInt(inv.constrStart||6) + parseInt(inv.constrDur||15) - 1, dur: 2 },
+  ];
+
+  const rEE   = Object.values(escRates.internal_ee.rates).map(r=>r/100);
+  const rContr = Object.values(escRates.contractors.rates).map(r=>r/100);
+  const rMat  = Object.values(escRates.materials.rates).map(r=>r/100);
+
+  let escEE=0, escContr=0, escMat=0;
+
+  for (const ph of phases) {
+    const costs = costBreakdown[ph.key];
+    if (!costs || ph.dur <= 0) continue;
+    // Average escalation index across the phase months
+    let avgEE=0, avgContr=0, avgMat=0;
+    for (let m = ph.start; m < ph.start + ph.dur; m++) {
+      avgEE    += escalationIndex(m, rEE);
+      avgContr += escalationIndex(m, rContr);
+      avgMat   += escalationIndex(m, rMat);
+    }
+    avgEE    /= ph.dur;
+    avgContr /= ph.dur;
+    avgMat   /= ph.dur;
+
+    escEE    += (costs.eeLabCost    || 0) * avgEE;
+    escContr += (costs.contrCost    || 0) * avgContr;
+    escMat   += (costs.matCost      || 0) * avgMat;
+  }
+
+  const escTotal = escEE + escContr + escMat;
+  return { escEE, escContr, escMat, escTotal };
+}
+function useData() { return useContext(DataCtx); }
+
+// ── HELPERS ─────────────────────────────────────────────────────
+const fmt    = n => n === 0 ? "–" : "$" + Math.round(n).toLocaleString("en-AU");
+const fmtHrs = n => n === 0 ? "–" : n.toLocaleString("en-AU",{minimumFractionDigits:0,maximumFractionDigits:1}) + " hrs";
+const fmtPct = n => (n*100).toFixed(1) + "%";
+
+// Scale factor lookup — inclusive tier ranges
+function getScaleFactor(profiles, profileId, qty) {
+  if (!profileId || !profiles[profileId]) return 1.00;
+  const tiers = profiles[profileId].tiers;
+  for (const tier of tiers) {
+    if (qty >= tier.qty_from && (tier.qty_to === null || qty <= tier.qty_to))
+      return tier.scale;
+  }
+  return 1.00;
+}
+
+// WAFHA / Accommodation item detection — for supply items (not calcLine)
+// UOM=day items with resource_main=Work Away From Home are day-rated,
+// contribute NO install hours, and must not be flagged as GAP in the WBS editor.
+const isWAFHAItem = (item) =>
+  (item?.resource_main === "Work Away From Home") ||
+  (item?.uom === "day" && (item?.description||"").toLowerCase().includes("accommodation"));
+
+// ANS margins
+const ANS_LAB  = 0.20;
+const ANS_MAT  = 0.2686;
+const ANS_CON  = 0.20;
+
+const RESOURCE_TYPES = [
+  "ZS Electrical Technician","ZS Specialist Technician","Metering Technician - Zone Substation",
+  "Electrical Worker - Transmission","Electrical Worker - Underground",
+  "Cable Jointer - Distribution","Cable Jointer - Transmission",
+  "Protection Engineer","Earthing Engineer","Engineer / Technical",
+  "Substation Designer","Distribution Designer","Subtransmission Mains Designer",
+  "SCADA Designer","Telecoms Designer","Telecomms Technician",
+  "Project Manager","External Project Manager / Specialist Engineer",
+  "Network Planner","Network Development Officer","Land & Routes Specialist",
+  "Consultant","Contractor","Contractor - Civil","Contractor - Electrical",
+  "Supplier","Work Away From Home","N.A.",
+];
+const MAT_BURDEN = 0.0752;
+
+function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvrd, plantCostVal, materialsCostOvrd, isCommercial, resourceOvrd, ratesLookup, pctBase) {
+  const q   = parseFloat(qty)   || 0;
+  const f   = parseFloat(factor)|| 1;
+  const isContr = (delivery || item.delivery_method || "EE Delivered") === "Contractor Delivered";
+  // install_hrs_per: used for supply items (propagated from linked install row)
+  // ee_unit_hrs: used for install-scope rows shown directly (e.g. 3.1.1.12.4.01)
+  const instHrsPU = (installHrsOvrd !== "" && installHrsOvrd != null)
+    ? (parseFloat(installHrsOvrd) || 0)
+    : (item.install_hrs_per != null ? item.install_hrs_per : (item.ee_unit_hrs || 0));
+  const commHrsPU = item.comm_hrs_per || 0;
+  const installHrs = q * f * instHrsPU;
+  const commHrs    = q * commHrsPU;
+  // Use resourceOvrd if set (Main Resource Code override for non-linked items)
+  const effectiveResource = resourceOvrd || item.resource_main || "";
+  const isWAFHA    = (effectiveResource === "Work Away From Home");
+  // WAFHA rate: use manager-edited rate from ratesLookup if available, else item rate, else workbook default
+  const wafhaRate  = ratesLookup?.["Work Away From Home"]
+    ? (isCommercial
+        ? (ratesLookup["Work Away From Home"].ee_commercial_rate || 345.83)
+        : (ratesLookup["Work Away From Home"].ee_internal_rate   || 359.50))
+    : (item.ee_labour_rate || 359.50);
+  const eeRate     = isWAFHA ? wafhaRate : (item.ee_labour_rate || 246.95);
+  // Percentage-of-total items: cost = pct × total non-prelim base for this L3 group
+  const isPctItem  = !!(item.pct_of_total);
+  const pctRate    = isPctItem ? ((pctBase || 0) * item.pct_of_total) : 0;
+  const contrRate  = isPctItem
+    ? pctRate   // derived from group total
+    : (contractorRateOvrd !== "" && contractorRateOvrd != null)
+      ? (parseFloat(contractorRateOvrd) || 0)
+      : item.contractor_rate || 0;
+  const plant      = parseFloat(plantCostVal) || 0;
+  const matOvrd    = (materialsCostOvrd !== "" && materialsCostOvrd != null)
+    ? parseFloat(materialsCostOvrd) || 0 : null;
+  const pce        = item.pce_price || 0;
+  const equipCost  = q * (matOvrd !== null ? matOvrd : pce);
+  const eeLabHrs   = isContr ? 0 : (isWAFHA ? 0 : q * f * instHrsPU);
+  const eeLabCost  = isContr ? 0 : (isWAFHA ? q * f * eeRate : eeLabHrs * eeRate);
+  const contrCost  = isContr ? q * f * contrRate : 0;
+  const plantFact  = plant * f;
+  const matBurden  = isCommercial ? 0 : equipCost * MAT_BURDEN;
+  const eeInt  = eeLabCost + contrCost + plantFact + equipCost + matBurden;
+  const comm   = eeLabCost*(1+ANS_LAB) + contrCost*(1+ANS_CON) + plantFact + equipCost*(1+ANS_MAT);
+  // WAFHA items: installHrs must always be 0 — they are day-rated, not hour-rated
+  const finalInstallHrs = isWAFHA ? 0 : installHrs;
+  return { q, f, isContr, isWAFHA, installHrs: finalInstallHrs, commHrs, eeLabHrs, eeLabCost,
+           contrCost, plantFact, equipCost, matBurden, eeInt, comm,
+           instHrsOverridden: installHrsOvrd !== "" && installHrsOvrd != null, instHrsPU,
+           effectiveResource };
+}
+
+// ── SHARED UI ───────────────────────────────────────────────────
+function ScopeBadge({ scope }) {
+  const s = {
+    "Supply":          "bg-blue-100 text-blue-700 border border-blue-200",
+    "Install":         "bg-purple-100 text-purple-700 border border-purple-200",
+    "Commission":      "bg-teal-100 text-teal-700 border border-teal-200",
+    "Supply & Install":"bg-indigo-100 text-indigo-700 border border-indigo-200",
+    "Demolition/Removal":"bg-red-100 text-red-700 border border-red-200",
+  }[scope] || "bg-gray-100 text-gray-500";
+  return <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${s}`}>{scope}</span>;
+}
+
+function Card({ children, className="" }) {
+  return <div className={`border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>{children}</div>;
+}
+
+function SectionHeader({ color="orange", title, subtitle }) {
+  const c = { blue:"bg-blue-700", orange:"bg-orange-600", green:"bg-green-700",
+              purple:"bg-purple-700", teal:"bg-teal-700", gray:"bg-gray-600" }[color]||"bg-gray-600";
+  return (
+    <div className={`px-3 py-2 ${c} text-white`}>
+      <div className="text-xs font-bold uppercase tracking-wide">{title}</div>
+      {subtitle && <div className="text-xs opacity-75 mt-0.5">{subtitle}</div>}
+    </div>
+  );
+}
+
+// ── INVESTMENT SETUP SCREEN ──────────────────────────────────────
+const ESTIMATORS = [
+  "Adrian Bruce","Adrian George","Alex Nourian","Ben Broekman","Ben Morgan",
+  "Ben O'Reilly","Chris Boles","Daniel Lawrence","Daniel Miller","Jason Doyle",
+  "Jeremy Whitford","Joshua Walker","Matt Baker","Rhys Lawler","Richard Gonzalez",
+  "Ruth Thomas","Ryan Evans","Stephanie Dewar","Steven Hannigan","Stuart Harland",
+  "Vish Kamtam","Wayne Trezise","TBD"
+];
+const REVIEWERS = ["Daniel Lawrence","Jeremy Whitford","Joshua Walker","Matt Baker",
+  "Richard Gonzalez","Ryan Evans","Steven Hannigan","Stuart Harland","Wayne Trezise"];
+
+// PIN field for team-leader unlock of approved estimates
+// In the demo the PIN is the same manager PIN "1607" — in Power Platform this would be AD role check
+function UnlockPinField({ onConfirm, onCancel }) {
+  const TEAM_LEADER_PIN = "1607";
+  const [pin, setPin] = useState("");
+  const [err, setErr] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => { ref.current?.focus(); }, []);
+  const tryConfirm = () => {
+    if (pin === TEAM_LEADER_PIN) { onConfirm(); }
+    else { setErr(true); setPin(""); setTimeout(()=>setErr(false),1500); }
+  };
+  return (
+    <div className="space-y-3">
+      <input ref={ref} type="password" value={pin} onChange={e=>{setPin(e.target.value);setErr(false);}}
+        onKeyDown={e=>{ if(e.key==="Enter") tryConfirm(); if(e.key==="Escape") onCancel(); }}
+        placeholder="Enter team leader PIN"
+        className={`w-full border rounded px-3 py-2 text-sm text-center tracking-widest font-mono focus:outline-none focus:ring-2 ${err?"border-red-400 ring-red-300 bg-red-50":"border-gray-300 focus:ring-green-400"}`}/>
+      {err && <div className="text-xs text-red-600 text-center">Incorrect PIN — try again</div>}
+      <div className="flex gap-2">
+        <button onClick={onCancel}
+          className="flex-1 text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 py-2 rounded font-semibold">
+          Cancel
+        </button>
+        <button onClick={tryConfirm} disabled={!pin}
+          className="flex-1 text-xs bg-green-700 hover:bg-green-600 disabled:bg-gray-200 disabled:text-gray-400 text-white py-2 rounded font-bold">
+          🔓 Confirm &amp; Create Amendment
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function InvestmentSetup({ inv, onChange }) {
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const upd = (k,v) => onChange({...inv, [k]:v});
+  return (
+    <div className="flex-1 overflow-y-auto bg-orange-50 p-4">
+      <div className="max-w-5xl mx-auto space-y-4">
+
+        <Card>
+          <SectionHeader color="blue" title="Investment Identity" subtitle="Required before estimate lines can be entered" />
+          <div className="p-4 grid grid-cols-3 gap-4 bg-white">
+            <div className="col-span-3">
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Investment Name <span className="text-red-500">*</span></label>
+              <input value={inv.name} onChange={e=>upd("name",e.target.value)}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Investment Number</label>
+              <input value={inv.number} onChange={e=>upd("number",e.target.value)}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">WACS Number</label>
+              <input value={inv.wacs} onChange={e=>upd("wacs",e.target.value)}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Investment Type</label>
+              <select value={inv.type} onChange={e=>upd("type",e.target.value)}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                <option>Internally Funded</option><option>Commercially Funded</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Estimate Class</label>
+              <select value={inv.estClass} onChange={e=>upd("estClass",e.target.value)}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                {["Class 1","Class 2","Class 3","Class 4","Class 5"].map(c=><option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1 flex items-center gap-1.5">
+                Revision
+                {onChange===undefined||onChange===null ? <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-semibold">🔒 Auto on unlock</span> : null}
+              </label>
+              <div className="relative">
+                <select value={inv.revision} onChange={e=>upd("revision",e.target.value)}
+                  disabled={!upd||inv._locked}
+                  className={`w-full border rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 ${
+                    inv._locked ? "bg-green-50 border-green-300 text-green-800 font-bold cursor-not-allowed" : "border-gray-300 bg-white"
+                  }`}>
+                  {["A","B","C","D","E","F","G","H"].map(r=><option key={r}>{r}</option>)}
+                </select>
+                {inv._locked && <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[9px] text-green-600 font-semibold pointer-events-none">APPROVED</span>}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Complexity</label>
+              <select value={inv.complexity} onChange={e=>upd("complexity",e.target.value)}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                {["Medium","High","Very High"].map(c=><option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">New Technology</label>
+              <select value={inv.newTech} onChange={e=>upd("newTech",e.target.value)}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                {["Limited","Moderate","Substantial"].map(t=><option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Estimated By</label>
+              <select value={inv.estimatedBy} onChange={e=>upd("estimatedBy",e.target.value)}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                {ESTIMATORS.map(n=><option key={n}>{n}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Reviewed By</label>
+              <select value={inv.reviewedBy} onChange={e=>upd("reviewedBy",e.target.value)}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                {REVIEWERS.map(n=><option key={n}>{n}</option>)}
+              </select>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <SectionHeader color="orange" title="Project Timeline" subtitle="Planning · Design · Construction phases" />
+          <div className="p-4 bg-white grid grid-cols-4 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Project Start Month</label>
+              <select value={inv.startMonth} onChange={e=>upd("startMonth",e.target.value)}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-orange-400">
+                {months.map(m=><option key={m}>{m}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Start Year</label>
+              <select value={inv.startYear} onChange={e=>upd("startYear",e.target.value)}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-orange-400">
+                {[2025,2026,2027,2028,2029,2030].map(y=><option key={y}>{y}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Contingency — Internal</label>
+              <div className="flex items-center gap-1">
+                <input type="number" min="0" max="100" step="1" value={inv.contInt}
+                  onChange={e=>upd("contInt",e.target.value)}
+                  className="w-20 border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                <span className="text-xs text-gray-400">%</span>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 block mb-1">Contingency — Commercial</label>
+              <div className="flex items-center gap-1">
+                <input type="number" min="0" max="100" step="1" value={inv.contComm}
+                  onChange={e=>upd("contComm",e.target.value)}
+                  className="w-20 border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                <span className="text-xs text-gray-400">%</span>
+              </div>
+            </div>
+            {[
+              {label:"Planning",   startK:"planStart",   durK:"planDur"},
+              {label:"Design",     startK:"designStart", durK:"designDur"},
+              {label:"Construction",startK:"constrStart",durK:"constrDur"},
+            ].map(phase=>(
+              <div key={phase.label} className="col-span-2 grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">{phase.label} Start (Month #)</label>
+                  <input type="number" min="1" value={inv[phase.startK]} onChange={e=>upd(phase.startK,e.target.value)}
+                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">{phase.label} Duration (Months)</label>
+                  <input type="number" min="1" value={inv[phase.durK]} onChange={e=>upd(phase.durK,e.target.value)}
+                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Invoicing Milestones Card */}
+        <Card>
+          <SectionHeader color="orange" title="Invoicing Milestones" subtitle="Milestone payment schedule (incoming money) — must sum to 100%" />
+          <div className="p-4 bg-white space-y-2">
+            <div className="grid grid-cols-12 gap-1 text-[10px] text-gray-400 font-semibold uppercase tracking-wide px-0.5 mb-1">
+              <span className="col-span-7">Stage Description</span>
+              <span className="col-span-2">Month #</span>
+              <span className="col-span-2">% of Total</span>
+              <span className="col-span-1"/>
+            </div>
+            {(inv.milestones||[]).map((m,i)=>(
+              <div key={i} className="grid grid-cols-12 gap-1 items-center">
+                <input value={m.stage} placeholder={`Milestone ${i+1} description`}
+                  onChange={e=>{const ms=[...(inv.milestones||[])];ms[i]={...ms[i],stage:e.target.value};upd("milestones",ms);}}
+                  className="col-span-7 border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400"/>
+                <input type="number" min="1" value={m.month} placeholder="4"
+                  onChange={e=>{const ms=[...(inv.milestones||[])];ms[i]={...ms[i],month:e.target.value};upd("milestones",ms);}}
+                  className="col-span-2 border border-gray-200 rounded px-1.5 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-orange-400"/>
+                <div className="col-span-2 flex items-center gap-0.5">
+                  <input type="number" min="0" max="100" value={m.pct} placeholder="0"
+                    onChange={e=>{const ms=[...(inv.milestones||[])];ms[i]={...ms[i],pct:e.target.value};upd("milestones",ms);}}
+                    className="w-full border border-gray-200 rounded px-1.5 py-1 text-xs text-right focus:outline-none focus:ring-1 focus:ring-orange-400"/>
+                  <span className="text-xs text-gray-400 flex-shrink-0">%</span>
+                </div>
+                <button onClick={()=>upd("milestones",(inv.milestones||[]).filter((_,j)=>j!==i))}
+                  className="col-span-1 text-red-400 hover:text-red-600 text-xs text-center">✕</button>
+              </div>
+            ))}
+            <div className="flex items-center justify-between pt-1">
+              {(()=>{const tot=(inv.milestones||[]).reduce((s,m)=>s+parseFloat(m.pct||0),0);return(
+                <span className="text-xs">
+                  <span className="text-gray-500">Total: </span>
+                  <span className={Math.abs(tot-100)<0.01?"font-bold text-green-600":"font-bold text-amber-600"}>{tot}%</span>
+                  {Math.abs(tot-100)>0.01&&<span className="text-amber-500 ml-2">⚠ must sum to 100%</span>}
+                  {Math.abs(tot-100)<0.01&&<span className="text-green-600 ml-2">✓ feeds into cash flow chart</span>}
+                </span>
+              );})()}
+              {(inv.milestones||[]).length < 10 &&
+                <button onClick={()=>upd("milestones",[...(inv.milestones||[]),{stage:"",month:"",pct:"0"}])}
+                  className="text-xs text-blue-600 hover:underline">+ Add milestone</button>}
+            </div>
+          </div>
+        </Card>
+
+        <div className="flex justify-end gap-3 pb-4">
+          <button className="px-6 py-2 text-xs bg-blue-700 hover:bg-blue-600 text-white rounded font-semibold shadow">
+            Save Investment Setup →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── WBS NAV TREE ─────────────────────────────────────────────────
+function WBSNavTree({ wbs, supply, activePhase, setActivePhase, selectedL4, onSelectL4, searchText }) {
+  const [expanded, setExpanded] = useState({"3":true,"3.1":true,"3.1.3":true});
+  const toggle = code => setExpanded(p=>({...p,[code]:!p[code]}));
+
+  // Supply counts per L4 — must be computed BEFORE tree so tree can filter by it
+  const supplyCount = useMemo(()=>{
+    const m={};
+    supply.forEach(s=>{ m[s.l4_group]=(m[s.l4_group]||0)+1; });
+    return m;
+  },[supply]);
+
+  // Build tree structure from wbs records — only include L4 nodes with supply items
+  const tree = useMemo(() => {
+    const byCode = {};
+    wbs.forEach(r => { byCode[r.wbs_code] = r; });
+
+    const phases = [1,2,3,4,5].map(n => {
+      const root = byCode[String(n)];
+      return { code: String(n), label: root?.description || `Phase ${n}`, children: [] };
+    });
+
+    // Add L2
+    wbs.filter(r=>r.depth===2).forEach(r=>{
+      const p = phases.find(p=>p.code===r.level_1?.toString());
+      if(p) p.children.push({code:r.wbs_code,label:r.description,children:[]});
+    });
+    // Add L3
+    wbs.filter(r=>r.depth===3).forEach(r=>{
+      const l2key = r.wbs_code.split(".").slice(0,2).join(".");
+      phases.forEach(p=>p.children.forEach(l2=>{
+        if(l2.code===l2key) l2.children.push({code:r.wbs_code,label:r.description,children:[]});
+      }));
+    });
+    // Add L4 — only include nodes that have supply items
+    wbs.filter(r=>r.depth===4).forEach(r=>{
+      const l3key = r.wbs_code.split(".").slice(0,3).join(".");
+      const hasItems = (supplyCount[r.wbs_code] || 0) > 0;
+      if (!hasItems) return;
+      phases.forEach(p=>p.children.forEach(l2=>l2.children.forEach(l3=>{
+        if(l3.code===l3key) l3.children.push({code:r.wbs_code,label:r.description,children:null});
+      })));
+    });
+    // Prune L3 nodes with no L4 children, then L2 nodes with no L3 children
+    phases.forEach(p=>p.children.forEach(l2=>{
+      l2.children = l2.children.filter(l3=>l3.children===null || l3.children.length>0);
+    }));
+    phases.forEach(p=>{
+      p.children = p.children.filter(l2=>l2.children.length>0);
+    });
+    return phases;
+  }, [wbs, supplyCount]);
+
+  const renderNode = (node, depth=0) => {
+    const isLeaf = node.children === null;
+    const isPhase = depth === 0;
+    const exp = expanded[node.code];
+    const isSel = selectedL4 === node.code;
+    const count = supplyCount[node.code];
+
+    return (
+      <div key={node.code}>
+        <div
+          onClick={()=>{ if(isLeaf) onSelectL4(node.code); else toggle(node.code); }}
+          className={`flex items-center gap-1 py-1 px-2 cursor-pointer rounded text-xs transition-colors
+            ${isPhase ? "font-bold text-blue-300 hover:bg-blue-900" : ""}
+            ${isSel ? "bg-blue-600 text-white" : !isPhase ? "text-gray-300 hover:bg-gray-700" : ""}
+          `}
+          style={{paddingLeft:`${8+depth*12}px`}}>
+          <span className="w-3 text-center text-gray-500 flex-shrink-0">
+            {isLeaf ? "·" : (exp ? "▾" : "▸")}
+          </span>
+          <span className={`font-mono text-xs flex-shrink-0 ${isSel?"text-blue-200":"text-gray-500"}`}>{node.code}</span>
+          <span className="ml-1 truncate">{node.label}</span>
+          {count > 0 && !isLeaf && (
+            <span className={`ml-auto flex-shrink-0 text-xs px-1 rounded ${isSel?"bg-blue-500 text-white":"bg-gray-700 text-gray-400"}`}>{count}</span>
+          )}
+        </div>
+        {!isLeaf && exp && node.children.map(child=>renderNode(child, depth+1))}
+      </div>
+    );
+  };
+
+  const phases = [
+    {id:1,label:"1 · Planning"},
+    {id:2,label:"2 · Design"},
+    {id:3,label:"3 · Construction"},
+    {id:4,label:"4 · Commissioning ⚡"},
+    {id:5,label:"5 · M&C"},
+  ];
+
+  return (
+    <div className="w-64 bg-gray-900 flex flex-col overflow-hidden flex-shrink-0">
+      <div className="p-2 border-b border-gray-700">
+        <input value={searchText.nav||""} onChange={e=>searchText.setNav(e.target.value)}
+          placeholder="Search WBS…"
+          className="w-full bg-gray-800 text-white text-xs px-2 py-1.5 rounded border border-gray-700 placeholder-gray-500 focus:outline-none focus:border-blue-500" />
+      </div>
+      <div className="flex border-b border-gray-700 overflow-x-auto">
+        {phases.map(p=>(
+          <button key={p.id} onClick={()=>setActivePhase(p.id)}
+            className={`text-xs px-2 py-1.5 whitespace-nowrap flex-shrink-0 transition-colors ${activePhase===p.id?"bg-orange-600 text-white font-bold":"text-gray-400 hover:bg-gray-800"}`}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex-1 overflow-y-auto py-1">
+        {(tree[activePhase-1]?.children||[]).map(node=>renderNode(node,0))}
+      </div>
+    </div>
+  );
+}
+
+
+// ── ESTIMATION SCREEN ────────────────────────────────────────────
+// ── INVENTORY & ASSEMBLY LOOKUP PANEL ────────────────────────────
+// Searchable lookup for Inventory Materials and Material Assemblies
+// shown as a collapsible drawer in the cost detail panel
+function InvMatsLookup({ wbsCode }) {
+  const { invMats, matAssemblies } = useData();
+  const [open,    setOpen]    = useState(false);
+  const [tab,     setTab]     = useState("assembly"); // "assembly" | "inventory"
+  const [search,  setSearch]  = useState("");
+
+  // Find assembly matching this WBS code
+  const matchAssembly = matAssemblies.find(a => a.wbs_code === wbsCode);
+
+  const filteredInv = useMemo(() => {
+    if (!search.trim()) return invMats.slice(0, 50);
+    const q = search.toLowerCase();
+    return invMats.filter(i =>
+      (i.description||"").toLowerCase().includes(q) ||
+      (i.item_number||"").toLowerCase().includes(q) ||
+      (i.category||"").toLowerCase().includes(q)
+    ).slice(0, 80);
+  }, [invMats, search]);
+
+  const fmtP = v => v > 0 ? `$${v.toFixed(2)}` : "—";
+
+  return (
+    <div className="border-t border-gray-100 mt-2">
+      <button onClick={()=>setOpen(o=>!o)}
+        className="flex items-center gap-1.5 text-xs text-blue-700 hover:text-blue-900 py-1.5 font-medium w-full">
+        <span>{open ? "▾" : "▸"}</span>
+        <span>📦 Inventory Materials & Assemblies Lookup</span>
+        {matchAssembly && <span className="bg-blue-100 text-blue-700 rounded px-1.5 py-0.5 text-[10px] ml-1">Assembly available</span>}
+      </button>
+
+      {open && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-2">
+          {/* Tabs */}
+          <div className="flex border-b border-gray-200 bg-white">
+            {[
+              {id:"assembly", label:`🔧 Assembly${matchAssembly?" (matched)":""}`},
+              {id:"inventory", label:"📋 Inventory Materials"},
+            ].map(t=>(
+              <button key={t.id} onClick={()=>setTab(t.id)}
+                className={`text-xs px-3 py-2 font-medium border-b-2 transition-colors ${tab===t.id?"border-blue-600 text-blue-700":"border-transparent text-gray-500 hover:text-gray-700"}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {tab==="assembly" && (
+            <div className="p-3">
+              {matchAssembly ? (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <div className="text-xs font-bold text-gray-800">{matchAssembly.description}</div>
+                      <div className="text-[10px] text-gray-400">{matchAssembly.wbs_code} · Ref: {matchAssembly.reference||"—"}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-blue-700">{matchAssembly.total_cost ? `$${matchAssembly.total_cost.toFixed(2)}` : "—"}</div>
+                      <div className="text-[10px] text-gray-400">total assembly cost</div>
+                    </div>
+                  </div>
+                  <table className="w-full text-[10px] border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="text-left px-2 py-1">Description</th>
+                        <th className="text-left px-2 py-1">Inv Code</th>
+                        <th className="text-right px-2 py-1">Qty</th>
+                        <th className="text-left px-2 py-1">UOM</th>
+                        <th className="text-right px-2 py-1">Unit Rate</th>
+                        <th className="text-right px-2 py-1">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {matchAssembly.components.map((c,i)=>(
+                        <tr key={i} className={i%2===0?"bg-white":"bg-gray-50"}>
+                          <td className="px-2 py-0.5 text-gray-700">{c.description}</td>
+                          <td className="px-2 py-0.5 font-mono text-gray-400">{c.inv_code||"—"}</td>
+                          <td className="px-2 py-0.5 text-right">{c.qty}</td>
+                          <td className="px-2 py-0.5 text-gray-400">{c.uom}</td>
+                          <td className="px-2 py-0.5 text-right">{c.unit_price ? `$${c.unit_price.toFixed(2)}` : "—"}</td>
+                          <td className="px-2 py-0.5 text-right font-semibold">{c.total ? `$${c.total.toFixed(2)}` : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              ) : (
+                <div className="text-xs text-gray-400 py-4 text-center">No pre-built assembly found for WBS {wbsCode}</div>
+              )}
+            </div>
+          )}
+
+          {tab==="inventory" && (
+            <div className="p-2">
+              <input value={search} onChange={e=>setSearch(e.target.value)}
+                placeholder="Search inventory by description, item number or category…"
+                className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs mb-2 focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+              <div className="max-h-48 overflow-y-auto">
+                <table className="w-full text-[10px] border-collapse">
+                  <thead className="sticky top-0 bg-gray-100">
+                    <tr>
+                      <th className="text-left px-2 py-1">Item #</th>
+                      <th className="text-left px-2 py-1">Description</th>
+                      <th className="text-left px-2 py-1">Category</th>
+                      <th className="text-left px-2 py-1">UOM</th>
+                      <th className="text-right px-2 py-1">Last Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredInv.map((item,i)=>(
+                      <tr key={i} className={i%2===0?"bg-white":"bg-gray-50"}>
+                        <td className="px-2 py-0.5 font-mono text-gray-500">{item.item_number}</td>
+                        <td className="px-2 py-0.5 text-gray-700">{item.description}</td>
+                        <td className="px-2 py-0.5 text-gray-400">{item.category}</td>
+                        <td className="px-2 py-0.5 text-gray-400">{item.uom}</td>
+                        <td className="px-2 py-0.5 text-right font-semibold text-blue-700">{fmtP(item.last_price)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {!search && invMats.length > 50 && (
+                  <div className="text-[10px] text-gray-400 text-center py-1">Showing 50 of {invMats.length} — search to filter</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Thin wrapper that scrolls the selected commissioning group into view
+function CommScrollList({ selectedCommGroup, children }) {
+  const containerRef = useRef(null);
+  useEffect(()=>{
+    if (!selectedCommGroup || !containerRef.current) return;
+    const el = containerRef.current.querySelector(`[data-comm-group="${selectedCommGroup}"]`);
+    if (el) el.scrollIntoView({ behavior:"smooth", block:"start" });
+  },[selectedCommGroup]);
+  return <div ref={containerRef} className="flex-1 overflow-y-auto">{children}</div>;
+}
+
+function EstimationScreen({ isCommercial, lines, setLines }) {
+  const { wbs, supply, rates, loading, commLookup, commProfiles } = useData();
+  const ratesLookup = useMemo(() => {
+    const map = {};
+    (rates||[]).forEach(r => { map[r.resource_type] = r; });
+    return map;
+  }, [rates]);
+
+  // Pre-compute L3 group base totals for percentage-of-total prelim items.
+  // For each L3 group, sum contractor costs of all non-prelim items.
+  // "ee" basis: sum EE labour costs of all non-prelim items.
+  const pctBaseLookup = useMemo(() => {
+    const groupContr = {}; // l3 → total contractor cost
+    const groupEE    = {}; // l3 → total EE labour cost
+    supply.forEach(item => {
+      if (item.pct_of_total) return; // skip the prelim items themselves
+      const ln  = lines[item.wbs_code] || {};
+      const qty = parseFloat(ln.qty || "0");
+      if (!qty) return;
+      const l3 = item.wbs_code.split(".").slice(0, 3).join(".");
+      const c  = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery,
+                          ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats,
+                          isCommercial, ln.resourceOvrd, ratesLookup, 0);
+      groupContr[l3] = (groupContr[l3] || 0) + (c.contrCost || 0);
+      groupEE[l3]    = (groupEE[l3]    || 0) + (c.eeLabCost || 0);
+    });
+    // Return lookup: wbs_code → pctBase value
+    const lookup = {};
+    supply.forEach(item => {
+      if (!item.pct_of_total) return;
+      const l3   = item.wbs_code.split(".").slice(0, 3).join(".");
+      const base = item.pct_basis === "ee" ? (groupEE[l3] || 0) : (groupContr[l3] || 0);
+      lookup[item.wbs_code] = base;
+    });
+    return lookup;
+  }, [supply, lines, isCommercial, ratesLookup]);
+  const [activePhase, setActivePhase]   = useState(3);
+  const [selectedL4, setSelectedL4]     = useState("3.1.3.04");
+  const [selectedCommGroup, setSelectedCommGroup] = useState(null);
+  const [expandedRows, setExpandedRows] = useState({});
+  // Resource code overrides — keyed by install_wbs/commission_wbs so changes
+  // propagate to ALL supply items sharing that linked WBS code
+  const [resourceOvrd, setResourceOvrdState] = useState({}); // {wbs: {install?, comm?}}
+  const setResourceOvrd = (wbs, role, val) => {
+    if (!wbs) return;
+    setResourceOvrdState(p=>({...p,[wbs]:{...p[wbs],[role]:val}}));
+  };
+  // PIN lock for resource code + install hrs editing
+  const RESOURCE_PIN = "1607";
+  const [resourceUnlocked, setResourceUnlocked] = useState(false);
+  const [showResourcePin,  setShowResourcePin]  = useState(false);
+  const [resPinInput,      setResPinInput]      = useState("");
+  const [resPinError,      setResPinError]      = useState(false);
+  const resPinRef = useRef(null);
+  const tryResourceUnlock = () => {
+    if (resPinInput === RESOURCE_PIN) {
+      setResourceUnlocked(true); setShowResourcePin(false);
+      setResPinInput(""); setResPinError(false);
+    } else {
+      setResPinError(true); setResPinInput("");
+      setTimeout(()=>setResPinError(false), 2000);
+    }
+  };
+  const [navSearch, setNavSearch]       = useState("");
+
+  // Filter supply items for selected L4 group — keep Supply and Install separate
+  const allL4Items = useMemo(()=>{
+    if (!selectedL4) return [];
+    if (navSearch) {
+      return supply.filter(s=>
+        s.description?.toLowerCase().includes(navSearch.toLowerCase()) ||
+        s.wbs_code?.toLowerCase().includes(navSearch.toLowerCase())
+      ).slice(0,50);
+    }
+    return supply.filter(s=>s.l4_group===selectedL4);
+  },[supply, selectedL4, navSearch]);
+
+  // Separate Supply rows from Install rows:
+  // "Direct-entry" Install rows (no install_wbs parent link) are shown as regular estimatable
+  // items — civil earthworks, cable trenching, conductor stringing etc. are priced this way.
+  // "Derived" Install rows (have supply items that propagate qty to them) sit in the install
+  // section at the bottom and are shown auto-derived, not directly enterable.
+  const isDerivedInstall = (s) => s.scope === "Install" && !!s.install_wbs;
+  const items = useMemo(()=>
+    allL4Items.filter(s => s.scope !== "Install" || !s.install_wbs),
+  [allL4Items]);
+  const installItems = useMemo(()=>
+    allL4Items.filter(s => s.scope === "Install" && !!s.install_wbs),
+  [allL4Items]);
+
+  // Build install aggregation: installWbsCode → { item, derivedHrs, derivedQty, linkedSupply[] }
+  // derivedHrs = sum of (enteredQty × factor × install_hrs_per) for each supply item → this install
+  const installAgg = useMemo(()=>{
+    const agg = {};
+    installItems.forEach(inst => {
+      const linked = allL4Items.filter(s => s.scope !== "Install" && s.install_wbs === inst.wbs_code);
+      let derivedHrs = 0;
+      let derivedQty = 0;
+      linked.forEach(sup => {
+        const ln = lines[sup.wbs_code] || {};
+        const q  = parseFloat(ln.qty || "0");
+        const f  = parseFloat(ln.factor || "1");
+        const h  = sup.install_hrs_per || 0;
+        derivedHrs += q * f * h;
+        derivedQty += q * f;
+      });
+      // Check for manual override on this install row
+      const instLn  = lines[inst.wbs_code] || {};
+      const ovrdHrs = instLn.instHrsOvrd !== "" && instLn.instHrsOvrd != null
+        ? parseFloat(instLn.instHrsOvrd) || 0
+        : null;
+      const activeHrs = ovrdHrs !== null ? ovrdHrs : derivedHrs;
+      // Delivery method for this install row (default from data or override)
+      const delivery  = instLn.delivery || inst.delivery_method || "EE Delivered";
+      const isContr   = delivery === "Contractor Delivered";
+      // Resource override
+      const resName   = resourceOvrd[inst.wbs_code]?.install || inst.resource_main || "ZS Electrical Technician";
+      const resData   = ratesLookup[resName];
+      const eeRate    = isCommercial
+        ? (resData?.ee_commercial_rate || inst.ee_labour_rate || 246.95)
+        : (resData?.ee_internal_rate   || inst.ee_labour_rate || 246.95);
+      const contrRate = parseFloat(instLn.contrRate || "") || inst.contractor_rate || 0;
+      // Cost calc
+      const eeLabCost   = isContr ? 0 : activeHrs * eeRate;
+      const contrCost   = isContr ? derivedQty * contrRate : 0;
+      const eeInt       = eeLabCost + contrCost;
+      const comm        = isContr ? contrCost * (1+ANS_CON) : eeLabCost * (1+ANS_LAB);
+      agg[inst.wbs_code] = {
+        item: inst, linked, derivedHrs, derivedQty,
+        ovrdHrs, activeHrs, delivery, isContr,
+        resName, eeRate, contrRate, eeLabCost, contrCost, eeInt, comm,
+        isOverridden: ovrdHrs !== null,
+      };
+    });
+    return agg;
+  }, [installItems, allL4Items, lines, ratesLookup, isCommercial, resourceOvrd]);
+
+  // L4 label
+  const l4label = useMemo(()=>{
+    const found = wbs.find(w=>w.wbs_code===selectedL4);
+    return found?.description || selectedL4;
+  },[wbs, selectedL4]);
+
+  const getLine = code => lines[code] || {};
+  // ── DIRECT-ENTRY CLASSIFICATION ─────────────────────────────────
+  // Install rows with no supply parent that need estimator-entered hrs (no pre-set rate or hrs)
+  const MANUAL_HRS_INSTALLS = new Set([
+    "3.1.3.07.4.04","3.1.3.07.4.05",   // System spare power transformers - no standard hrs
+    "3.1.3.14.4.03",                     // Cable run set-up - site-specific
+    "3.1.3.24.4.01","3.1.3.24.4.02","3.1.3.24.4.03", // Security installations (S/M/L)
+    "3.2.1.06.4.07","3.2.2.02.4.08",    // Optical fibre splicing 96C - no standard hrs
+    "3.3.1.05.4.03",                     // Cable run set-up ST Mains
+  ]);
+  const updLine = (code, key, val) => setLines(p=>({...p,[code]:{...p[code],[key]:val}}));
+
+  const calcItem = useCallback((item)=>{
+    const ln = getLine(item.wbs_code);
+    return calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, ratesLookup, pctBaseLookup[item.wbs_code] || 0);
+  },[lines, isCommercial]);
+
+  const groupTotals = useMemo(()=>items.reduce((a,it)=>{
+    const c=calcItem(it);
+    // commHrs from supply items must NOT appear in construction totals —
+    // commissioning hours are accounted for separately via Phase 4 commTotals
+    return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs,eeTotal:a.eeTotal+c.eeInt,commTotal:a.commTotal+c.comm};
+  },{installHrs:0,commHrs:0,eeTotal:0,commTotal:0}),[items,calcItem]);
+
+  const investTotals = useMemo(()=>supply.reduce((a,it)=>{
+    const c=calcItem(it);
+    return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs,eeTotal:a.eeTotal+c.eeInt,commTotal:a.commTotal+c.comm};
+  },{installHrs:0,commHrs:0,eeTotal:0,commTotal:0}),[supply,calcItem]);
+
+  const linesEntered = Object.values(lines).filter(l=>parseFloat(l.qty)>0 && !l._commOvrd).length;
+
+  // ── PHASE 4 COMMISSIONING — derived from supply links ──────────
+  const commTotals = useMemo(()=>{
+    const m = {};
+    supply.forEach(item => {
+      const commWbs = item.commission_wbs;
+      if (!commWbs || !commLookup[commWbs]) return;
+      if (commLookup[commWbs].direct_entry) return; // qty entered directly, not auto-derived
+      const qty    = parseFloat(lines[item.wbs_code]?.qty || "0");
+      const factor = parseFloat(lines[item.wbs_code]?.factor || "1");
+      if (!m[commWbs]) m[commWbs] = { qty:0, ...commLookup[commWbs] };
+      m[commWbs].qty += qty * factor;
+    });
+    return m;
+  },[supply, lines, commLookup]);
+
+  const commGroups = useMemo(()=>{
+    const g = {};
+    Object.entries(commTotals).forEach(([commWbs, data])=>{
+      if (data.qty <= 0) return;
+      if (commLookup[commWbs]?.direct_entry) return; // handled by direct-entry section below
+      const l4 = commWbs.split('.').slice(0,4).join('.');
+      if (!g[l4]) g[l4] = { items:[], totalHrs:0, totalCost:0 };
+      const scale     = getScaleFactor(commProfiles, data.profile_id, data.qty);
+      const baseHrs   = data.qty * (data.hrs_per_unit || 0);
+      const ovrdKey   = `comm_ovrd_${commWbs}`;
+      const ovrd      = lines[ovrdKey]?.qty;
+      const scaledHrs = (ovrd !== undefined && ovrd !== "") ? (parseFloat(ovrd)||0) : baseHrs * scale;
+      const rate      = data.ee_labour_rate || 139.26;
+      g[l4].items.push({ commWbs, ...data, scale, baseHrs, scaledHrs, rate, isOverridden: ovrd !== undefined && ovrd !== "" });
+      g[l4].totalHrs  += scaledHrs;
+      g[l4].totalCost += scaledHrs * rate;
+    });
+    return g;
+  },[commTotals, commProfiles, lines]);
+
+  const commGrandHrs  = Object.values(commGroups).reduce((a,g)=>a+g.totalHrs, 0);
+  const commGrandCost = Object.values(commGroups).reduce((a,g)=>a+g.totalCost, 0);
+
+  // ALL 144 commission rows — always visible even when qty=0
+  const commAllGroups = useMemo(()=>{
+    const g = {};
+    Object.entries(commLookup).forEach(([commWbs, data])=>{
+      const l4 = commWbs.split('.').slice(0,4).join('.');
+      if (!g[l4]) g[l4] = { label: data.description?.split(' - ')[0] || l4, items:[], totalHrs:0, totalCost:0 };
+      const derivedQty = commTotals[commWbs]?.qty || 0;
+      const scale      = getScaleFactor(commProfiles, data.profile_id, derivedQty);
+      const baseHrs    = derivedQty * (data.hrs_per_unit || 0);
+      const ovrdKey    = `comm_ovrd_${commWbs}`;
+      const ovrd       = lines[ovrdKey]?.qty;
+      const scaledHrs  = (ovrd !== undefined && ovrd !== "") ? (parseFloat(ovrd)||0) : baseHrs * scale;
+      const rate       = data.ee_labour_rate || 139.26;
+      const item       = { wbs:commWbs, ...data, derivedQty, scale, baseHrs, scaledHrs, rate, isOverridden: ovrd !== undefined && ovrd !== "" };
+      g[l4].items.push(item);
+      if (derivedQty > 0) {
+        g[l4].totalHrs  += scaledHrs;
+        g[l4].totalCost += scaledHrs * rate;
+      }
+    });
+    return g;
+  },[commLookup, commTotals, commProfiles, lines]);
+
+  // When navigating to Phase 4 — select the first active commissioning group
+  useEffect(()=>{
+    if (activePhase === 4) {
+      const keys = Object.keys(commAllGroups).sort();
+      if (keys.length > 0 && (!selectedCommGroup || !commAllGroups[selectedCommGroup]))
+        setSelectedCommGroup(keys[0]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[activePhase]);
+
+  // When a Phase 4 L4 is selected in the nav tree, jump to that commissioning group
+  useEffect(()=>{
+    if (activePhase === 4 && selectedL4 && commAllGroups[selectedL4]) {
+      setSelectedCommGroup(selectedL4);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[selectedL4, activePhase]);
+
+  if (loading) return (
+    <div className="flex-1 flex items-center justify-center bg-gray-50">
+      <div className="text-center text-gray-400">
+        <div className="text-3xl mb-3 animate-spin">⟳</div>
+        <div className="text-sm font-semibold">Loading WBS data…</div>
+        <div className="text-xs mt-1">Fetching 1,431 supply items from GitHub</div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-1 overflow-hidden">
+      {/* Resource Code PIN Modal */}
+      {showResourcePin && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={()=>{setShowResourcePin(false);setResPinInput("");}}>
+          <div className="bg-white rounded-xl shadow-xl p-6 w-72" onClick={e=>e.stopPropagation()}>
+            <div className="text-center mb-4">
+              <div className="text-3xl mb-2">🔐</div>
+              <div className="font-bold text-gray-900">Unlock Resource Codes</div>
+              <div className="text-xs text-gray-500 mt-1">Enter your manager PIN to edit resource codes and install hours</div>
+            </div>
+            <input
+              ref={resPinRef}
+              type="password" maxLength={8}
+              value={resPinInput} onChange={e=>setResPinInput(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&tryResourceUnlock()}
+              placeholder="PIN"
+              autoFocus
+              className={`w-full text-center text-2xl font-mono tracking-widest border-2 rounded-lg px-3 py-3 mb-3 focus:outline-none ${resPinError?"border-red-500 bg-red-50 animate-pulse":"border-gray-300 focus:border-blue-500"}`}
+            />
+            {resPinError && <div className="text-xs text-red-600 text-center mb-2">Incorrect PIN — try again</div>}
+            <div className="flex gap-2">
+              <button onClick={()=>{setShowResourcePin(false);setResPinInput("");}}
+                className="flex-1 text-xs border border-gray-200 text-gray-600 py-2 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={tryResourceUnlock}
+                className="flex-1 text-xs bg-blue-700 hover:bg-blue-600 text-white py-2 rounded-lg font-semibold">Unlock</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* LEFT — WBS Nav */}
+      <WBSNavTree
+        wbs={wbs} supply={supply}
+        activePhase={activePhase} setActivePhase={setActivePhase}
+        selectedL4={selectedL4} onSelectL4={setSelectedL4}
+        searchText={{nav:navSearch, setNav:setNavSearch}}
+      />
+
+      {/* CENTRE + RIGHT — Phase 4 shows ALL commissioning rows; Phases 1-3/5 show supply items */}
+      {activePhase === 4 ? (
+        <>
+          {/* COMMISSIONING — all 144 rows always visible, live-updating */}
+          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+            <div className="bg-teal-800 text-white px-4 py-2 flex items-center justify-between flex-shrink-0">
+              <div>
+                <div className="font-bold text-sm">Phase 4 — Commissioning</div>
+                <div className="text-xs opacity-75">All items shown · Qty auto-derived from supply (DIRECT items: enter qty manually) · Scale applied · Override hrs if needed</div>
+              </div>
+              <div className="text-right text-xs">
+                <div className="font-bold">{fmtHrs(commGrandHrs)} total hrs</div>
+                <div className="font-bold">{fmt(commGrandCost)} EE internal</div>
+                {isCommercial && <div className="font-bold text-orange-300">{fmt(commGrandCost*(1+ANS_LAB))} comm</div>}
+              </div>
+            </div>
+            <div className="bg-gray-50 border-b grid flex-shrink-0 text-xs font-semibold text-gray-500 px-3 py-1.5"
+              style={{gridTemplateColumns:"1fr 52px 64px 52px 76px 76px 86px 64px"}}>
+              <div>Description / WBS</div>
+              <div className="text-center">Hrs/Unit</div>
+              <div className="text-center text-orange-700">Derived Qty</div>
+              <div className="text-center text-blue-700">Scale</div>
+              <div className="text-center text-teal-700">Scaled Hrs</div>
+              <div className="text-center text-orange-500">Override</div>
+              <div className="text-right text-blue-800">EE Cost</div>
+              <div className="text-center">Profile</div>
+            </div>
+            <CommScrollList selectedCommGroup={selectedCommGroup}>
+              {Object.entries(commAllGroups).sort().map(([l4, group]) => {
+                const hasActive = group.items.some(i => i.derivedQty > 0);
+                const isSelected = l4 === selectedCommGroup;
+                return (
+                  <div key={l4}>
+                    <div
+                      data-comm-group={l4}
+                      className={`px-3 py-1 flex items-center gap-2 border-b-2 text-xs font-bold uppercase tracking-wide cursor-pointer transition-colors
+                        ${l4===selectedCommGroup
+                          ? "bg-[#1e3a5f] text-white border-blue-400"
+                          : hasActive
+                            ? "bg-teal-700 text-white border-teal-500"
+                            : "bg-gray-100 text-gray-500 border-gray-300"}`}
+                      onClick={()=>setSelectedCommGroup(l4===selectedCommGroup?null:l4)}>
+                      <span className="font-mono font-normal opacity-70">{l4}</span>
+                      <span className="flex-1 truncate">{group.label}</span>
+                      {hasActive && <span className="font-mono font-bold">{fmtHrs(group.totalHrs)}</span>}
+                    </div>
+                    {/* Items always visible — highlighted group scrolls into view via id */}
+                    {group.items.map(item => {
+                      const ovrdKey    = `comm_ovrd_${item.wbs}`;
+                      const directKey  = `comm_direct_${item.wbs}`;
+                      const ovrd       = lines[ovrdKey]?.qty ?? "";
+                      const directQtyVal = lines[directKey]?.qty ?? "";
+                      const setOvrd    = val => setLines(p=>({...p,[ovrdKey]:{qty:val,_commOvrd:true}}));
+                      const setDirect  = val => setLines(p=>({...p,[directKey]:{qty:val,_commOvrd:true}}));
+                      const isOvrd     = ovrd !== "" && ovrd !== undefined;
+                      const effectiveHrs = isOvrd ? (parseFloat(ovrd)||0) : item.scaledHrs;
+                      const cost       = effectiveHrs * (item.ee_labour_rate||139.26);
+                      const hasQty     = item.derivedQty > 0;
+                      return (
+                        <div key={item.wbs}
+                          className={`grid items-center px-3 py-1.5 border-b text-xs
+                            ${hasQty||directQtyVal?"bg-teal-50":"bg-white hover:bg-gray-50"}
+                            ${item.isDirectEntry?"border-l-4 border-l-teal-400":""}
+                            ${isOvrd?"border-l-4 border-l-orange-400":""}`}
+                          style={{gridTemplateColumns:"1fr 52px 64px 52px 76px 76px 86px 64px"}}>
+                          <div className="min-w-0 pr-1">
+                            <div className={`truncate font-medium ${hasQty||directQtyVal?"text-teal-900":"text-gray-500"}`}>
+                              {item.description}
+                              {item.isDirectEntry && (
+                                item.wbs.startsWith("4.1.1.01")
+                                  ? <span className="ml-1.5 text-[9px] bg-amber-100 text-amber-700 border border-amber-300 rounded px-1 font-semibold">⚡ Enter hrs — earthing commission varies per site</span>
+                                  : item.wbs.startsWith("4.1.3.05")
+                                  ? <span className="ml-1.5 text-[9px] bg-amber-100 text-amber-700 border border-amber-300 rounded px-1 font-semibold">⚡ Enter hrs — PSN/CSN test count varies</span>
+                                  : item.wbs.startsWith("4.1.2.06.7.04")
+                                  ? <span className="ml-1.5 text-[9px] bg-blue-100 text-blue-700 border border-blue-200 rounded px-1 font-semibold">Enter hrs — contractor supervision</span>
+                                  : <span className="ml-1.5 text-[9px] bg-teal-100 text-teal-700 border border-teal-200 rounded px-1 font-semibold">Estimator enters qty</span>
+                              )}
+                            </div>
+                            <div className="font-mono text-gray-400 text-xs">{item.wbs}{isOvrd&&<span className="ml-1 text-orange-500">⚡ override</span>}</div>
+                          </div>
+                          <div className="text-center text-gray-500">{item.hrs_per_unit||0}</div>
+                          <div className="text-center font-bold">
+                            {item.isDirectEntry ? (
+                              <input type="number" min="0" step="1" value={directQtyVal}
+                                onChange={e=>setDirect(e.target.value)}
+                                placeholder="0"
+                                title="Enter quantity directly — hours = qty × hrs/unit"
+                                className="w-14 text-center border-2 border-teal-400 rounded py-0.5 text-xs font-bold bg-teal-50 text-teal-800 focus:outline-none focus:ring-1 focus:ring-teal-500"/>
+                            ) : (
+                              <span className={hasQty?"text-orange-700":"text-gray-300"}>
+                                {hasQty ? item.derivedQty.toLocaleString("en-AU",{maximumFractionDigits:1}) : "—"}
+                              </span>
+                            )}
+                          </div>
+                          <div className={`text-center font-bold ${hasQty&&item.scale<1?"text-blue-700":hasQty?"text-gray-400":"text-gray-200"}`}>
+                            {fmtPct(item.scale)}
+                          </div>
+                          <div className={`text-center font-bold ${hasQty||directQtyVal?"text-teal-700":"text-gray-300"}`}>
+                            {(hasQty||directQtyVal) ? fmtHrs(item.scaledHrs) : "—"}
+                          </div>
+                          <div className="flex justify-center">
+                            <input type="number" min="0" step="0.5" value={ovrd}
+                              onChange={e=>setOvrd(e.target.value)}
+                              placeholder={(hasQty||directQtyVal)?item.scaledHrs.toFixed(1):""}
+                              className={`w-16 text-center border rounded py-0.5 text-xs font-bold focus:outline-none focus:ring-1
+                                ${isOvrd?"border-orange-400 bg-orange-50 text-orange-800":"border-gray-200 text-gray-400"}`}/>
+                          </div>
+                          <div className={`text-right font-bold ${hasQty||directQtyVal?"text-blue-800":"text-gray-300"}`}>
+                            {(hasQty||directQtyVal) ? fmt(cost) : "—"}
+                          </div>
+                          <div className="text-center">
+                            {item.profile_id ? (
+                              <span className={`text-xs px-1 py-0.5 rounded font-medium ${
+                                item.profile_status==="Confirmed"?"bg-green-100 text-green-700":
+                                "bg-yellow-100 text-yellow-700"}`}>
+                                {item.profile_id==="HV_PLANT_OUTDOOR"?"HV-O":
+                                 item.profile_id==="HV_PLANT_INSTRUMENT"?"HV-I":
+                                 item.profile_id==="PROTECTION_STANDARD"?"PROT":
+                                 item.profile_id==="SCADA_RTC"?"SCADA":
+                                 item.profile_id==="COMMS_STANDARD"?"COMMS":"—"}
+                              </span>
+                            ) : <span className="text-gray-300">—</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </CommScrollList>
+          </div>
+
+
+
+          {/* RIGHT — commissioning summary */}
+          <div className="w-52 bg-white border-l flex flex-col overflow-hidden flex-shrink-0">
+            <div className="bg-teal-800 text-white text-xs font-bold px-3 py-2 uppercase tracking-wide">Commissioning Totals</div>
+            <div className="flex-1 overflow-y-auto">
+              {Object.entries(commAllGroups).filter(([,g])=>g.totalHrs>0).sort().map(([l4,g])=>(
+                <div key={l4} className="px-3 py-1.5 border-b text-xs">
+                  <div className="font-mono text-gray-400">{l4}</div>
+                  <div className="flex justify-between">
+                    <span className="text-teal-700 font-bold">{fmtHrs(g.totalHrs)}</span>
+                    <span className="text-blue-800 font-bold">{fmt(g.totalCost)}</span>
+                  </div>
+                </div>
+              ))}
+              {Object.values(commAllGroups).every(g=>g.totalHrs===0) && (
+                <div className="p-3 text-xs text-gray-400 text-center">Enter supply quantities to see costs</div>
+              )}
+            </div>
+            <div className="border-t px-3 py-2 space-y-1">
+              <div className="flex justify-between text-xs font-bold text-teal-700 border-b pb-1 mb-1">
+                <span>Total Comm Hrs</span><span>{fmtHrs(commGrandHrs)}</span>
+              </div>
+              <div className="py-1.5 px-2 bg-blue-800 rounded text-white flex justify-between mb-1">
+                <span className="text-xs font-semibold">EE Internal</span>
+                <span className="text-xs font-bold">{fmt(commGrandCost)}</span>
+              </div>
+              {isCommercial && <div className="py-1.5 px-2 bg-orange-600 rounded text-white flex justify-between">
+                <span className="text-xs font-semibold">Commercial</span>
+                <span className="text-xs font-bold">{fmt(commGrandCost*(1+ANS_LAB))}</span>
+              </div>}
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div className="bg-white border-b px-4 py-2 flex items-center justify-between flex-shrink-0">
+          <div>
+            <div className="font-bold text-blue-900 text-sm">{selectedL4} — {l4label}</div>
+            <div className="text-xs text-gray-400 flex items-center gap-2">
+              {items.length} items · Click ▸ to expand cost detail
+              {items.some(i=>i._priceFromEquipPricing) && (
+                <span className="text-orange-600 text-[10px] bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded flex items-center gap-1">
+                  ⚡ Prices updated from Equipment Pricing this session
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded border">
+            {items.filter(i=>parseFloat(getLine(i.wbs_code).qty||"0")>0).length} of {items.length} with quantities
+          </div>
+        </div>
+        {/* Column headers */}
+        <div className="bg-gray-50 border-b text-xs font-semibold text-gray-500 px-3 py-1.5 grid flex-shrink-0"
+          style={{gridTemplateColumns:"16px 1fr 46px 72px 64px 90px 56px"}}>
+          <div/><div>Description / WBS Code</div>
+          <div className="text-center">UOM</div>
+          <div className="text-center text-orange-700">Qty</div>
+          <div className="text-center">Factor</div>
+          <div className="text-center text-orange-700 text-[9px] font-normal leading-tight">Materials<br/>cost only</div>
+          <div className="text-center text-gray-400">Expand</div>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {items.length === 0 && installItems.length === 0 && (
+            <div className="flex items-center justify-center h-48 text-gray-400 text-sm">
+              {navSearch ? "No items match search" : "Select a WBS group from the left"}
+            </div>
+          )}
+          {items.map((item,idx)=>{
+            const ln = getLine(item.wbs_code);
+            const qty = ln.qty||"";
+            const factor = ln.factor||"1";
+            const hasQty = parseFloat(qty)>0;
+            const isExp  = !!expandedRows[item.wbs_code];
+            const c = calcItem(item);
+            const delivery = ln.delivery || item.delivery_method || "EE Delivered";
+            const isContr  = delivery === "Contractor Delivered";
+            const rowBase  = hasQty?"bg-blue-50 border-l-4 border-l-blue-500":idx%2===0?"bg-white":"bg-gray-50";
+            return (
+              <div key={item.wbs_code} className={`border-b ${rowBase} transition-colors`}>
+                <div className="grid items-center px-3 py-2 text-xs"
+                  style={{gridTemplateColumns:"16px 1fr 46px 72px 64px 90px 56px"}}>
+                  <button onClick={()=>setExpandedRows(p=>({...p,[item.wbs_code]:!p[item.wbs_code]}))}
+                    className={`text-center rounded text-xs w-4 h-4 flex items-center justify-center ${isExp?"bg-blue-600 text-white":"text-gray-300 hover:text-blue-500"}`}>
+                    {isExp?"▾":"▸"}
+                  </button>
+                  <div className="min-w-0 pr-2">
+                    <div className={`font-medium truncate ${hasQty?"text-blue-900":"text-gray-800"}`}>{item.description}</div>
+                    <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                      <span className="text-gray-400 font-mono text-xs">{item.wbs_code}</span>
+                      {item.scope === "Install" && !item.install_wbs && (
+                        MANUAL_HRS_INSTALLS.has(item.wbs_code)
+                          ? <span className="text-xs text-amber-700 bg-amber-50 border border-amber-300 rounded px-1 font-semibold">⚠ Hrs required — enter in cost detail</span>
+                          : <span className="text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded px-1 font-semibold">Direct-entry · Contractor</span>
+                      )}
+                      {item.pce_price>0 && <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-1">PCE {fmt(item.pce_price)}</span>}
+                      {isContr
+                        ? <span className="text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded px-1">Contractor</span>
+                        : item.resource_main && item.resource_main !== "Supplier" &&
+                          <span className="text-xs text-purple-600 bg-purple-50 border border-purple-200 rounded px-1">{item.resource_main}</span>
+                      }
+                      {item.resource_install && item.install_hrs_per>0 &&
+                        <span className="text-xs text-blue-500 bg-blue-50 border border-blue-200 rounded px-1">Install: {resourceOvrd[item.install_wbs]?.install || item.resource_install}</span>}
+                      {isWAFHAItem(item) &&
+                        <span className="text-xs text-amber-700 bg-amber-50 border border-amber-300 rounded px-1 font-semibold">WAFHA · day rate</span>}
+                    </div>
+                  </div>
+                  <div className="text-center text-gray-500">{item.uom||"EA"}</div>
+                  <div className="flex justify-center">
+                    <input type="number" min="0" value={qty} onChange={e=>updLine(item.wbs_code,"qty",e.target.value)}
+                      onKeyDown={e=>e.key==="Enter"&&e.currentTarget.blur()}
+                      placeholder="0"
+                      className={`w-16 text-center border rounded py-0.5 text-sm font-bold focus:outline-none focus:ring-1 focus:ring-orange-400 ${hasQty?"border-orange-400 bg-orange-50 text-orange-800":"border-gray-300 text-gray-500"}`}/>
+                  </div>
+                  <div className="flex justify-center">
+                    <input type="number" min="0.1" step="0.1" value={factor}
+                      onChange={e=>updLine(item.wbs_code,"factor",e.target.value)}
+                      onKeyDown={e=>e.key==="Enter"&&e.currentTarget.blur()}
+                      className={`w-14 text-center border rounded py-0.5 text-xs focus:outline-none focus:ring-1 ${parseFloat(factor)!==1?"border-blue-400 bg-blue-50 text-blue-800 font-bold":"border-gray-200 text-gray-500"}`}/>
+                  </div>
+                  <div className="text-center">
+                    {isWAFHAItem(item)
+                      ? (hasQty ? <span className="text-xs bg-amber-100 text-amber-700 border border-amber-200 rounded px-1 font-semibold">{parseFloat(qty).toLocaleString("en-AU",{maximumFractionDigits:1})} days</span> : <span className="text-gray-300">–</span>)
+                      : item.install_wbs
+                        ? <span className="text-[9px] text-purple-500 bg-purple-50 border border-purple-200 rounded px-1">↓ install row</span>
+                        : hasQty && c.installHrs > 0
+                          ? <span className="text-xs font-bold text-purple-700">{fmtHrs(c.installHrs)}</span>
+                          : <span className="text-gray-300">–</span>
+                    }
+                  </div>
+                  <div className="text-center text-gray-300 text-xs">{isExp?"▲ close":"▸ costs"}</div>
+                </div>
+
+                {isExp && (
+                  <div className="mx-3 mb-3 rounded-lg border border-blue-200 bg-white shadow-sm overflow-hidden">
+                    <div className="bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        Cost Detail — {item.description?.split(" - ")[0]}
+                        {item.comments && (
+                          <span className="relative group">
+                            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-400 text-white text-xs cursor-help hover:bg-white hover:text-blue-700 font-bold">i</span>
+                            <span className="invisible group-hover:visible absolute left-0 top-6 z-50 w-80 bg-gray-900 text-white text-xs font-normal rounded-lg shadow-xl p-3 leading-relaxed">
+                              <span className="block font-bold text-blue-300 mb-1">Database & Scope Notes</span>
+                              {item.comments}
+                            </span>
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-3">
+                        <span className="text-blue-200 font-normal">
+                          {isContr
+                            ? `Contractor · Install: ${item.resource_install||item.resource_main||"—"} · Comm: ${item.resource_comm||"—"}`
+                            : `${item.resource_main||"EE"} · Install: ${item.resource_install||item.resource_main||"—"} · Comm: ${item.resource_comm||"—"}`
+                          }
+                          {isWAFHAItem(item)
+                            ? ` · WAFHA/Accommodation — UOM: day · Rate: ${fmt(item.ee_labour_rate||359.50)}/day · No install hrs`
+                            : `· Std: ${item.install_hrs_per}h install · ${item.comm_hrs_per}h comm · ${fmt(item.ee_labour_rate)}/hr`
+                          }
+                        </span>
+                      </span>
+                    </div>
+                    <div className="p-3 grid gap-3">
+                      <div className="grid grid-cols-4 gap-3">
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-0.5">Delivery Method</label>
+                          <select value={delivery} onChange={e=>updLine(item.wbs_code,"delivery",e.target.value)}
+                            className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white w-full focus:outline-none focus:ring-1 focus:ring-blue-400">
+                            <option>EE Delivered</option><option>Contractor Delivered</option>
+                          </select>
+                        </div>
+                        <div>
+                          {/* If item has no install_wbs, show Main Resource dropdown instead —
+                              allows the estimator to correct the resource driving costs for
+                              EE Delivered items that aren't part of a supply chain */}
+                          {item.install_wbs ? (
+                            <>
+                              <label className="text-xs text-gray-500 block mb-0.5">Install Resource Code</label>
+                              <select
+                                value={(resourceOvrd[item.install_wbs]?.install) || item.resource_install || "ZS Electrical Technician"}
+                                onChange={e=>setResourceOvrd(item.install_wbs, "install", e.target.value)}
+                                className="text-xs border border-indigo-300 bg-indigo-50 rounded px-1.5 py-1 bg-white w-full focus:outline-none focus:ring-1 focus:ring-indigo-400">
+                                {RESOURCE_TYPES.map(r=><option key={r}>{r}</option>)}
+                              </select>
+                              <div className="text-xs text-indigo-400 mt-0.5">↳ {item.install_wbs}</div>
+                            </>
+                          ) : (
+                            <>
+                              <label className="text-xs text-gray-500 block mb-0.5">
+                                Main Resource Code
+                                <span className="ml-1 text-gray-400 font-normal">(this item)</span>
+                              </label>
+                              <select
+                                value={ln.resourceOvrd || item.resource_main || "ZS Electrical Technician"}
+                                onChange={e=>updLine(item.wbs_code, "resourceOvrd", e.target.value)}
+                                disabled={delivery === "Contractor Delivered"}
+                                className="text-xs border border-indigo-300 bg-indigo-50 rounded px-1.5 py-1 bg-white w-full focus:outline-none focus:ring-1 focus:ring-indigo-400 disabled:bg-gray-100 disabled:text-gray-400">
+                                {RESOURCE_TYPES.map(r=><option key={r}>{r}</option>)}
+                              </select>
+                              {delivery !== "Contractor Delivered" && (
+                                <div className="text-xs text-indigo-400 mt-0.5">
+                                  {ln.resourceOvrd && ln.resourceOvrd !== item.resource_main
+                                    ? `↳ overriding: ${item.resource_main}`
+                                    : `↳ default: ${item.resource_main}`}
                                 </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        <div>
+                          {item.commission_wbs ? (
+                            <>
+                              <label className="text-xs text-gray-500 block mb-0.5">Commission Resource Code</label>
+                              <select
+                                value={(resourceOvrd[item.commission_wbs]?.comm) || item.resource_comm || "ZS Specialist Technician"}
+                                onChange={e=>setResourceOvrd(item.commission_wbs, "comm", e.target.value)}
+                                className="text-xs border border-teal-300 bg-teal-50 rounded px-1.5 py-1 bg-white w-full focus:outline-none focus:ring-1 focus:ring-teal-400">
+                                {RESOURCE_TYPES.map(r=><option key={r}>{r}</option>)}
+                              </select>
+                              <div className="text-xs text-teal-500 mt-0.5">↳ {item.commission_wbs}</div>
+                            </>
+                          ) : (
+                            <>
+                              <label className="text-xs text-gray-500 block mb-0.5">Commission Resource Code</label>
+                              <select disabled className="text-xs border rounded px-1.5 py-1 w-full bg-gray-100 text-gray-400">
+                                <option>— no commission link</option>
+                              </select>
+                              <div className="text-xs text-gray-400 mt-0.5">No commission scope linked</div>
+                            </>
+                          )}
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-0.5">Install Hrs/Unit Override</label>
+                          {isWAFHAItem(item) && <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">WAFHA — day-rated, no install hrs override</div>}
+                          {!isWAFHAItem(item) && <input type="number" min="0" value={ln.instHrsOvrd||""} placeholder={String(item.install_hrs_per||0)}
+                            onChange={e=>updLine(item.wbs_code,"instHrsOvrd",e.target.value)}
+                            onKeyDown={e=>e.key==="Enter"&&e.currentTarget.blur()}
+                            className="w-full text-xs border border-purple-300 bg-purple-50 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-purple-400"/>}
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-0.5">Contractor Rate ($/unit)</label>
+                          {item.pct_of_total ? (
+                            // Percentage-of-total: auto-derived from L3 group total
+                            <>
+                              <div className="w-full text-xs border border-teal-200 bg-teal-50/50 rounded px-1.5 py-1 text-teal-800 font-semibold flex items-center justify-between">
+                                <span className="text-teal-600">{(item.pct_of_total*100).toFixed(0)}% of {item.pct_basis==="ee"?"EE labour":"contractor"} total</span>
+                                <span>= ${Math.round((pctBaseLookup[item.wbs_code]||0)*item.pct_of_total).toLocaleString("en-AU")}</span>
+                              </div>
+                              <div className="text-xs text-gray-400 mt-0.5">L3 {item.pct_basis==="ee"?"EE labour":"contractor"} base: ${Math.round(pctBaseLookup[item.wbs_code]||0).toLocaleString("en-AU")}</div>
+                            </>
+                          ) : (
+                            <>
+                              <input type="number" min="0" value={ln.contrRate||""}
+                                placeholder={item.contractor_rate>0?String(Math.round(item.contractor_rate)):"0"}
+                                onChange={e=>updLine(item.wbs_code,"contrRate",e.target.value)}
+                                onKeyDown={e=>e.key==="Enter"&&e.currentTarget.blur()}
+                                className="w-full text-xs border border-teal-300 bg-teal-50 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400"/>
+                              {item.contractor_rate>0&&<div className="text-xs text-amber-600 mt-0.5">Default: ${Math.round(item.contractor_rate).toLocaleString("en-AU")}</div>}
+                            </>
+                          )}
+                        </div>
+                        {hasQty && (
+                          <div className="text-xs text-gray-500">
+                            <div className="font-semibold mb-1 text-gray-600">Hours this item</div>
+                            <div className="font-bold text-purple-700">{fmtHrs(c.installHrs)} install</div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="border-t border-gray-100"/>
+                      <div className="grid grid-cols-4 gap-3">
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-0.5">Equipment Price/Unit ($)</label>
+                          <input type="number" min="0" value={ln.mats||""} placeholder={item.pce_price>0?item.pce_price.toFixed(2):"0"}
+                          title={item._priceFromEquipPricing?"Price updated from Equipment Pricing this session":""}
+                            onChange={e=>updLine(item.wbs_code,"mats",e.target.value)}
+                            onKeyDown={e=>e.key==="Enter"&&e.currentTarget.blur()}
+                            className="w-full text-xs border border-green-300 bg-green-50 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-green-400"/>
+                          {item.pce_price>0&&<div className="text-xs text-amber-600 mt-0.5">PCE default: {fmt(item.pce_price)}</div>}
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-0.5">Plant & Machinery ($)</label>
+                          <input type="number" min="0" value={ln.plant||""} placeholder="0"
+                            onChange={e=>updLine(item.wbs_code,"plant",e.target.value)}
+                            onKeyDown={e=>e.key==="Enter"&&e.currentTarget.blur()}
+                            className="w-full text-xs border border-blue-200 bg-blue-50 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-blue-300"/>
+                        </div>
+                        {hasQty && (
+                          <div className="col-span-2 bg-gray-50 rounded border border-gray-200 p-2 text-xs">
+                            <div className="font-semibold text-gray-600 mb-1.5">Line Cost Breakdown</div>
+                            <div className="space-y-0.5">
+                              {!isContr&&<div className="flex justify-between"><span className="text-gray-500">EE Labour</span><span className="font-medium">{fmt(c.eeLabCost)}</span></div>}
+                              {isContr&&<div className="flex justify-between"><span className="text-gray-500">Contractor</span><span className="font-medium">{fmt(c.contrCost)}</span></div>}
+                              {c.equipCost>0&&<div className="flex justify-between"><span className="text-gray-500">Equipment</span><span className="font-medium">{fmt(c.equipCost)}</span></div>}
+                              {c.plantFact>0&&<div className="flex justify-between"><span className="text-gray-500">Plant (×factor)</span><span className="font-medium">{fmt(c.plantFact)}</span></div>}
+                              {c.matBurden>0&&<div className="flex justify-between"><span className="text-gray-500">Mat. Burden</span><span className="font-medium">{fmt(c.matBurden)}</span></div>}
+                              <div className="border-t border-gray-200 mt-1 pt-1 flex justify-between font-bold">
+                                <span className="text-blue-800">EE Internal</span><span className="text-blue-800">{fmt(c.eeInt)}</span>
+                              </div>
+                              <div className="flex justify-between font-bold">
+                                <span className="text-orange-700">Commercial</span><span className="text-orange-700">{fmt(c.comm)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="border-t border-gray-100 pt-2 space-y-2">
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">Drawing / Reference</label>
+                          <div className="flex gap-1.5 items-center">
+                            <input value={ln.drawing||""}
+                              onChange={e=>updLine(item.wbs_code,"drawing",e.target.value)}
+                              placeholder="Drawing no. or https://..."
+                              className="flex-1 text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-300"/>
+                            {(ln.drawing||"").startsWith("http") && (
+                              <a href={ln.drawing} target="_blank" rel="noopener noreferrer"
+                                className="flex-shrink-0 text-xs bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 rounded px-2 py-1 flex items-center gap-1 font-medium">
+                                🔗 Open
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">Comments / Scope inclusions & exclusions</label>
+                          <textarea value={ln.comments||""} onChange={e=>updLine(item.wbs_code,"comments",e.target.value)}
+                            rows={2} placeholder="e.g. Includes conductor and insulators. Excludes foundation design."
+                            className="w-full text-xs border border-gray-200 rounded px-2 py-1 resize-none focus:outline-none focus:ring-1 focus:ring-blue-300"/>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* ── INSTALL ROWS (L5=4) — read-only system-calculated summary ── */}
+          {installItems.length > 0 && (
+            <div className="sticky bottom-0 border-t-2 border-purple-300 bg-white shadow-lg">
+              <div className="bg-purple-700 text-white text-xs font-bold px-4 py-2 flex items-center justify-between cursor-pointer"
+                onClick={()=>setExpandedRows(p=>({...p,__installSection__:!p.__installSection__}))}>
+                <span className="flex items-center gap-2">
+                  🔧 {installItems.length} Install Row{installItems.length!==1?"s":""}
+                  <span className="text-purple-300 font-normal">— system-calculated · read-only · click to review</span>
+                </span>
+                <span className="text-purple-200">{expandedRows.__installSection__ ? "▴" : "▾"} {Object.values(installAgg).reduce((a,r)=>a+r.activeHrs,0).toFixed(1)} hrs total</span>
+              </div>
+              {expandedRows.__installSection__ && (
+                <div>
+                  <div className="bg-purple-50 border-b border-purple-200 px-4 py-2 flex items-center gap-2 text-xs text-purple-700">
+                    <span>ℹ️</span>
+                    <span>Install hours are <strong>pre-agreed standard rates</strong> automatically derived from your supply quantities. Overrides require team leader approval via the Review Lines tab.</span>
+                  </div>
+                  {installItems.map(inst => {
+                    const agg = installAgg[inst.wbs_code];
+                    if (!agg) return null;
+                    const hasHrs = agg.activeHrs > 0;
+                    const isExp  = !!expandedRows[inst.wbs_code];
+                    const rowBg  = hasHrs ? "bg-purple-50 border-l-4 border-l-purple-400" : "bg-white";
+                    return (
+                      <div key={inst.wbs_code} className={`border-b border-purple-100 ${rowBg}`}>
+                        <div className="grid items-center px-3 py-2 text-xs cursor-pointer hover:bg-purple-50/70"
+                          style={{gridTemplateColumns:"1fr 90px 120px 90px 80px 56px"}}
+                          onClick={()=>setExpandedRows(p=>({...p,[inst.wbs_code]:!p[inst.wbs_code]}))}>
+                          <div className="min-w-0 pr-2">
+                            <div className="font-medium text-purple-900">{inst.description}</div>
+                            <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                              <span className="text-purple-400 font-mono text-xs">{inst.wbs_code}</span>
+                              <span className="text-[9px] bg-purple-100 text-purple-700 border border-purple-200 rounded px-1">System-calculated</span>
+                              <span className="text-[9px] text-gray-400">{agg.linked.length} supply item{agg.linked.length!==1?"s":""} linked</span>
+                              {agg.isOverridden && <span className="text-[9px] bg-orange-100 text-orange-700 border border-orange-200 rounded px-1">⚡ override active</span>}
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className={`text-xs font-bold ${agg.isOverridden?"text-orange-600":hasHrs?"text-purple-700":"text-gray-300"}`}>
+                              {hasHrs ? fmtHrs(agg.activeHrs) : "—"}{agg.isOverridden&&<span className="text-orange-400 ml-0.5">*</span>}
+                            </div>
+                            <div className="text-[9px] text-gray-400">{agg.isOverridden?"overridden":"auto"}</div>
+                          </div>
+                          <div className="text-center text-[9px] text-gray-500 truncate px-1">{agg.resName}</div>
+                          <div className="text-center text-[9px] text-gray-400">{agg.delivery}</div>
+                          <div className="text-right pr-1">
+                            <div className={`text-xs font-bold ${hasHrs?"text-blue-800":"text-gray-300"}`}>{hasHrs?fmt(isCommercial?agg.comm:agg.eeInt):"—"}</div>
+                          </div>
+                          <div className="text-center text-gray-300 text-xs">{isExp?"▲":"▸"}</div>
+                        </div>
+                        {isExp && (
+                          <div className="mx-3 mb-3 rounded-lg border border-purple-200 bg-white shadow-sm overflow-hidden">
+                            <div className="bg-purple-700 text-white text-xs font-semibold px-3 py-1.5 flex items-center justify-between">
+                              <span>Install derivation — {inst.wbs_code}</span>
+                              <span className="text-purple-300 text-[10px]">Read-only · overrides via Review Lines</span>
+                            </div>
+                            <div className="p-3 space-y-3">
+                              {/* Supply derivation table */}
+                              <div className="bg-gray-50 rounded border border-gray-200 overflow-hidden">
                                 <table className="w-full text-xs">
-                                  <thead className="bg-teal-100 border-b border-teal-200">
+                                  <thead className="bg-gray-100 border-b">
                                     <tr>
-                                      <th className="text-left px-2 py-1 font-semibold text-teal-800">Commission WBS</th>
-                                      <th className="text-center px-2 py-1 font-semibold text-teal-800">Qty</th>
-                                      <th className="text-center px-2 py-1 font-semibold text-teal-800">Hrs/unit</th>
-                                      <th className="text-right px-2 py-1 font-semibold text-teal-800">= Comm Hrs</th>
+                                      <th className="text-left px-2 py-1 font-semibold text-gray-500">Supply item</th>
+                                      <th className="text-center px-2 py-1 font-semibold text-gray-500">Qty</th>
+                                      <th className="text-center px-2 py-1 font-semibold text-gray-500">Std hrs/unit</th>
+                                      <th className="text-right px-2 py-1 font-semibold text-purple-700">= Install Hrs</th>
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {commEntries.map(([cw, {qty, data}]) => {
-                                      const hpu  = data?.hrs_per_unit || 0;
-                                      const hrs  = qty * hpu;
-                                      const hasQ = qty > 0;
+                                    {agg.linked.map(sup=>{
+                                      const sl=lines[sup.wbs_code]||{};
+                                      const sq=parseFloat(sl.qty||"0");
+                                      const sf=parseFloat(sl.factor||"1");
+                                      const sh=sup.install_hrs_per||0;
+                                      const hrs=sq*sf*sh;
                                       return (
-                                        <tr key={cw} className={`border-b border-teal-100 ${hasQ ? "bg-teal-50/60" : ""}`}>
-                                          <td className="px-2 py-1">
-                                            <div className="font-mono text-gray-500 text-[10px]">{cw}</div>
-                                            <div className="text-gray-700 truncate max-w-[200px]">{data?.description || "—"}</div>
-                                          </td>
-                                          <td className={`px-2 py-1 text-center font-bold ${hasQ ? "text-teal-800" : "text-gray-300"}`}>{hasQ ? qty : "—"}</td>
-                                          <td className="px-2 py-1 text-center text-gray-500">{hpu}h</td>
-                                          <td className={`px-2 py-1 text-right font-bold ${hrs > 0 ? "text-teal-800" : "text-gray-300"}`}>
-                                            {hrs > 0 ? fmtHrs(hrs) : "—"}
-                                            {!data && <span className="ml-1 text-[9px] text-red-500">⚠ not in lookup</span>}
-                                          </td>
+                                        <tr key={sup.wbs_code} className={`border-b border-gray-100 ${sq>0?"bg-purple-50/40":""}`}>
+                                          <td className="px-2 py-1"><div className="truncate max-w-[200px] text-gray-700">{sup.description}</div><div className="font-mono text-gray-400 text-[10px]">{sup.wbs_code}</div></td>
+                                          <td className="px-2 py-1 text-center font-bold text-orange-700">{sq>0?sq:"—"}</td>
+                                          <td className="px-2 py-1 text-center text-gray-500">{sh}h</td>
+                                          <td className={`px-2 py-1 text-right font-bold ${hrs>0?"text-purple-700":"text-gray-300"}`}>{hrs>0?fmtHrs(hrs):"—"}</td>
                                         </tr>
                                       );
                                     })}
                                   </tbody>
+                                  <tfoot className="bg-purple-50 border-t-2 border-purple-200">
+                                    <tr>
+                                      <td colSpan={3} className="px-2 py-1.5 font-bold text-purple-800">Total derived install hours</td>
+                                      <td className="px-2 py-1.5 text-right font-bold text-purple-800">{fmtHrs(agg.derivedHrs)}</td>
+                                    </tr>
+                                    {agg.isOverridden && (
+                                      <tr className="bg-orange-50">
+                                        <td colSpan={3} className="px-2 py-1 text-orange-700">⚡ Active override</td>
+                                        <td className="px-2 py-1 text-right font-bold text-orange-700">{fmtHrs(agg.activeHrs)}</td>
+                                      </tr>
+                                    )}
+                                  </tfoot>
                                 </table>
                               </div>
-                            );
-                          })()}
-                        </div>
+
+                              {/* Rate info — read-only */}
+                              <div className="grid grid-cols-3 gap-2 text-xs">
+                                <div className="bg-gray-50 rounded border border-gray-200 px-2 py-1.5">
+                                  <div className="text-[9px] text-gray-400 uppercase tracking-wide mb-0.5">Install resource</div>
+                                  <div className="font-medium text-gray-700">{resourceOvrd[inst.wbs_code]?.install||inst.resource_main||"ZS Electrical Technician"}</div>
+                                </div>
+                                <div className="bg-gray-50 rounded border border-gray-200 px-2 py-1.5">
+                                  <div className="text-[9px] text-gray-400 uppercase tracking-wide mb-0.5">Delivery method</div>
+                                  <div className="font-medium text-gray-700">{agg.delivery}</div>
+                                </div>
+                                <div className="bg-gray-50 rounded border border-gray-200 px-2 py-1.5">
+                                  <div className="text-[9px] text-gray-400 uppercase tracking-wide mb-0.5">{agg.isContr?"Contractor rate":"EE rate"}</div>
+                                  <div className="font-medium text-gray-700">{agg.isContr?fmt(agg.contrRate)+" /unit":fmt(agg.eeRate)+" /hr · "+fmt(agg.eeLabCost)+" total"}</div>
+                                </div>
+                              </div>
+
+                              {/* Commission link summary */}
+                              {(()=>{
+                                const commMap = {};
+                                agg.linked.forEach(sup => {
+                                  const cw = sup.commission_wbs;
+                                  if (!cw) return;
+                                  const ln = lines[sup.wbs_code] || {};
+                                  const q  = parseFloat(ln.qty || "0");
+                                  if (!commMap[cw]) commMap[cw] = { qty:0, data: commLookup[cw] };
+                                  commMap[cw].qty += q;
+                                });
+                                const commEntries = Object.entries(commMap);
+                                if (!commEntries.length) return (
+                                  <div className="text-[10px] text-gray-400 bg-gray-50 border border-gray-200 rounded px-2.5 py-1.5">
+                                    ⚠ No commission WBS linked — commission hrs will not flow to Phase 4
+                                  </div>
+                                );
+                                return (
+                                  <div className="bg-teal-50 border border-teal-200 rounded overflow-hidden">
+                                    <div className="bg-teal-700 text-white text-[10px] font-semibold px-2.5 py-1">↳ Phase 4 Commission (auto-derived)</div>
+                                    <table className="w-full text-xs">
+                                      <thead className="bg-teal-100 border-b border-teal-200">
+                                        <tr>
+                                          <th className="text-left px-2 py-1 font-semibold text-teal-800">Commission WBS</th>
+                                          <th className="text-center px-2 py-1 font-semibold text-teal-800">Qty</th>
+                                          <th className="text-center px-2 py-1 font-semibold text-teal-800">Hrs/unit</th>
+                                          <th className="text-right px-2 py-1 font-semibold text-teal-800">= Comm Hrs</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {commEntries.map(([cw, {qty, data}]) => {
+                                          const hpu  = data?.hrs_per_unit || 0;
+                                          const hrs  = qty * hpu;
+                                          return (
+                                            <tr key={cw} className="border-b border-teal-100">
+                                              <td className="px-2 py-1"><div className="font-mono text-gray-500 text-[10px]">{cw}</div><div className="text-gray-700 truncate max-w-[200px]">{data?.description||"—"}</div></td>
+                                              <td className={`px-2 py-1 text-center font-bold ${qty>0?"text-teal-800":"text-gray-300"}`}>{qty>0?qty:"—"}</td>
+                                              <td className="px-2 py-1 text-center text-gray-500">{hpu}h</td>
+                                              <td className={`px-2 py-1 text-right font-bold ${hrs>0?"text-teal-800":"text-gray-300"}`}>
+                                                {hrs>0?fmtHrs(hrs):"—"}
+                                                {!data&&<span className="ml-1 text-[9px] text-red-500">⚠ not in lookup</span>}
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
