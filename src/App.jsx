@@ -10424,7 +10424,7 @@ export default function App() {
       savedAt: now.toLocaleString("en-AU",{dateStyle:"short",timeStyle:"short"}),
       savedAtISO: now.toISOString(),
       status: "Draft",
-      inv, lines, linesCount:entered.length,
+      inv, lines, linesCount:entered.length, changeLog,
       totalSupplyLines: supply.filter(s=>s.scope==="Supply"||s.scope==="Supply & Install").length,
       totalEE:Math.round(totals.eeInt), totalComm:Math.round(totals.comm),
       totalInstallHrs: Math.round(totals.installHrs||0),
@@ -10440,13 +10440,14 @@ export default function App() {
       localStorage.removeItem("iet_draft_recovery");
       setDraftRecovery(null);
     } catch(e) { alert("Save failed — localStorage may be full"); }
-  },[inv,lines,isCommercial,supplyData,currentRecordId]);
+  },[inv,lines,isCommercial,supplyData,currentRecordId,changeLog]);
 
   const loadInvestment = useCallback((record)=>{
     const isApproved = record.status === "Approved";
     // Stamp _locked onto inv so the Setup form can show/disable accordingly
     setInv({...record.inv, _locked: isApproved});
     setLines(record.lines||{});
+    setChangeLog(record.changeLog||[]);
     setLastSaved(record.savedAt);
     setCurrentRecordId(record.id || null);
     setEstimateLocked(isApproved);
@@ -10487,6 +10488,7 @@ export default function App() {
       releaseLock(currentRecordId);
       setInv({...defaultInv, name:"", number:""});
       setLines({});
+      setChangeLog([]);
       setLastSaved(null);
       setCurrentRecordId(null);
       setEstimateLocked(false);
@@ -10500,6 +10502,7 @@ export default function App() {
     releaseLock(currentRecordId);
     setInv({...defaultInv, name:"", number:""});
     setLines({});
+    setChangeLog([]);
     setLastSaved(null);
     setCurrentRecordId(null);
     setEstimateLocked(false);
@@ -10557,9 +10560,84 @@ export default function App() {
     setAppTab("estimation");
     setEstTab("setup"); // land on Setup so estimator sees the new revision letter
   },[inv, lines, currentRecordId]);
+  // ── Change log — tracks edits to estimate lines & investment setup ──
+  // Stored with the saved record so it survives reload/re-open.
+  const [changeLog, setChangeLog] = useState([]);
+  const [showChangeLog, setShowChangeLog] = useState(false);
+  const FIELD_LABELS = {
+    qty:"Quantity", factor:"Factor", delivery:"Delivery", instHrsOvrd:"Install Hrs (override)",
+    contrRate:"Contractor Rate", plant:"Plant Cost", mats:"Materials Cost", resourceOvrd:"Resource Override",
+  };
+  const logChange = useCallback((entries)=>{
+    if (!entries.length) return;
+    setChangeLog(prev=>[...prev, ...entries].slice(-50));
+  },[]);
+
+  const trackedSetLines = useCallback((updater)=>{
+    setLines(prev=>{
+      const next = typeof updater==="function" ? updater(prev) : updater;
+      const entries = [];
+      const ts = new Date().toISOString();
+      const codes = new Set([...Object.keys(prev||{}), ...Object.keys(next||{})]);
+      codes.forEach(code=>{
+        const before = prev?.[code] || {};
+        const after  = next?.[code] || {};
+        const fields = new Set([...Object.keys(before), ...Object.keys(after)]);
+        fields.forEach(f=>{
+          if (f.startsWith("_")) return;
+          const ov = before[f] ?? "";
+          const nv = after[f] ?? "";
+          if (String(ov) !== String(nv)) {
+            const item = supplyData.find(s=>s.wbs_code===code);
+            entries.push({
+              ts, user: currentUser?.name || "Guest",
+              wbsCode: code, description: item?.description || "",
+              field: FIELD_LABELS[f] || f, oldVal: ov===""?"—":ov, newVal: nv===""?"—":nv,
+            });
+          }
+        });
+      });
+      logChange(entries);
+      return next;
+    });
+  },[supplyData,currentUser,logChange]);
+
+  const trackedSetInv = useCallback((updater)=>{
+    setInv(prev=>{
+      const next = typeof updater==="function" ? updater(prev) : updater;
+      const entries = [];
+      const ts = new Date().toISOString();
+      Object.keys(next||{}).forEach(f=>{
+        if (f.startsWith("_")) return;
+        const ov = prev?.[f] ?? "";
+        const nv = next?.[f] ?? "";
+        if (String(ov) !== String(nv)) {
+          entries.push({
+            ts, user: currentUser?.name || "Guest",
+            wbsCode: "Setup", description: "Investment Setup",
+            field: f, oldVal: ov===""?"—":String(ov), newVal: nv===""?"—":String(nv),
+          });
+        }
+      });
+      logChange(entries);
+      return next;
+    });
+  },[currentUser,logChange]);
+
+  // Revert a single change-log entry — sets that field back to its previous value
+  const revertChange = useCallback((entry)=>{
+    if (entry.wbsCode==="Setup") {
+      trackedSetInv(prev=>({...prev, [entry.field]: entry.oldVal==="—"?"":entry.oldVal}));
+    } else {
+      const f = Object.keys(FIELD_LABELS).find(k=>FIELD_LABELS[k]===entry.field) || entry.field;
+      trackedSetLines(prev=>({...prev, [entry.wbsCode]: {...(prev[entry.wbsCode]||{}), [f]: entry.oldVal==="—"?"":entry.oldVal}}));
+    }
+  },[trackedSetInv,trackedSetLines]);
+
   // Effective edit lock = Approved record, locked by another user, or not signed in (guest = read-only)
   const effectiveLocked = estimateLocked || !!editLockInfo || !currentUser;
   const linesEntered  = Object.values(lines).filter(l=>parseFloat(l.qty)>0).length;
+
   const equipSelected = Object.values(equipSel).filter(q=>parseFloat(q)>0).length;
 
   // ── Resolve equipment pricing into supply items ─────────────────────
@@ -10790,6 +10868,11 @@ export default function App() {
                 ))}
                 <div className="flex-1"/>
                 <div className="flex items-center gap-3 pb-1">
+                  <button onClick={()=>setShowChangeLog(true)}
+                    className="relative text-xs font-semibold text-gray-500 hover:text-[var(--primary-700)] border border-gray-200 hover:border-[var(--primary-300)] rounded px-2 py-1 flex items-center gap-1">
+                    📝 Recent Changes
+                    {changeLog.length>0 && <span className="bg-[var(--primary-600)] text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold">{Math.min(changeLog.length,99)}</span>}
+                  </button>
                   <span className={`text-xs font-semibold ${isCommercial?"text-orange-600":"text-[var(--primary-600)]"}`}>
                     {isCommercial?"Commercial + ANS Rates":"EE Internal Rates only"}
                   </span>
@@ -10802,14 +10885,14 @@ export default function App() {
               </div>
 
               <div className="flex-1 overflow-hidden flex flex-col">
-                {estTab==="setup"        && <InvestmentSetup inv={inv} onChange={effectiveLocked ? ()=>{} : setInv}/>}
+                {estTab==="setup"        && <InvestmentSetup inv={inv} onChange={effectiveLocked ? ()=>{} : trackedSetInv}/>}
                 {estTab==="estimate"     && (
                   <div className="flex flex-1 overflow-hidden">
-                    <EstimationScreen isCommercial={isCommercial} lines={lines} setLines={effectiveLocked ? ()=>{} : setLines}/>
+                    <EstimationScreen isCommercial={isCommercial} lines={lines} setLines={effectiveLocked ? ()=>{} : trackedSetLines}/>
                   </div>
                 )}
 
-                {estTab==="equipment"    && <EquipmentScreen lines={lines} setLines={effectiveLocked ? ()=>{} : setLines} isCommercial={isCommercial} inv={inv}/>}
+                {estTab==="equipment"    && <EquipmentScreen lines={lines} setLines={effectiveLocked ? ()=>{} : trackedSetLines} isCommercial={isCommercial} inv={inv}/>}
                 {estTab==="review"    && <ReviewLines lines={lines} isCommercial={isCommercial}/>}
                 {estTab==="summary"   && <SummaryScreen inv={inv} lines={lines} isCommercial={isCommercial} equipSel={equipSel} onSave={effectiveLocked ? null : saveInvestment} lastSaved={lastSaved} estimateLocked={estimateLocked}/>}
                 {estTab==="financial" && <FinancialScreen inv={inv} lines={lines} isCommercial={isCommercial}/>}
@@ -10825,6 +10908,69 @@ export default function App() {
             currentLines={lines}
           />}
         </div>
+
+        {/* Recent changes modal */}
+        {showChangeLog && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={()=>setShowChangeLog(false)}>
+            <div className="bg-white rounded-xl shadow-2xl w-[560px] max-h-[80vh] flex flex-col" onClick={e=>e.stopPropagation()}>
+              <div className="bg-[var(--primary-900)] text-white px-5 py-4 rounded-t-xl flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-base">📝 Recent Changes</div>
+                  <div className="text-[var(--primary-200)] text-xs mt-1">Last {Math.min(changeLog.length,10)} edits to this estimate — newest first</div>
+                </div>
+                <button onClick={()=>setShowChangeLog(false)} className="text-[var(--primary-200)] hover:text-white text-lg leading-none">✕</button>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {changeLog.length===0 ? (
+                  <div className="p-6 text-center text-sm text-gray-400">No changes recorded yet for this estimate.</div>
+                ) : (
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-gray-50 text-gray-500 uppercase text-[10px] tracking-wide">
+                      <tr>
+                        <th className="px-3 py-2 text-left">Time</th>
+                        <th className="px-3 py-2 text-left">User</th>
+                        <th className="px-3 py-2 text-left">Item</th>
+                        <th className="px-3 py-2 text-left">Field</th>
+                        <th className="px-3 py-2 text-right">Was</th>
+                        <th className="px-3 py-2 text-right">Now</th>
+                        {!effectiveLocked && <th className="px-3 py-2"></th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...changeLog].slice(-10).reverse().map((c,i)=>(
+                        <tr key={i} className={i%2===0?"bg-white":"bg-gray-50"}>
+                          <td className="px-3 py-1.5 text-gray-400 whitespace-nowrap">{new Date(c.ts).toLocaleString("en-AU",{dateStyle:"short",timeStyle:"short"})}</td>
+                          <td className="px-3 py-1.5 text-gray-700 whitespace-nowrap">{c.user}</td>
+                          <td className="px-3 py-1.5 text-gray-800">
+                            <div className="font-mono">{c.wbsCode}</div>
+                            {c.description && <div className="text-gray-400 text-[10px] truncate max-w-[140px]">{c.description}</div>}
+                          </td>
+                          <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">{c.field}</td>
+                          <td className="px-3 py-1.5 text-right text-red-500 font-mono">{String(c.oldVal)}</td>
+                          <td className="px-3 py-1.5 text-right text-green-700 font-mono font-semibold">{String(c.newVal)}</td>
+                          {!effectiveLocked && (
+                            <td className="px-3 py-1.5 text-right">
+                              <button onClick={()=>revertChange(c)}
+                                className="text-[10px] text-[var(--primary-700)] hover:underline font-semibold whitespace-nowrap">
+                                ↺ Revert
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              {changeLog.length>0 && (
+                <div className="px-4 py-2 border-t border-gray-100 text-[10px] text-gray-400">
+                  {changeLog.length>10?`Showing the most recent 10 of ${changeLog.length} tracked changes. `:""}
+                  Reverting creates a new change entry — it doesn't delete history.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Save-before-new modal */}
         {pendingNew && (
