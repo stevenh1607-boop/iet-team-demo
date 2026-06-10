@@ -1343,8 +1343,20 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
     return g;
   },[commTotals, commProfiles, lines]);
 
-  const commGrandHrs  = Object.values(commGroups).reduce((a,g)=>a+g.totalHrs, 0);
-  const commGrandCost = Object.values(commGroups).reduce((a,g)=>a+g.totalCost, 0);
+  const commGrandHrs  = Object.values(commGroups).reduce((a,g)=>a+g.totalHrs, 0)
+    + Object.entries(commLookup).filter(([,d])=>d.direct_entry).reduce((a,[wbs,data])=>{
+        const dq = parseFloat(lines[`comm_direct_${wbs}`]?.qty||"0")||0;
+        const ovrd = lines[`comm_ovrd_${wbs}`]?.qty;
+        const hrs = (ovrd!==undefined&&ovrd!=="") ? (parseFloat(ovrd)||0) : dq*(data.hrs_per_unit||0);
+        return a + hrs;
+      }, 0);
+  const commGrandCost = Object.values(commGroups).reduce((a,g)=>a+g.totalCost, 0)
+    + Object.entries(commLookup).filter(([,d])=>d.direct_entry).reduce((a,[wbs,data])=>{
+        const dq = parseFloat(lines[`comm_direct_${wbs}`]?.qty||"0")||0;
+        const ovrd = lines[`comm_ovrd_${wbs}`]?.qty;
+        const hrs = (ovrd!==undefined&&ovrd!=="") ? (parseFloat(ovrd)||0) : dq*(data.hrs_per_unit||0);
+        return a + hrs*(data.ee_labour_rate||139.26);
+      }, 0);
 
   // ALL 144 commission rows — always visible even when qty=0
   const commAllGroups = useMemo(()=>{
@@ -1352,16 +1364,19 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
     Object.entries(commLookup).forEach(([commWbs, data])=>{
       const l4 = commWbs.split('.').slice(0,4).join('.');
       if (!g[l4]) g[l4] = { label: data.description?.split(' - ')[0] || l4, items:[], totalHrs:0, totalCost:0 };
+      const directKey  = `comm_direct_${commWbs}`;
+      const directQty  = data.direct_entry ? (parseFloat(lines[directKey]?.qty||"0")||0) : 0;
       const derivedQty = commTotals[commWbs]?.qty || 0;
-      const scale      = getScaleFactor(commProfiles, data.profile_id, derivedQty);
-      const baseHrs    = derivedQty * (data.hrs_per_unit || 0);
+      const effectiveQty = data.direct_entry ? directQty : derivedQty;
+      const scale      = getScaleFactor(commProfiles, data.profile_id, effectiveQty);
+      const baseHrs    = effectiveQty * (data.hrs_per_unit || 0);
       const ovrdKey    = `comm_ovrd_${commWbs}`;
       const ovrd       = lines[ovrdKey]?.qty;
       const scaledHrs  = (ovrd !== undefined && ovrd !== "") ? (parseFloat(ovrd)||0) : baseHrs * scale;
       const rate       = data.ee_labour_rate || 139.26;
-      const item       = { wbs:commWbs, ...data, derivedQty, scale, baseHrs, scaledHrs, rate, isOverridden: ovrd !== undefined && ovrd !== "" };
+      const item       = { wbs:commWbs, ...data, derivedQty, directQty, effectiveQty, scale, baseHrs, scaledHrs, rate, isOverridden: ovrd !== undefined && ovrd !== "" };
       g[l4].items.push(item);
-      if (derivedQty > 0) {
+      if (effectiveQty > 0) {
         g[l4].totalHrs  += scaledHrs;
         g[l4].totalCost += scaledHrs * rate;
       }
@@ -1490,18 +1505,20 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                       const setOvrd    = val => setLines(p=>({...p,[ovrdKey]:{qty:val,_commOvrd:true}}));
                       const setDirect  = val => setLines(p=>({...p,[directKey]:{qty:val,_commOvrd:true}}));
                       const isOvrd     = ovrd !== "" && ovrd !== undefined;
+                      // For direct-entry items, effectiveQty comes from what the estimator typed
+                      // For derived items, it comes from supply propagation
+                      const isActive   = item.direct_entry ? (parseFloat(directQtyVal||"0")>0) : item.derivedQty > 0;
                       const effectiveHrs = isOvrd ? (parseFloat(ovrd)||0) : item.scaledHrs;
                       const cost       = effectiveHrs * (item.ee_labour_rate||139.26);
-                      const hasQty     = item.derivedQty > 0;
                       return (
                         <div key={item.wbs}
                           className={`grid items-center px-3 py-1.5 border-b text-xs
-                            ${hasQty||directQtyVal?"bg-teal-50":"bg-white hover:bg-gray-50"}
+                            ${isActive?"bg-teal-50":"bg-white hover:bg-gray-50"}
                             ${item.isDirectEntry?"border-l-4 border-l-teal-400":""}
                             ${isOvrd?"border-l-4 border-l-orange-400":""}`}
                           style={{gridTemplateColumns:"1fr 52px 64px 52px 76px 76px 86px 64px"}}>
                           <div className="min-w-0 pr-1">
-                            <div className={`truncate font-medium ${hasQty||directQtyVal?"text-teal-900":"text-gray-500"}`}>
+                            <div className={`truncate font-medium ${isActive?"text-teal-900":"text-gray-500"}`}>
                               {item.description}
                               {item.isDirectEntry && (
                                 item.wbs.startsWith("4.1.1.01")
@@ -1524,26 +1541,26 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                                 title="Enter quantity directly — hours = qty × hrs/unit"
                                 className="w-14 text-center border-2 border-teal-400 rounded py-0.5 text-xs font-bold bg-teal-50 text-teal-800 focus:outline-none focus:ring-1 focus:ring-teal-500"/>
                             ) : (
-                              <span className={hasQty?"text-orange-700":"text-gray-300"}>
-                                {hasQty ? item.derivedQty.toLocaleString("en-AU",{maximumFractionDigits:1}) : "—"}
+                              <span className={isActive?"text-orange-700":"text-gray-300"}>
+                                {isActive ? item.derivedQty.toLocaleString("en-AU",{maximumFractionDigits:1}) : "—"}
                               </span>
                             )}
                           </div>
-                          <div className={`text-center font-bold ${hasQty&&item.scale<1?"text-blue-700":hasQty?"text-gray-400":"text-gray-200"}`}>
+                          <div className={`text-center font-bold ${isActive&&item.scale<1?"text-blue-700":isActive?"text-gray-400":"text-gray-200"}`}>
                             {fmtPct(item.scale)}
                           </div>
-                          <div className={`text-center font-bold ${hasQty||directQtyVal?"text-teal-700":"text-gray-300"}`}>
-                            {(hasQty||directQtyVal) ? fmtHrs(item.scaledHrs) : "—"}
+                          <div className={`text-center font-bold ${isActive?"text-teal-700":"text-gray-300"}`}>
+                            {(isActive) ? fmtHrs(item.scaledHrs) : "—"}
                           </div>
                           <div className="flex justify-center">
                             <input type="number" min="0" step="0.5" value={ovrd}
                               onChange={e=>setOvrd(e.target.value)}
-                              placeholder={(hasQty||directQtyVal)?item.scaledHrs.toFixed(1):""}
+                              placeholder={(isActive)?item.scaledHrs.toFixed(1):""}
                               className={`w-16 text-center border rounded py-0.5 text-xs font-bold focus:outline-none focus:ring-1
                                 ${isOvrd?"border-orange-400 bg-orange-50 text-orange-800":"border-gray-200 text-gray-400"}`}/>
                           </div>
-                          <div className={`text-right font-bold ${hasQty||directQtyVal?"text-blue-800":"text-gray-300"}`}>
-                            {(hasQty||directQtyVal) ? fmt(cost) : "—"}
+                          <div className={`text-right font-bold ${isActive?"text-blue-800":"text-gray-300"}`}>
+                            {(isActive) ? fmt(cost) : "—"}
                           </div>
                           <div className="text-center">
                             {item.profile_id ? (
