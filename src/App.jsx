@@ -6922,6 +6922,8 @@ function EquipmentScreen({ lines, setLines, isCommercial, inv }) {
 // Accepts optional prefill props from the catalogue add flow.
 // ─────────────────────────────────────────────────────────────────────────────
 
+const WIZ_PHASE4_L4_GROUPS = ['4.1.1.01', '4.1.2.01', '4.1.2.02', '4.1.2.03', '4.1.2.04', '4.1.2.05', '4.1.2.06', '4.1.2.07', '4.1.2.08', '4.1.2.09', '4.1.2.10', '4.1.2.11', '4.1.2.12', '4.1.2.13', '4.1.2.14', '4.1.2.15', '4.1.2.16', '4.1.2.17', '4.1.2.18', '4.1.3.01', '4.1.3.02', '4.1.3.03', '4.1.3.04', '4.1.3.05', '4.1.4.01', '4.1.5.01', '4.1.6.01', '4.1.6.02', '4.1.6.03', '4.1.6.04', '4.1.6.05', '4.1.6.06'];
+
 const WIZ_SCOPE_PATTERNS = [
   { id:"standard",  label:"Supply (.1) -> Install (.4) -> Commission (.7)",     desc:"Standard HV plant — 3 rows created" },
   { id:"combined",  label:"Supply & Install combined (.1 only, no separate .4)",  desc:"Items installed as supplied — 2 rows" },
@@ -6973,7 +6975,11 @@ function WBSWizard({ onClose, onSave, prefill, existingCodes }) {
   const [price,      setPrice]      = useState((prefill && prefill.price) ? String(prefill.price) : "");
   const [isLLT,      setIsLLT]      = useState(false);
 
-  // Step 3 — hours
+  // Commission WBS — separate Phase 4 code
+  const [commL4Code,     setCommL4Code]     = useState("");
+  const [commItemNo,     setCommItemNo]     = useState("01");
+
+  // Step 3 -- hours
   const [installCrew,    setInstallCrew]    = useState("2");
   const [installHrs,     setInstallHrs]     = useState("8");
   const [commHrs,        setCommHrs]        = useState("4");
@@ -6981,8 +6987,41 @@ function WBSWizard({ onClose, onSave, prefill, existingCodes }) {
 
   const supplyCode  = deviceCode.trim() ? deviceCode.trim() + ".1." + itemNo : "";
   const installCode = deviceCode.trim() ? deviceCode.trim() + ".4." + itemNo : "";
-  const commCode    = (deviceCode.trim() && (scopePattern === "standard" || scopePattern === "scada"))
-    ? deviceCode.trim() + ".7." + itemNo : "";
+  // Commission code uses Phase 4 L4 code (NOT derived from supply L4)
+  const commCode    = (commL4Code.trim() && (scopePattern === "standard" || scopePattern === "scada"))
+    ? commL4Code.trim() + ".7." + commItemNo : "";
+
+  // Check if commission code already exists
+  const dupComm = commCode && existingCodes && existingCodes.has(commCode);
+
+  // Check if Phase 4 L4 group has ANY existing commission rows (validation)
+  const commL4HasItems = useMemo(() => {
+    if (!commL4Code.trim() || !existingCodes) return false;
+    const prefix = commL4Code.trim() + ".7.";
+    for (const code of existingCodes) { if (code.startsWith(prefix)) return true; }
+    return false;
+  }, [commL4Code, existingCodes]);
+
+  const commTakenSuffixes = useMemo(() => {
+    if (!commL4Code.trim() || !existingCodes) return new Set();
+    const taken = new Set();
+    for (const code of existingCodes) {
+      if (code.startsWith(commL4Code.trim() + ".7.")) {
+        const parts = code.split(".");
+        if (parts.length === 6) taken.add(parts[5]);
+      }
+    }
+    return taken;
+  }, [commL4Code, existingCodes]);
+
+  const commNextFree = useMemo(() => {
+    for (let i = 1; i <= 99; i++) {
+      const s = String(i).padStart(2, "0");
+      if (!commTakenSuffixes.has(s)) return s;
+    }
+    return "99";
+  }, [commTakenSuffixes]);
+
 
   const installHrsTotal = (parseFloat(installCrew) || 0) * (parseFloat(installHrs) || 0);
   const commHrsTotal    = parseFloat(commHrs) || 0;
@@ -7038,7 +7077,9 @@ function WBSWizard({ onClose, onSave, prefill, existingCodes }) {
   const rows = willCreate();
 
   const canNext = () => {
-    if (step === 0) return deviceCode.trim().length >= 7 && deviceDesc.trim() && !dupSupply;
+    const needsComm = scopePattern === "standard" || scopePattern === "scada";
+    if (step === 0) return deviceCode.trim().length >= 7 && deviceDesc.trim() && !dupSupply
+      && (!needsComm || (commL4Code.trim().length >= 7 && !dupComm));
     if (step === 1) return supplyDesc.trim().length > 0;
     if (step === 2) return installHrsTotal > 0 || scopePattern === "supplyonly";
     return false;
@@ -7053,7 +7094,7 @@ function WBSWizard({ onClose, onSave, prefill, existingCodes }) {
       delivery_method: delivery, resource_main: aer, uom: "each",
       ee_unit_hrs: r.scope === "Install" ? installHrsTotal : r.scope === "Commission" ? commHrsTotal : null,
       pce_price:   r.scope === "Supply"  ? (parseFloat(price) || null) : null,
-      install_wbs: supplyCode, commission_wbs: commCode,
+      install_wbs: supplyCode, commission_wbs: commCode || null,
       _pending_governance: true, _gov_ref: govRef, _wizard: true,
     }));
     if (onSave) onSave(entries);
@@ -7187,9 +7228,73 @@ function WBSWizard({ onClose, onSave, prefill, existingCodes }) {
                 </div>
                 {supplyCode && (
                   <div className="bg-blue-50 border border-blue-200 rounded px-2 py-1.5 text-[10px] text-blue-700">
-                    Supply code: <span className="font-mono font-semibold">{supplyCode}</span>
+                    Supply: <span className="font-mono font-semibold">{supplyCode}</span>
                     {installCode && <span className="ml-3">Install: <span className="font-mono">{installCode}</span></span>}
-                    {commCode    && <span className="ml-3">Commission: <span className="font-mono">{commCode}</span></span>}
+                    {commCode && <span className="ml-3">Commission: <span className="font-mono font-semibold text-green-700">{commCode}</span></span>}
+                    {(scopePattern === "standard" || scopePattern === "scada") && !commCode && (
+                      <span className="ml-3 text-amber-700">Commission: needs Phase 4 code below</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Phase 4 commission L4 code -- only shown for standard/scada patterns */}
+                {(scopePattern === "standard" || scopePattern === "scada") && (
+                  <div className="border border-purple-200 bg-purple-50 rounded p-2.5 space-y-2">
+                    <div className="text-[10px] font-semibold text-purple-800">Commission WBS -- Phase 4 code required</div>
+                    <div className="text-[10px] text-purple-600 mb-1">
+                      Commission rows always live under Phase 4 (4.x.x.xx.7.xx), NOT under Phase 3.
+                      Select the Phase 4 device group this item commissions under.
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-gray-500 block mb-0.5">Phase 4 L4 group code *</label>
+                        <input value={commL4Code} onChange={e=>setCommL4Code(e.target.value)}
+                          list="comm-l4-list"
+                          placeholder="e.g. 4.1.2.01"
+                          className={"w-full border rounded px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 " + (dupComm ? "border-red-400 bg-red-50" : "border-purple-300 focus:ring-purple-400")}/>
+                        <datalist id="comm-l4-list">
+                          {WIZ_PHASE4_L4_GROUPS.map(g=><option key={g} value={g}/>)}
+                        </datalist>
+                        {commL4HasItems && (
+                          <div className="text-[10px] text-blue-600 mt-0.5">
+                            {commTakenSuffixes.size} existing commission {commTakenSuffixes.size === 1 ? "row" : "rows"} in this group
+                          </div>
+                        )}
+                        {!commL4Code.trim() && (
+                          <div className="text-[10px] text-amber-700 mt-0.5">
+                            No Phase 4 code -- commission row cannot be created.
+                            Consider "Supply & Install only" if no commission WBS exists.
+                          </div>
+                        )}
+                        {dupComm && <div className="text-[10px] text-red-600 mt-0.5">Commission code {commCode} already taken</div>}
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 block mb-0.5">Commission item suffix</label>
+                        <input value={commItemNo} onChange={e=>setCommItemNo(e.target.value)}
+                          list="comm-suffix-list"
+                          className="w-full border border-purple-300 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-purple-400"/>
+                        <datalist id="comm-suffix-list">
+                          {Array.from({length:60},(_,i)=>String(i+1).padStart(2,"0")).map(n=><option key={n} value={n}/>)}
+                        </datalist>
+                        {commTakenSuffixes.size > 0 && (
+                          <div className="text-[10px] text-amber-700 mt-0.5">
+                            Next free: <span className="font-mono font-semibold text-blue-700">{commNextFree}</span>
+                            {commItemNo !== commNextFree && (
+                              <button onClick={()=>setCommItemNo(commNextFree)}
+                                className="ml-1 underline text-blue-600 hover:text-blue-800">Use {commNextFree}</button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+                      <span className="text-amber-600 flex-shrink-0 mt-0.5">&#9888;</span>
+                      <div className="text-[10px] text-amber-800">
+                        <span className="font-semibold">Not sure this item needs commissioning?</span> Civil, earthing and most materials items
+                        typically use <strong>Supply & Install</strong> only. If no Phase 4 L4 group exists for this item type,
+                        select "Supply &amp; Install combined" above.
+                      </div>
+                    </div>
                   </div>
                 )}
                 {l4Exists && takenSuffixes.size > 0 && (
