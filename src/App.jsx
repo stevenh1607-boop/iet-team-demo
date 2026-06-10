@@ -3405,7 +3405,7 @@ function FinancialScreen({ inv, lines, isCommercial }) {
       </div>
 
       {/* Cash Flow Chart */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-3">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-3 w-full max-w-[480px]">
         <div className="text-xs font-bold text-gray-700 mb-1 text-center">Cash Flow ($M)</div>
         <svg width="100%" viewBox={`0 0 ${CW} ${CH}`} className="overflow-visible">
           {[0,0.25,0.5,0.75,1].map(f=>{
@@ -4601,6 +4601,11 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
                       <td className="px-3 py-2">
                         <div className={`font-semibold truncate max-w-[200px] ${isSel?"text-[var(--primary-800)]":"text-gray-900"}`}>{s.inv.name||"Unnamed"}</div>
                         <div className="text-gray-400 font-mono">{s.inv.number} · {s.inv.type==="Commercially Funded"?"Commercial":"Internal"}</div>
+                        {s._editingBy && (
+                          <div className="text-[10px] text-red-600 font-semibold mt-0.5" title={`Locked since ${s._editingBy.since?new Date(s._editingBy.since).toLocaleString("en-AU",{dateStyle:"short",timeStyle:"short"}):""}`}>
+                            🔒 Editing: {s._editingBy.name}
+                          </div>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-center">
                         {s.status==="Approved" ? (
@@ -9939,7 +9944,191 @@ const THEMES = [
   },
 ];
 
-function ThemeSettings({ theme, onChange }) {
+// ── USER ACCESS / PINs ──────────────────────────────────────────
+// Lightweight role + PIN model. In the Power Platform build this maps
+// to Azure AD security groups; here it's localStorage-backed so the
+// demo can show how a "logged in vs read-only" workflow would behave,
+// and how an estimate gets locked to whoever is actively editing it.
+const ROLES = [
+  "ND Manager",
+  "ND Team Leader",
+  "Senior Engineering Officer",
+  "Estimation Senior Specialist",
+  "Estimation Specialist",
+];
+const DEFAULT_USERS = [
+  {id:"u1", name:"Steven Hannigan", role:"Estimation Senior Specialist", pin:"1234"},
+  {id:"u2", name:"Daniel Lawrence",  role:"ND Team Leader",               pin:"2345"},
+  {id:"u3", name:"ND Manager",       role:"ND Manager",                   pin:"1607"},
+];
+const ROLES_THAT_CAN_RELEASE_LOCKS = ["ND Manager","ND Team Leader"];
+
+const loadUsers = () => {
+  try {
+    const raw = localStorage.getItem("iet_users");
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return DEFAULT_USERS;
+};
+const saveUsers = (users) => {
+  try { localStorage.setItem("iet_users", JSON.stringify(users)); } catch(e) {}
+};
+
+function UserAccessSettings({ users, setUsers, currentUser }) {
+  const [showPins, setShowPins] = useState(false);
+  const [draft, setDraft] = useState({ name:"", role:ROLES[ROLES.length-1], pin:"" });
+  const [error, setError] = useState("");
+
+  const update = (id, field, val) => {
+    const updated = users.map(u=>u.id===id?{...u,[field]:val}:u);
+    setUsers(updated); saveUsers(updated);
+  };
+  const remove = (id) => {
+    const updated = users.filter(u=>u.id!==id);
+    setUsers(updated); saveUsers(updated);
+  };
+  const addUser = () => {
+    setError("");
+    if (!draft.name.trim()) { setError("Enter a name."); return; }
+    if (!/^\d{4}$/.test(draft.pin)) { setError("PIN must be exactly 4 digits."); return; }
+    const updated = [...users, { id:`u_${Date.now()}`, name:draft.name.trim(), role:draft.role, pin:draft.pin }];
+    setUsers(updated); saveUsers(updated);
+    setDraft({ name:"", role:ROLES[ROLES.length-1], pin:"" });
+  };
+
+  return (
+    <div className="mt-6">
+      <h2 className="text-lg font-bold text-gray-900 mb-1">🔐 User Access &amp; PINs</h2>
+      <p className="text-xs text-gray-500 mb-4">
+        Add a 4-digit PIN for each person who needs to edit estimates. Anyone without a PIN sees the
+        tool in <span className="font-semibold">read-only mode</span> (Investment Hub, summaries and
+        financial reports remain visible). When a user opens an estimate, it's locked to them — other
+        users see it as read-only with their name shown until the lock is released. ND Managers and
+        ND Team Leaders can release a stuck lock.
+      </p>
+
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-gray-50 text-gray-500 uppercase text-[10px] tracking-wide">
+              <th className="px-3 py-2 text-left">Name</th>
+              <th className="px-3 py-2 text-left">Role</th>
+              <th className="px-3 py-2 text-left">PIN</th>
+              <th className="px-3 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map(u=>(
+              <tr key={u.id} className="border-t border-gray-100">
+                <td className="px-3 py-1.5">
+                  <input value={u.name} onChange={e=>update(u.id,"name",e.target.value)}
+                    className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-[var(--primary-400)]"/>
+                </td>
+                <td className="px-3 py-1.5">
+                  <select value={u.role} onChange={e=>update(u.id,"role",e.target.value)}
+                    className="w-full border border-gray-200 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:border-[var(--primary-400)]">
+                    {ROLES.map(r=><option key={r}>{r}</option>)}
+                  </select>
+                </td>
+                <td className="px-3 py-1.5">
+                  <input value={u.pin} type={showPins?"text":"password"} maxLength={4} inputMode="numeric"
+                    onChange={e=>update(u.id,"pin",e.target.value.replace(/\D/g,"").slice(0,4))}
+                    className="w-20 border border-gray-200 rounded px-2 py-1 text-xs font-mono tracking-widest focus:outline-none focus:border-[var(--primary-400)]"/>
+                </td>
+                <td className="px-3 py-1.5 text-right">
+                  {currentUser?.id===u.id && <span className="text-xs text-green-600 font-semibold mr-2">● signed in</span>}
+                  <button onClick={()=>remove(u.id)} className="text-red-400 hover:bg-red-50 px-1.5 py-1 rounded">🗑</button>
+                </td>
+              </tr>
+            ))}
+            <tr className="border-t border-gray-100 bg-gray-50">
+              <td className="px-3 py-1.5">
+                <input value={draft.name} placeholder="New person's name" onChange={e=>setDraft(d=>({...d,name:e.target.value}))}
+                  className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-[var(--primary-400)]"/>
+              </td>
+              <td className="px-3 py-1.5">
+                <select value={draft.role} onChange={e=>setDraft(d=>({...d,role:e.target.value}))}
+                  className="w-full border border-gray-200 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:border-[var(--primary-400)]">
+                  {ROLES.map(r=><option key={r}>{r}</option>)}
+                </select>
+              </td>
+              <td className="px-3 py-1.5">
+                <input value={draft.pin} type={showPins?"text":"password"} maxLength={4} inputMode="numeric" placeholder="••••"
+                  onChange={e=>setDraft(d=>({...d,pin:e.target.value.replace(/\D/g,"").slice(0,4)}))}
+                  className="w-20 border border-gray-200 rounded px-2 py-1 text-xs font-mono tracking-widest focus:outline-none focus:border-[var(--primary-400)]"/>
+              </td>
+              <td className="px-3 py-1.5 text-right">
+                <button onClick={addUser} className="text-xs bg-[var(--primary-700)] hover:bg-[var(--primary-600)] text-white px-2.5 py-1 rounded font-semibold">+ Add</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div className="px-3 py-2 border-t border-gray-100 flex items-center justify-between">
+          {error && <span className="text-xs text-red-600">{error}</span>}
+          <span className="flex-1"/>
+          <button onClick={()=>setShowPins(s=>!s)} className="text-xs text-gray-500 hover:text-gray-700">
+            {showPins?"🙈 Hide PINs":"👁 Show PINs"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Login modal — pick a person from the user list and enter their PIN.
+function LoginModal({ users, onLogin, onClose }) {
+  const [userId, setUserId] = useState(users[0]?.id || "");
+  const [pin,    setPin]    = useState("");
+  const [error,  setError]  = useState(false);
+
+  const submit = () => {
+    const u = users.find(x=>x.id===userId);
+    if (u && u.pin === pin) { onLogin(u); }
+    else { setError(true); setPin(""); setTimeout(()=>setError(false),1200); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl w-[360px]" onClick={e=>e.stopPropagation()}>
+        <div className="bg-[var(--primary-900)] text-white px-5 py-4 rounded-t-xl">
+          <div className="font-bold text-base">🔑 Sign in</div>
+          <div className="text-[var(--primary-200)] text-xs mt-1">Enter your PIN to make changes — viewing stays open to everyone</div>
+        </div>
+        <div className="p-5 space-y-3">
+          {users.length===0 ? (
+            <div className="text-xs text-gray-500">No users configured yet — add yourself in 🎨 Settings → User Access.</div>
+          ) : (
+            <>
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">Name</label>
+                <select value={userId} onChange={e=>{setUserId(e.target.value);setPin("");setError(false);}}
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white focus:outline-none focus:border-[var(--primary-500)]">
+                  {users.map(u=><option key={u.id} value={u.id}>{u.name} — {u.role}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">PIN</label>
+                <input autoFocus type="password" inputMode="numeric" maxLength={4} value={pin}
+                  onChange={e=>setPin(e.target.value.replace(/\D/g,"").slice(0,4))}
+                  onKeyDown={e=>{if(e.key==="Enter") submit();}}
+                  className={`w-full border rounded px-2 py-1.5 text-sm font-mono tracking-[0.5em] text-center focus:outline-none ${error?"border-red-400 bg-red-50":"border-gray-300 focus:border-[var(--primary-500)]"}`}/>
+                {error && <div className="text-xs text-red-600 mt-1">Incorrect PIN — try again.</div>}
+              </div>
+            </>
+          )}
+          <div className="flex gap-2 pt-1">
+            <button onClick={submit} disabled={users.length===0 || pin.length!==4}
+              className="flex-1 bg-[var(--primary-700)] hover:bg-[var(--primary-600)] disabled:opacity-40 text-white text-sm py-2 rounded font-semibold">
+              Sign in
+            </button>
+            <button onClick={onClose} className="px-4 border border-gray-200 text-gray-600 text-sm py-2 rounded hover:bg-gray-50">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+function ThemeSettings({ theme, onChange, users, setUsers, currentUser }) {
   return (
     <div className="flex-1 overflow-auto p-6 bg-gray-50">
       <div className="max-w-3xl mx-auto">
@@ -9980,6 +10169,8 @@ function ThemeSettings({ theme, onChange }) {
             <span className="px-3 py-1.5 rounded text-xs font-semibold text-[var(--primary-700)] border-b-2 border-[var(--primary-600)] bg-[var(--primary-50)]">Active tab</span>
           </div>
         </div>
+
+        <UserAccessSettings users={users} setUsers={setUsers} currentUser={currentUser}/>
       </div>
     </div>
   );
@@ -10042,6 +10233,48 @@ export default function App() {
     document.documentElement.setAttribute("data-theme", theme);
     try { localStorage.setItem("iet_theme", theme); } catch(e) {}
   }, [theme]);
+
+  // ── User access / login ────────────────────────────────────────
+  const [users, setUsersState] = useState(() => loadUsers());
+  const setUsers = useCallback((u)=>{ setUsersState(u); saveUsers(u); }, []);
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem("iet_session_user");
+      if (!raw) return null;
+      const sess = JSON.parse(raw);
+      // Re-validate against the live user list (PIN/role may have changed)
+      const fresh = loadUsers().find(u=>u.id===sess.id);
+      return fresh || null;
+    } catch { return null; }
+  });
+  const [showLogin, setShowLogin] = useState(false);
+  const handleLogin = useCallback((u)=>{
+    setCurrentUser(u);
+    try { sessionStorage.setItem("iet_session_user", JSON.stringify(u)); } catch(e) {}
+    setShowLogin(false);
+  },[]);
+  const handleLogout = useCallback(()=>{
+    setCurrentUser(null);
+    try { sessionStorage.removeItem("iet_session_user"); } catch(e) {}
+  },[]);
+  // Lock info for the estimate currently open: {name, role, since} of whoever else has it open
+  const [editLockInfo, setEditLockInfo] = useState(null);
+  // Release the edit-lock on a record (if held by currentUser, or forced by a manager/team leader)
+  const releaseLock = useCallback((recordId, force=false)=>{
+    if (!recordId) return;
+    try {
+      const existing = JSON.parse(localStorage.getItem("iet_investments")||"[]");
+      const updated = existing.map(s=>{
+        if (s.id!==recordId || !s._editingBy) return s;
+        if (force || (currentUser && s._editingBy.name===currentUser.name)) {
+          const {_editingBy, ...rest} = s; return rest;
+        }
+        return s;
+      });
+      localStorage.setItem("iet_investments", JSON.stringify(updated));
+    } catch(e) {}
+    setEditLockInfo(null);
+  },[currentUser]);
 
   const [inv,         setInv]         = useState(defaultInv);
   const [lines,       setLines]       = useState({});
@@ -10222,7 +10455,26 @@ export default function App() {
     // Clear draft recovery once deliberately loading a record
     localStorage.removeItem("iet_draft_recovery");
     setDraftRecovery(null);
-  },[]);
+
+    // ── Editing lock: claim the estimate for currentUser, or show
+    // a read-only banner if someone else already has it open.
+    if (isApproved) { setEditLockInfo(null); return; }
+    const lock = record._editingBy;
+    if (lock && (!currentUser || lock.name !== currentUser.name)) {
+      setEditLockInfo(lock);
+    } else if (currentUser) {
+      setEditLockInfo(null);
+      try {
+        const existing = JSON.parse(localStorage.getItem("iet_investments")||"[]");
+        const updated = existing.map(s=>s.id===record.id
+          ? {...s, _editingBy:{name:currentUser.name, role:currentUser.role, since:new Date().toISOString()}}
+          : s);
+        localStorage.setItem("iet_investments", JSON.stringify(updated));
+      } catch(e) {}
+    } else {
+      setEditLockInfo(null); // guest viewing — global read-only handles this
+    }
+  },[currentUser]);
 
   const [pendingNew,    setPendingNew]    = useState(false); // waiting for save-prompt confirm
 
@@ -10232,6 +10484,7 @@ export default function App() {
     if (hasLines) {
       setPendingNew(true); // triggers modal
     } else {
+      releaseLock(currentRecordId);
       setInv({...defaultInv, name:"", number:""});
       setLines({});
       setLastSaved(null);
@@ -10240,10 +10493,11 @@ export default function App() {
       setAppTab("estimation");
       setEstTab("setup");
     }
-  },[lines]);
+  },[lines,currentRecordId,releaseLock]);
 
   const confirmNew = useCallback((save)=>{
     if (save) saveInvestment();
+    releaseLock(currentRecordId);
     setInv({...defaultInv, name:"", number:""});
     setLines({});
     setLastSaved(null);
@@ -10252,7 +10506,7 @@ export default function App() {
     setPendingNew(false);
     setAppTab("estimation");
     setEstTab("setup");
-  },[saveInvestment]);
+  },[saveInvestment,currentRecordId,releaseLock]);
 
   // Unlock approved estimate — clone to new Draft, keep original intact
   // Revision sequence A→B→C→D→E→F→G→H
@@ -10303,6 +10557,8 @@ export default function App() {
     setAppTab("estimation");
     setEstTab("setup"); // land on Setup so estimator sees the new revision letter
   },[inv, lines, currentRecordId]);
+  // Effective edit lock = Approved record, locked by another user, or not signed in (guest = read-only)
+  const effectiveLocked = estimateLocked || !!editLockInfo || !currentUser;
   const linesEntered  = Object.values(lines).filter(l=>parseFloat(l.qty)>0).length;
   const equipSelected = Object.values(equipSel).filter(q=>parseFloat(q)>0).length;
 
@@ -10369,7 +10625,10 @@ export default function App() {
             <span className="text-[var(--primary-300)] text-xs truncate max-w-48">{inv.name}</span>
           </div>
           {APP_TABS.map(tab=>(
-            <button key={tab.id} onClick={()=>setAppTab(tab.id)}
+            <button key={tab.id} onClick={()=>{
+                if (appTab==="estimation" && tab.id!=="estimation" && !estimateLocked && !editLockInfo) releaseLock(currentRecordId);
+                setAppTab(tab.id);
+              }}
               className={`px-5 py-3 text-xs font-semibold transition-colors border-b-2 ${
                 appTab===tab.id?"border-orange-400 text-white bg-[var(--primary-800)]":"border-transparent text-[var(--primary-300)] hover:text-white hover:bg-[var(--primary-800)]"}`}>
               {tab.label}
@@ -10382,7 +10641,20 @@ export default function App() {
           {loading&&<span className="text-xs text-[var(--primary-300)] animate-pulse pr-4">⟳ Loading live data…</span>}
           {!loading&&!error&&<span className="text-xs text-green-400 pr-4">✓ {wbsData.length} WBS · {supplyData.length} items · {equipData.length} equipment · {ratesData.length} rates</span>}
           {error&&<span className="text-xs text-red-400 pr-4">⚠ Data error — {error}</span>}
+          {currentUser ? (
+            <div className="flex items-center gap-2 pr-4 pl-2 border-l border-[var(--primary-700)] ml-2 h-full">
+              <span className="text-xs text-white font-semibold">👤 {currentUser.name}</span>
+              <span className="text-[10px] text-[var(--primary-300)]">{currentUser.role}</span>
+              <button onClick={handleLogout} className="text-[10px] text-[var(--primary-300)] hover:text-white underline ml-1">Sign out</button>
+            </div>
+          ) : (
+            <button onClick={()=>setShowLogin(true)}
+              className="flex items-center gap-1.5 text-xs text-[var(--primary-200)] hover:text-white pr-4 pl-3 border-l border-[var(--primary-700)] ml-2 h-full">
+              👁 Read-only · <span className="underline">Sign in</span>
+            </button>
+          )}
         </div>
+        {showLogin && <LoginModal users={users} onLogin={handleLogin} onClose={()=>setShowLogin(false)}/>}
 
         {/* Draft recovery banner */}
         {draftRecovery && (
@@ -10433,7 +10705,33 @@ export default function App() {
           </div>
         )}
 
-        {/* Unlock-to-amend modal */}
+        {/* Editing-lock banner — someone else has this estimate open */}
+        {editLockInfo && appTab==="estimation" && (
+          <div className="bg-red-50 border-b border-red-300 px-4 py-2 flex items-center gap-3 flex-shrink-0 z-40">
+            <span className="text-base">🔒</span>
+            <div className="flex-1 min-w-0">
+              <span className="text-xs font-semibold text-red-800">Read-only — currently being edited by {editLockInfo.name} ({editLockInfo.role}). </span>
+              <span className="text-xs text-red-700">
+                Locked since {editLockInfo.since ? new Date(editLockInfo.since).toLocaleString("en-AU",{dateStyle:"short",timeStyle:"short"}) : "recently"}.
+                Changes here won't be saved until the lock is released.
+              </span>
+            </div>
+            {currentUser && ROLES_THAT_CAN_RELEASE_LOCKS.includes(currentUser.role) && (
+              <button onClick={()=>releaseLock(currentRecordId, true)}
+                className="text-xs bg-red-700 hover:bg-red-600 text-white px-3 py-1.5 rounded font-semibold flex-shrink-0">
+                🔓 Release lock
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Guest read-only banner */}
+        {!currentUser && !editLockInfo && appTab==="estimation" && !estimateLocked && (
+          <div className="bg-gray-50 border-b border-gray-200 px-4 py-1.5 flex items-center gap-3 flex-shrink-0 z-40">
+            <span className="text-xs text-gray-500">👁 Viewing in read-only mode.</span>
+            <button onClick={()=>setShowLogin(true)} className="text-xs text-[var(--primary-700)] hover:underline font-semibold">Sign in to make changes</button>
+          </div>
+        )}
         {showUnlockModal && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={()=>setShowUnlockModal(false)}>
             <div className="bg-white rounded-xl shadow-2xl w-[440px]" onClick={e=>e.stopPropagation()}>
@@ -10504,22 +10802,22 @@ export default function App() {
               </div>
 
               <div className="flex-1 overflow-hidden flex flex-col">
-                {estTab==="setup"        && <InvestmentSetup inv={inv} onChange={estimateLocked ? ()=>{} : setInv}/>}
+                {estTab==="setup"        && <InvestmentSetup inv={inv} onChange={effectiveLocked ? ()=>{} : setInv}/>}
                 {estTab==="estimate"     && (
                   <div className="flex flex-1 overflow-hidden">
-                    <EstimationScreen isCommercial={isCommercial} lines={lines} setLines={estimateLocked ? ()=>{} : setLines}/>
+                    <EstimationScreen isCommercial={isCommercial} lines={lines} setLines={effectiveLocked ? ()=>{} : setLines}/>
                   </div>
                 )}
 
-                {estTab==="equipment"    && <EquipmentScreen lines={lines} setLines={estimateLocked ? ()=>{} : setLines} isCommercial={isCommercial} inv={inv}/>}
+                {estTab==="equipment"    && <EquipmentScreen lines={lines} setLines={effectiveLocked ? ()=>{} : setLines} isCommercial={isCommercial} inv={inv}/>}
                 {estTab==="review"    && <ReviewLines lines={lines} isCommercial={isCommercial}/>}
-                {estTab==="summary"   && <SummaryScreen inv={inv} lines={lines} isCommercial={isCommercial} equipSel={equipSel} onSave={estimateLocked ? null : saveInvestment} lastSaved={lastSaved} estimateLocked={estimateLocked}/>}
+                {estTab==="summary"   && <SummaryScreen inv={inv} lines={lines} isCommercial={isCommercial} equipSel={equipSel} onSave={effectiveLocked ? null : saveInvestment} lastSaved={lastSaved} estimateLocked={estimateLocked}/>}
                 {estTab==="financial" && <FinancialScreen inv={inv} lines={lines} isCommercial={isCommercial}/>}
               </div>
             </>
           )}
           {appTab==="wbsmanager" && <WBSManager equipSel={equipSel} setEquipSel={setEquipSel} onPriceUpdate={handlePriceUpdate}/>}
-          {appTab==="settings"   && <ThemeSettings theme={theme} onChange={setTheme}/>}
+          {appTab==="settings"   && <ThemeSettings theme={theme} onChange={setTheme} users={users} setUsers={setUsers} currentUser={currentUser}/>}
           {appTab==="hub"        && <InvestmentHub
             onLoad={(s)=>{loadInvestment(s);}}
             onNew={newEstimate}
