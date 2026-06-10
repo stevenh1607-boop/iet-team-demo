@@ -3405,7 +3405,7 @@ function FinancialScreen({ inv, lines, isCommercial }) {
       </div>
 
       {/* Cash Flow Chart */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-3 w-full max-w-[480px]">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-3 w-3/4">
         <div className="text-xs font-bold text-gray-700 mb-1 text-center">Cash Flow ($M)</div>
         <svg width="100%" viewBox={`0 0 ${CW} ${CH}`} className="overflow-visible">
           {[0,0.25,0.5,0.75,1].map(f=>{
