@@ -564,16 +564,6 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
 }
 
 // ── SHARED UI ───────────────────────────────────────────────────
-function ScopeBadge({ scope }) {
-  const s = {
-    "Supply":          "bg-blue-100 text-blue-700 border border-blue-200",
-    "Install":         "bg-purple-100 text-purple-700 border border-purple-200",
-    "Commission":      "bg-teal-100 text-teal-700 border border-teal-200",
-    "Supply & Install":"bg-indigo-100 text-indigo-700 border border-indigo-200",
-    "Demolition/Removal":"bg-red-100 text-red-700 border border-red-200",
-  }[scope] || "bg-gray-100 text-gray-500";
-  return <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${s}`}>{scope}</span>;
-}
 
 function Card({ children, className="" }) {
   return <div className={`border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>{children}</div>;
