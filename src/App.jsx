@@ -9940,7 +9940,8 @@ export default function App() {
     setAppTab("estimation");
     setEstTab("estimate");
   },[inv, lines, currentRecordId]);
-  const linesEntered = Object.values(lines).filter(l=>parseFloat(l.qty)>0).length;
+  const linesEntered  = Object.values(lines).filter(l=>parseFloat(l.qty)>0).length;
+  const equipSelected = Object.values(equipSel).filter(q=>parseFloat(q)>0).length;
 
   // ── Resolve equipment pricing into supply items ─────────────────────
   // equipPricing holds base_price + price_date + esc_rate for PCE/SCADA/Comms items.
