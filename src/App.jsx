@@ -6924,6 +6924,118 @@ function EquipmentScreen({ lines, setLines, isCommercial, inv }) {
 
 const WIZ_PHASE4_L4_GROUPS = ['4.1.1.01', '4.1.2.01', '4.1.2.02', '4.1.2.03', '4.1.2.04', '4.1.2.05', '4.1.2.06', '4.1.2.07', '4.1.2.08', '4.1.2.09', '4.1.2.10', '4.1.2.11', '4.1.2.12', '4.1.2.13', '4.1.2.14', '4.1.2.15', '4.1.2.16', '4.1.2.17', '4.1.2.18', '4.1.3.01', '4.1.3.02', '4.1.3.03', '4.1.3.04', '4.1.3.05', '4.1.4.01', '4.1.5.01', '4.1.6.01', '4.1.6.02', '4.1.6.03', '4.1.6.04', '4.1.6.05', '4.1.6.06'];
 
+
+// Phase 3 L4 group descriptions (from Activity Codes sheet)
+const WBS_L4_DESC = {
+  '3.1.1.01':'Civil Construction Ancillary Items','3.1.1.02':'Demolition','3.1.1.03':'Clear / Grub',
+  '3.1.1.04':'Strip','3.1.1.05':'Trenching (Including Backfilling)','3.1.1.06':'Bulk Earthworks',
+  '3.1.1.07':'Detailed Earthworks','3.1.1.08':'Geotextiles','3.1.1.09':'Stormwater Drainage and Headwalls',
+  '3.1.1.10':'Rock Protection','3.1.1.11':'Subsoil Drainage','3.1.1.12':'Earthing',
+  '3.1.1.13':'Switchyard Surfacing & Access Roads','3.1.1.14':'Switchyard Equipment Foundations',
+  '3.1.1.15':'Fencing','3.1.1.16':'Electrical Civil Works','3.1.1.17':'Water and Fire Fighting Equipment',
+  '3.1.2.01':'Building Construction Ancillary Items','3.1.2.02':'Buildings - Prefabricated','3.1.2.03':'Buildings - Masonry',
+  '3.1.3.01':'Electrical Construction Ancillary Items','3.1.3.02':'Circuit Breakers','3.1.3.03':'Reclosers',
+  '3.1.3.04':'Disconnectors and Earth Switches','3.1.3.05':'Current Transformers','3.1.3.06':'Voltage Transformer',
+  '3.1.3.07':'Power Transformer','3.1.3.08':'Surge Arrestors and Post Insulators','3.1.3.09':'Switchboards',
+  '3.1.3.10':'Capacitor Banks and Reactive Plant','3.1.3.11':'Miscellaneous Equipment','3.1.3.12':'Structures',
+  '3.1.3.13':'Busbar and Fittings','3.1.3.14':'HV Power Cables','3.1.3.15':'HV Power Cable Terminations (Standard)',
+  '3.1.3.16':'HV Power Cable Terminations (Deadbreak Elbow)','3.1.3.17':'Self-Supporting HV Cable Terminations',
+  '3.1.3.18':'Auxiliary TX and RMU / Switching Stations','3.1.3.19':'DC Distribution Equipment',
+  '3.1.3.20':'Protection Relays','3.1.3.21':'Indoor Panels and Outdoor Cubicles',
+  '3.1.3.22':'Control and Protection Cables','3.1.3.23':'Switchyard Lighting and General Power',
+  '3.1.3.24':'Property Physical Security','3.1.4.01':'Project Supervision & Coordination',
+  '3.1.4.02':'Contract Procurement','3.1.4.03':'Vehicle, Equipment & Resource Hire','3.1.4.04':'Consumables',
+  '3.1.5.01':'ZS Disposal',
+  '3.2.1.01':'Substations Comms Construction Ancillary Items','3.2.1.02':'Routers & Switches',
+  '3.2.1.03':'Digital Radio','3.2.1.04':'UHF Voice Radio Equipment','3.2.1.05':'Microwave Radio Equipment',
+  '3.2.1.06':'Equipment Panels & Racks','3.2.1.07':'Fibre & Networking Equipment',
+  '3.2.2.01':'Optical Fibre Cabling/Construction Ancillary Items','3.2.2.02':'Fibre Cabling',
+  '3.2.2.03':'Cabling Accessories','3.2.2.04':'Project Supervision & Coordination (Comms)',
+  '3.2.3.01':'Contract Procurement (Comms)','3.2.3.02':'Vehicle, Equipment & Resource Hire (Comms)',
+  '3.2.3.03':'Consumables (Comms)',
+  '3.3.1.01':'SM Construction Ancillary Items','3.3.1.02':'Clear / Grub',
+  '3.3.1.03':'Trenching (Including Backfilling) & Underboring','3.3.1.04':'Conduits & Pits',
+  '3.3.1.05':'HV Power Cables','3.3.1.06':'HV Power Cable Terminations & Inline Jointing Kits',
+  '3.3.1.07':'Hurdles (Overhead Construction)','3.3.1.08':'Pole Foundation','3.3.1.09':'Steel Poles',
+  '3.3.1.10':'Timber Poles','3.3.1.11':'Composite Poles','3.3.1.12':'Demolition / Removal of Poles',
+  '3.3.1.13':'Pole Top Assemblies','3.3.1.14':'Overhead Conductor',
+  '3.3.2.01':'Contract Procurement (SM)','3.3.2.02':'Vehicle, Equipment & Resource Hire (SM)','3.3.2.03':'Consumables (SM)',
+  '3.5.1.01':'Ancillary Construction Ancillary Items','3.5.1.02':'Metering & PQM',
+  '3.5.1.03':'SCADA RTU Equipment','3.5.1.04':'SCADA Transducers','3.5.1.05':'SCADA Miscellaneous Equipment',
+  '3.5.1.06':'Load Control FI Plant','3.5.1.07':'System Control','3.5.1.08':'Miscellaneous works',
+};
+
+// Phase 4 L4 group descriptions (from Activity Codes sheet)
+const WIZ_PHASE4_DESC = {
+  '4.1.1.01':'Earthing',
+  '4.1.2.01':'Circuit Breakers','4.1.2.02':'Reclosers','4.1.2.03':'Disconnectors and Earth Switches',
+  '4.1.2.04':'Current Transformers','4.1.2.05':'Voltage Transformer','4.1.2.06':'Power Transformer',
+  '4.1.2.07':'Surge Arrestors and Post Insulators','4.1.2.08':'Switchboards',
+  '4.1.2.09':'Capacitor Banks and Reactive Plant','4.1.2.10':'Miscellaneous Equipment',
+  '4.1.2.11':'Busbar and Fittings','4.1.2.12':'HV Power Cables & Terminations',
+  '4.1.2.13':'Auxiliary TX and RMU / Switching Stations','4.1.2.14':'DC Distribution Equipment',
+  '4.1.2.15':'Protection Relays','4.1.2.16':'Indoor Panels and Outdoor Cubicles',
+  '4.1.2.17':'Control and Protection Cables','4.1.2.18':'Switchyard Lighting and General Power',
+  '4.1.3.01':'Routers & Switches','4.1.3.02':'Digital Radio','4.1.3.03':'UHF Voice Radio Equipment',
+  '4.1.3.04':'Microwave Radio Equipment','4.1.3.05':'Fibre & Networking Equipment',
+  '4.1.4.01':'Fibre Cabling',
+  '4.1.5.01':'HV Power Cables',
+  '4.1.6.01':'Metering & PQM','4.1.6.02':'SCADA RTU Equipment','4.1.6.03':'SCADA Transducers',
+  '4.1.6.04':'SCADA Miscellaneous Equipment','4.1.6.05':'Load Control FI Plant','4.1.6.06':'Miscellaneous works',
+};
+
+// Phase 3 L4 -> Phase 4 L4 suggested commission group (name-matched from workbook)
+// e.g. 3.1.3.04 "Disconnectors" -> 4.1.2.03 "Disconnectors and Earth Switches"
+const WBS_P3_TO_P4_SUGGEST = {
+  '3.1.1.12':'4.1.1.01', // Earthing -> Earthing
+  '3.1.3.02':'4.1.2.01', // Circuit Breakers -> Circuit Breakers
+  '3.1.3.03':'4.1.2.02', // Reclosers -> Reclosers
+  '3.1.3.04':'4.1.2.03', // Disconnectors and Earth Switches -> Disconnectors and Earth Switches
+  '3.1.3.05':'4.1.2.04', // Current Transformers -> Current Transformers
+  '3.1.3.06':'4.1.2.05', // Voltage Transformer -> Voltage Transformer
+  '3.1.3.07':'4.1.2.06', // Power Transformer -> Power Transformer
+  '3.1.3.08':'4.1.2.07', // Surge Arrestors and Post Insulators -> Surge Arrestors and Post Insulators
+  '3.1.3.09':'4.1.2.08', // Switchboards -> Switchboards
+  '3.1.3.10':'4.1.2.09', // Capacitor Banks -> Capacitor Banks and Reactive Plant
+  '3.1.3.11':'4.1.2.10', // Miscellaneous Equipment -> Miscellaneous Equipment
+  '3.1.3.13':'4.1.2.11', // Busbar and Fittings -> Busbar and Fittings
+  '3.1.3.14':'4.1.2.12', // HV Power Cables -> HV Power Cables & Terminations
+  '3.1.3.15':'4.1.2.12', // HV Cable Terminations (Standard) -> HV Power Cables & Terminations
+  '3.1.3.16':'4.1.2.12', // HV Cable Terminations (Deadbreak) -> HV Power Cables & Terminations
+  '3.1.3.17':'4.1.2.12', // Self-Supporting HV Cable -> HV Power Cables & Terminations
+  '3.1.3.18':'4.1.2.13', // Aux TX and RMU -> Auxiliary TX and RMU
+  '3.1.3.19':'4.1.2.14', // DC Distribution -> DC Distribution Equipment
+  '3.1.3.20':'4.1.2.15', // Protection Relays -> Protection Relays
+  '3.1.3.21':'4.1.2.16', // Indoor Panels -> Indoor Panels and Outdoor Cubicles
+  '3.1.3.22':'4.1.2.17', // Control and Protection Cables -> Control and Protection Cables
+  '3.1.3.23':'4.1.2.18', // Switchyard Lighting -> Switchyard Lighting and General Power
+  '3.2.1.02':'4.1.3.01', // Routers & Switches -> Routers & Switches
+  '3.2.1.03':'4.1.3.02', // Digital Radio -> Digital Radio
+  '3.2.1.04':'4.1.3.03', // UHF Voice Radio -> UHF Voice Radio Equipment
+  '3.2.1.05':'4.1.3.04', // Microwave Radio -> Microwave Radio Equipment
+  '3.2.1.07':'4.1.3.05', // Fibre & Networking -> Fibre & Networking Equipment
+  '3.2.2.02':'4.1.4.01', // Fibre Cabling -> Fibre Cabling
+  '3.3.1.05':'4.1.5.01', // HV Power Cables (SM) -> HV Power Cables
+  '3.3.1.06':'4.1.5.01', // HV Cable Terminations (SM) -> HV Power Cables
+  '3.5.1.02':'4.1.6.01', // Metering & PQM -> Metering & PQM
+  '3.5.1.03':'4.1.6.02', // SCADA RTU -> SCADA RTU Equipment
+  '3.5.1.04':'4.1.6.03', // SCADA Transducers -> SCADA Transducers
+  '3.5.1.05':'4.1.6.04', // SCADA Misc -> SCADA Miscellaneous Equipment
+  '3.5.1.06':'4.1.6.05', // Load Control -> Load Control FI Plant
+  '3.5.1.08':'4.1.6.06', // Miscellaneous works -> Miscellaneous works
+};
+// Groups with NO commission equivalent (civil, structures, ancillary items etc)
+const WBS_NO_COMMISSION = new Set([
+  '3.1.1.01','3.1.1.02','3.1.1.03','3.1.1.04','3.1.1.05','3.1.1.06','3.1.1.07','3.1.1.08',
+  '3.1.1.09','3.1.1.10','3.1.1.11','3.1.1.13','3.1.1.14','3.1.1.15','3.1.1.16','3.1.1.17',
+  '3.1.2.01','3.1.2.02','3.1.2.03','3.1.3.01','3.1.3.12','3.1.3.24',
+  '3.1.4.01','3.1.4.02','3.1.4.03','3.1.4.04','3.1.5.01',
+  '3.2.1.01','3.2.1.06','3.2.2.01','3.2.2.03','3.2.2.04','3.2.3.01','3.2.3.02','3.2.3.03',
+  '3.3.1.01','3.3.1.02','3.3.1.03','3.3.1.04','3.3.1.07','3.3.1.08','3.3.1.09','3.3.1.10',
+  '3.3.1.11','3.3.1.12','3.3.1.13','3.3.1.14','3.3.2.01','3.3.2.02','3.3.2.03',
+  '3.5.1.01','3.5.1.07',
+]);
+
 const WIZ_SCOPE_PATTERNS = [
   { id:"standard",  label:"Supply (.1) -> Install (.4) -> Commission (.7)",     desc:"Standard HV plant — 3 rows created" },
   { id:"combined",  label:"Supply & Install combined (.1 only, no separate .4)",  desc:"Items installed as supplied — 2 rows" },
@@ -7027,6 +7139,14 @@ function WBSWizard({ onClose, onSave, prefill, existingCodes }) {
   const commHrsTotal    = parseFloat(commHrs) || 0;
 
   const dupSupply = supplyCode && existingCodes && existingCodes.has(supplyCode);
+
+  // Description lookups for typed codes
+  const l4Desc    = WBS_L4_DESC[deviceCode.trim()] || "";
+  const commL4Desc = WIZ_PHASE4_DESC[commL4Code.trim()] || "";
+
+  // Suggested Phase 4 commission group based on the Phase 3 L4
+  const suggestedCommL4 = WBS_P3_TO_P4_SUGGEST[deviceCode.trim()] || "";
+  const noCommissionGroup = WBS_NO_COMMISSION.has(deviceCode.trim());
 
   // L4 exists detection: check if ANY item with this L4 prefix exists
   // e.g. existingCodes has 3.1.1.16.1.01 -> L4 "3.1.1.16" already in use
@@ -7199,11 +7319,16 @@ function WBSWizard({ onClose, onSave, prefill, existingCodes }) {
                   <div>
                     <label className="text-[10px] text-gray-500 block mb-0.5">L4 device group code *</label>
                     <input value={deviceCode} onChange={e=>setDeviceCode(e.target.value)}
-                      placeholder="e.g. 3.1.3.09"
+                      placeholder="e.g. 3.1.3.04"
                       className={"w-full border rounded px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 " + (dupSupply ? "border-red-400 bg-red-50" : "focus:ring-blue-400")}/>
+                    {l4Desc && (
+                      <div className="text-[10px] text-blue-700 font-semibold mt-0.5">
+                        {deviceCode.trim()} -- {l4Desc}
+                      </div>
+                    )}
                     {l4Exists && !dupSupply && (
                       <div className="text-[10px] text-blue-600 mt-0.5 flex items-center gap-1">
-                        <span>&#9432;</span> L4 group exists -- adding new item to existing group
+                        <span>&#9432;</span> Adding new item to existing group
                       </div>
                     )}
                     {dupSupply && <div className="text-[10px] text-red-600 mt-0.5">Supply code {supplyCode} already taken -- choose a different suffix</div>}
@@ -7240,30 +7365,73 @@ function WBSWizard({ onClose, onSave, prefill, existingCodes }) {
                 {/* Phase 4 commission L4 code -- only shown for standard/scada patterns */}
                 {(scopePattern === "standard" || scopePattern === "scada") && (
                   <div className="border border-purple-200 bg-purple-50 rounded p-2.5 space-y-2">
-                    <div className="text-[10px] font-semibold text-purple-800">Commission WBS -- Phase 4 code required</div>
-                    <div className="text-[10px] text-purple-600 mb-1">
-                      Commission rows always live under Phase 4 (4.x.x.xx.7.xx), NOT under Phase 3.
-                      Select the Phase 4 device group this item commissions under.
+                    <div className="text-[10px] font-semibold text-purple-800">
+                      Commission WBS -- Phase 4 group required
+                      <span className="ml-2 font-normal text-purple-500">Commission codes are always 4.x.x.xx.7.xx -- separate from Phase 3</span>
                     </div>
+
+                    {/* No-commission warning based on P3 L4 lookup */}
+                    {noCommissionGroup && (
+                      <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded px-2 py-1.5">
+                        <span className="text-red-500 flex-shrink-0 mt-0.5">&#9888;</span>
+                        <div className="text-[10px] text-red-800">
+                          <span className="font-semibold">{l4Desc || deviceCode.trim()} does not have a commission scope.</span>{" "}
+                          Civil, structural, ancillary and admin items are not commissioned.
+                          Use <strong>Supply &amp; Install combined</strong> or <strong>Supply only</strong> instead.
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Suggestion when P3->P4 mapping known */}
+                    {suggestedCommL4 && !noCommissionGroup && (
+                      <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded px-2 py-1.5">
+                        <span className="text-green-600 text-sm flex-shrink-0">&#10003;</span>
+                        <div className="text-[10px] text-green-800 flex-1">
+                          Suggested commission group for <span className="font-mono font-semibold">{deviceCode.trim()}</span>
+                          {l4Desc ? " (" + l4Desc + ")" : ""}:
+                          <span className="font-mono font-semibold ml-1 text-purple-700">{suggestedCommL4}</span>
+                          <span className="ml-1 text-green-700">-- {WIZ_PHASE4_DESC[suggestedCommL4]}</span>
+                        </div>
+                        {commL4Code !== suggestedCommL4 && (
+                          <button onClick={()=>setCommL4Code(suggestedCommL4)}
+                            className="text-[10px] bg-green-700 hover:bg-green-600 text-white px-2 py-0.5 rounded font-semibold flex-shrink-0">
+                            Use
+                          </button>
+                        )}
+                        {commL4Code === suggestedCommL4 && (
+                          <span className="text-[10px] text-green-700 flex-shrink-0 font-semibold">Selected</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* No known mapping -- show all options */}
+                    {!suggestedCommL4 && !noCommissionGroup && deviceCode.trim().length >= 7 && (
+                      <div className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+                        No automatic suggestion for <span className="font-mono">{deviceCode.trim()}</span>.
+                        Select the Phase 4 group manually from the list below.
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-[10px] text-gray-500 block mb-0.5">Phase 4 L4 group code *</label>
                         <input value={commL4Code} onChange={e=>setCommL4Code(e.target.value)}
                           list="comm-l4-list"
-                          placeholder="e.g. 4.1.2.01"
+                          placeholder="e.g. 4.1.2.03"
                           className={"w-full border rounded px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 " + (dupComm ? "border-red-400 bg-red-50" : "border-purple-300 focus:ring-purple-400")}/>
                         <datalist id="comm-l4-list">
-                          {WIZ_PHASE4_L4_GROUPS.map(g=><option key={g} value={g}/>)}
+                          {WIZ_PHASE4_L4_GROUPS.map(g=>(
+                            <option key={g} value={g}>{g} -- {WIZ_PHASE4_DESC[g]}</option>
+                          ))}
                         </datalist>
+                        {commL4Desc && (
+                          <div className="text-[10px] text-purple-700 font-semibold mt-0.5">
+                            {commL4Code.trim()} -- {commL4Desc}
+                          </div>
+                        )}
                         {commL4HasItems && (
                           <div className="text-[10px] text-blue-600 mt-0.5">
                             {commTakenSuffixes.size} existing commission {commTakenSuffixes.size === 1 ? "row" : "rows"} in this group
-                          </div>
-                        )}
-                        {!commL4Code.trim() && (
-                          <div className="text-[10px] text-amber-700 mt-0.5">
-                            No Phase 4 code -- commission row cannot be created.
-                            Consider "Supply & Install only" if no commission WBS exists.
                           </div>
                         )}
                         {dupComm && <div className="text-[10px] text-red-600 mt-0.5">Commission code {commCode} already taken</div>}
@@ -7285,14 +7453,11 @@ function WBSWizard({ onClose, onSave, prefill, existingCodes }) {
                             )}
                           </div>
                         )}
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
-                      <span className="text-amber-600 flex-shrink-0 mt-0.5">&#9888;</span>
-                      <div className="text-[10px] text-amber-800">
-                        <span className="font-semibold">Not sure this item needs commissioning?</span> Civil, earthing and most materials items
-                        typically use <strong>Supply & Install</strong> only. If no Phase 4 L4 group exists for this item type,
-                        select "Supply &amp; Install combined" above.
+                        {commCode && (
+                          <div className="text-[10px] text-purple-700 font-mono mt-1 font-semibold">
+                            Commission code: {commCode}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
