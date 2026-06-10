@@ -248,10 +248,19 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
   entered.forEach(item => {
     const cw = item.commission_wbs;
     if (!cw || !commLookup[cw]) return;
+    if (commLookup[cw].direct_entry) return; // handled below
     const qty = parseFloat(lines[item.wbs_code]?.qty||"0") * parseFloat(lines[item.wbs_code]?.factor||"1");
     const l3 = cw.split(".").slice(0,3).join(".");
     if (!commByL3[l3]) commByL3[l3] = {};
     commByL3[l3][cw] = (commByL3[l3][cw]||0) + qty;
+  });
+  // Add direct-entry commission rows (earthing, PSN/CSN, misc)
+  Object.entries(commLookup).filter(([,d])=>d.direct_entry).forEach(([cw, data])=>{
+    const dq = parseFloat(lines[`comm_direct_${cw}`]?.qty||"0")||0;
+    if (dq <= 0) return;
+    const l3 = cw.split(".").slice(0,3).join(".");
+    if (!commByL3[l3]) commByL3[l3] = {};
+    commByL3[l3][cw] = (commByL3[l3][cw]||0) + dq;
   });
 
   // ── Write supply/install/design phases (1, 2, 3, 5) ──────────
@@ -2863,10 +2872,27 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
     const cost=hrs*rate;
     return {commHrs:a.commHrs+hrs,eeInt:a.eeInt+cost,comm:a.comm+cost*(1+ANS_LAB),lines:a.lines+1};
   },{commHrs:0,eeInt:0,comm:0,lines:0});
-  if(phase4.commHrs>0) byPhase["4"]={...phase4,installHrs:0,eeLabCost:phase4.eeInt,contrCost:0,matCost:0};
+
+  // Add direct-entry commission rows (earthing, PSN/CSN, misc) to phase4 totals
+  const phase4Direct = Object.entries(commLookup).filter(([,d])=>d.direct_entry).reduce((a,[wbs,data])=>{
+    const dq   = parseFloat(lines[`comm_direct_${wbs}`]?.qty||"0")||0;
+    if (dq<=0) return a;
+    const ovrd = lines[`comm_ovrd_${wbs}`]?.qty;
+    const hrs  = (ovrd!==undefined&&ovrd!=="")?(parseFloat(ovrd)||0):dq*(data.hrs_per_unit||0);
+    const rate = data.ee_labour_rate||139.26;
+    const cost = hrs*rate;
+    return {commHrs:a.commHrs+hrs,eeInt:a.eeInt+cost,comm:a.comm+cost*(1+ANS_LAB)};
+  },{commHrs:0,eeInt:0,comm:0});
+  const phase4Combined = {
+    commHrs: phase4.commHrs + phase4Direct.commHrs,
+    eeInt:   phase4.eeInt   + phase4Direct.eeInt,
+    comm:    phase4.comm    + phase4Direct.comm,
+    lines:   phase4.lines,
+  };
+  if(phase4Combined.commHrs>0) byPhase["4"]={...phase4Combined,installHrs:0,eeLabCost:phase4Combined.eeInt,contrCost:0,matCost:0};
 
   // commGrandHrs available locally for WBS table column
-  const commGrandHrs = phase4.commHrs;
+  const commGrandHrs = phase4Combined.commHrs;
 
   const grandEE   = Object.values(byPhase).reduce((a,p)=>a+p.eeInt,0);
   const grandComm = Object.values(byPhase).reduce((a,p)=>a+p.comm,0);
