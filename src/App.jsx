@@ -1514,13 +1514,13 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                         <div key={item.wbs}
                           className={`grid items-center px-3 py-1.5 border-b text-xs
                             ${isActive?"bg-teal-50":"bg-white hover:bg-gray-50"}
-                            ${item.isDirectEntry?"border-l-4 border-l-teal-400":""}
+                            ${item.direct_entry?"border-l-4 border-l-teal-400":""}
                             ${isOvrd?"border-l-4 border-l-orange-400":""}`}
                           style={{gridTemplateColumns:"1fr 52px 64px 52px 76px 76px 86px 64px"}}>
                           <div className="min-w-0 pr-1">
                             <div className={`truncate font-medium ${isActive?"text-teal-900":"text-gray-500"}`}>
                               {item.description}
-                              {item.isDirectEntry && (
+                              {item.direct_entry && (
                                 item.wbs.startsWith("4.1.1.01")
                                   ? <span className="ml-1.5 text-[9px] bg-amber-100 text-amber-700 border border-amber-300 rounded px-1 font-semibold">⚡ Enter hrs — earthing commission varies per site</span>
                                   : item.wbs.startsWith("4.1.3.05")
@@ -1534,7 +1534,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                           </div>
                           <div className="text-center text-gray-500">{item.hrs_per_unit||0}</div>
                           <div className="text-center font-bold">
-                            {item.isDirectEntry ? (
+                            {item.direct_entry ? (
                               <input type="number" min="0" step="1" value={directQtyVal}
                                 onChange={e=>setDirect(e.target.value)}
                                 placeholder="0"
