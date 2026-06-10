@@ -719,11 +719,20 @@ function InvestmentSetup({ inv, onChange }) {
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-600 block mb-1">Revision</label>
-              <select value={inv.revision} onChange={e=>upd("revision",e.target.value)}
-                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
-                {["A","B","C","D","E"].map(r=><option key={r}>{r}</option>)}
-              </select>
+              <label className="text-xs font-semibold text-gray-600 block mb-1 flex items-center gap-1.5">
+                Revision
+                {onChange===undefined||onChange===null ? <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-semibold">🔒 Auto on unlock</span> : null}
+              </label>
+              <div className="relative">
+                <select value={inv.revision} onChange={e=>upd("revision",e.target.value)}
+                  disabled={!upd||inv._locked}
+                  className={`w-full border rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 ${
+                    inv._locked ? "bg-green-50 border-green-300 text-green-800 font-bold cursor-not-allowed" : "border-gray-300 bg-white"
+                  }`}>
+                  {["A","B","C","D","E","F","G","H"].map(r=><option key={r}>{r}</option>)}
+                </select>
+                {inv._locked && <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[9px] text-green-600 font-semibold pointer-events-none">APPROVED</span>}
+              </div>
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-600 block mb-1">Complexity</label>
@@ -4247,10 +4256,13 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
                 })()}
                 {selected._amendmentOf && (()=>{
                   const origin = saved.find(s=>s.id===selected._amendmentOf);
-                  return <div className="flex items-center gap-2 text-xs mb-1.5">
+                  const fromRev = selected._amendmentOfRevision || origin?.inv?.revision || "A";
+                  const toRev   = selected._amendmentToRevision || selected.inv?.revision || "B";
+                  return <div className="flex items-center gap-2 text-xs mb-1.5 flex-wrap">
                     <span className="text-amber-600 font-semibold">✏️ Amendment of</span>
                     <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-xs font-medium">Approved</span>
-                    <span className="text-gray-600 font-semibold truncate max-w-[100px]">{selected._amendmentOfName||origin?.inv?.name||"original"}</span>
+                    <span className="text-gray-600 font-semibold truncate max-w-[80px]">{selected._amendmentOfName||origin?.inv?.name||"original"}</span>
+                    <span className="font-mono text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded">Rev {fromRev} → Rev {toRev}</span>
                     {origin && <button onClick={()=>setSelected(origin)} className="ml-auto text-blue-600 hover:underline text-[10px]">View approved</button>}
                   </div>;
                 })()}
@@ -4263,10 +4275,11 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
                   </div>
                 ))}
                 {saved.filter(s=>s._amendmentOf===selected.id).map(amend=>(
-                  <div key={amend.id} className="flex items-center gap-2 text-xs mt-1">
+                  <div key={amend.id} className="flex items-center gap-2 text-xs mt-1 flex-wrap">
                     <span className="text-amber-600">↳ Amendment</span>
                     <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${STATUS_CFG[amend.status||"Draft"]?.bg} ${STATUS_CFG[amend.status||"Draft"]?.text}`}>{amend.status||"Draft"}</span>
-                    <span className="text-gray-600 font-semibold truncate max-w-[100px]">{amend.inv.name}</span>
+                    <span className="font-mono text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded">Rev {amend._amendmentOfRevision||selected.inv?.revision||"A"} → Rev {amend.inv?.revision||"B"}</span>
+                    <span className="text-gray-600 font-semibold truncate max-w-[80px]">{amend.inv.name}</span>
                     <button onClick={()=>setSelected(amend)} className="ml-auto text-blue-600 hover:underline text-[10px]">View</button>
                   </div>
                 ))}
@@ -9919,15 +9932,15 @@ export default function App() {
   },[inv,lines,isCommercial,supplyData,currentRecordId]);
 
   const loadInvestment = useCallback((record)=>{
-    setInv(record.inv);
+    const isApproved = record.status === "Approved";
+    // Stamp _locked onto inv so the Setup form can show/disable accordingly
+    setInv({...record.inv, _locked: isApproved});
     setLines(record.lines||{});
     setLastSaved(record.savedAt);
     setCurrentRecordId(record.id || null);
-    // Lock if Approved
-    const isApproved = record.status === "Approved";
     setEstimateLocked(isApproved);
     setAppTab("estimation");
-    setEstTab(isApproved ? "summary" : "summary");
+    setEstTab("summary");
     // Clear draft recovery once deliberately loading a record
     localStorage.removeItem("iet_draft_recovery");
     setDraftRecovery(null);
@@ -9964,11 +9977,24 @@ export default function App() {
   },[saveInvestment]);
 
   // Unlock approved estimate — clone to new Draft, keep original intact
+  // Revision sequence A→B→C→D→E→F→G→H
+  const REVISIONS = ["A","B","C","D","E","F","G","H"];
+  const nextRevision = (current) => {
+    const idx = REVISIONS.indexOf((current||"A").toUpperCase());
+    return REVISIONS[Math.min(idx + 1, REVISIONS.length - 1)];
+  };
+
+  // Unlock approved estimate — clone to new Draft with next revision letter, keep original intact
   const amendEstimate = useCallback(()=>{
+    const currentRev = inv.revision || "A";
+    const newRev     = nextRevision(currentRev);
+    const baseName   = inv.name.replace(/\s*\(Amendment\w*\)\s*$/i, "").trim();
     const amendedInv = {
       ...inv,
-      name: inv.name + " (Amendment)",
-      estClass: "Class 5", // revisions start as Class 5
+      name:       baseName,   // same investment name — revision letter differentiates
+      revision:   newRev,     // auto-incremented revision letter
+      estClass:   "Class 5", // all revisions start at Class 5
+      reviewedBy: "",         // clear reviewer — fresh review cycle
     };
     const now = new Date();
     const newId = Date.now();
@@ -9982,21 +10008,22 @@ export default function App() {
       linesCount: Object.values(lines).filter(l=>parseFloat(l.qty||"0")>0).length,
       totalSupplyLines: 0,
       totalEE: 0, totalComm: 0,
-      _amendmentOf: currentRecordId,
-      _amendmentOfName: inv.name,
+      _amendmentOf:         currentRecordId,
+      _amendmentOfName:     inv.name,
+      _amendmentOfRevision: currentRev,
+      _amendmentToRevision: newRev,
     };
     try {
       const existing = JSON.parse(localStorage.getItem("iet_investments")||"[]");
       localStorage.setItem("iet_investments", JSON.stringify([amendRecord, ...existing]));
     } catch(e) {}
-    // Load the new amendment draft
     setInv(amendedInv);
     setCurrentRecordId(newId);
     setEstimateLocked(false);
     setShowUnlockModal(false);
     setLastSaved(amendRecord.savedAt);
     setAppTab("estimation");
-    setEstTab("estimate");
+    setEstTab("setup"); // land on Setup so estimator sees the new revision letter
   },[inv, lines, currentRecordId]);
   const linesEntered  = Object.values(lines).filter(l=>parseFloat(l.qty)>0).length;
   const equipSelected = Object.values(equipSel).filter(q=>parseFloat(q)>0).length;
@@ -10117,8 +10144,8 @@ export default function App() {
           <div className="bg-green-50 border-b border-green-300 px-4 py-2 flex items-center gap-3 flex-shrink-0 z-40">
             <span className="text-base">🔒</span>
             <div className="flex-1 min-w-0">
-              <span className="text-xs font-semibold text-green-800">Approved — estimate is locked. </span>
-              <span className="text-xs text-green-700">This record is read-only. To make changes, a team leader must unlock it — this will create a new Draft amendment and preserve the approved version.</span>
+              <span className="text-xs font-semibold text-green-800">Approved · Rev {inv.revision||"A"} — estimate is locked. </span>
+              <span className="text-xs text-green-700">Read-only. Unlock to create a new Draft at Rev {["A","B","C","D","E","F","G","H"][Math.min(["A","B","C","D","E","F","G","H"].indexOf((inv.revision||"A").toUpperCase())+1,7)]} — preserves this approved record.</span>
             </div>
             <button
               onClick={()=>setShowUnlockModal(true)}
@@ -10137,15 +10164,26 @@ export default function App() {
                 <div className="text-green-200 text-xs mt-1">Team Leader authorisation required</div>
               </div>
               <div className="p-5 space-y-4">
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
-                  <div className="font-semibold mb-1">What happens when you unlock:</div>
-                  <ul className="space-y-1 list-disc list-inside text-amber-700">
-                    <li>The approved version <span className="font-semibold">stays locked and intact</span> as the audit record</li>
-                    <li>A new <span className="font-semibold">Draft amendment</span> is created with all current quantities copied across</li>
-                    <li>The amendment is labelled <span className="font-mono text-xs">{inv.name} (Amendment)</span></li>
-                    <li>It resets to <span className="font-semibold">Class 5</span> and must go through review again</li>
-                  </ul>
-                </div>
+                {(()=>{
+                  const curRev = inv.revision || "A";
+                  const nxtRev = ["A","B","C","D","E","F","G","H"][Math.min(["A","B","C","D","E","F","G","H"].indexOf(curRev.toUpperCase())+1,7)];
+                  return (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                      <div className="font-semibold mb-2">What happens when you unlock:</div>
+                      <ul className="space-y-1.5 list-disc list-inside text-amber-700">
+                        <li>The <span className="font-semibold">Rev {curRev} approved record stays locked</span> — permanent audit trail</li>
+                        <li>A new <span className="font-semibold">Draft is created</span> with all quantities copied across</li>
+                        <li>Revision automatically advances: <span className="font-mono font-bold text-amber-900">Rev {curRev} → Rev {nxtRev}</span></li>
+                        <li>Estimate class resets to <span className="font-semibold">Class 5</span> — must go through review again</li>
+                        <li>Reviewer is cleared — new sign-off required</li>
+                      </ul>
+                      <div className="mt-2.5 pt-2 border-t border-amber-200 flex items-center gap-2">
+                        <span className="text-amber-600">New draft will be:</span>
+                        <span className="font-mono font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded">{inv.name} · Rev {nxtRev} · Class 5 · Draft</span>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div>
                   <label className="text-xs font-semibold text-gray-700 block mb-1.5">Team Leader PIN *</label>
                   <UnlockPinField onConfirm={amendEstimate} onCancel={()=>setShowUnlockModal(false)}/>
