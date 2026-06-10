@@ -1211,9 +1211,18 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
     return supply.filter(s=>s.l4_group===selectedL4);
   },[supply, selectedL4, navSearch]);
 
-  // Separate Supply (L5=1,2) rows from Install (L5=4) rows
-  const items = useMemo(()=> allL4Items.filter(s=> s.scope !== "Install"), [allL4Items]);
-  const installItems = useMemo(()=> allL4Items.filter(s=> s.scope === "Install"), [allL4Items]);
+  // Separate Supply rows from Install rows:
+  // "Direct-entry" Install rows (no install_wbs parent link) are shown as regular estimatable
+  // items — civil earthworks, cable trenching, conductor stringing etc. are priced this way.
+  // "Derived" Install rows (have supply items that propagate qty to them) sit in the install
+  // section at the bottom and are shown auto-derived, not directly enterable.
+  const isDerivedInstall = (s) => s.scope === "Install" && !!s.install_wbs;
+  const items = useMemo(()=>
+    allL4Items.filter(s => s.scope !== "Install" || !s.install_wbs),
+  [allL4Items]);
+  const installItems = useMemo(()=>
+    allL4Items.filter(s => s.scope === "Install" && !!s.install_wbs),
+  [allL4Items]);
 
   // Build install aggregation: installWbsCode → { item, derivedHrs, derivedQty, linkedSupply[] }
   // derivedHrs = sum of (enteredQty × factor × install_hrs_per) for each supply item → this install
@@ -1632,6 +1641,8 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                     <div className={`font-medium truncate ${hasQty?"text-blue-900":"text-gray-800"}`}>{item.description}</div>
                     <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                       <span className="text-gray-400 font-mono text-xs">{item.wbs_code}</span>
+                      {item.scope === "Install" && !item.install_wbs &&
+                        <span className="text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded px-1 font-semibold">Direct-entry · Contractor</span>}
                       {item.pce_price>0 && <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-1">PCE {fmt(item.pce_price)}</span>}
                       {isContr
                         ? <span className="text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded px-1">Contractor</span>
