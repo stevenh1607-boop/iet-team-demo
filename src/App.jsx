@@ -6357,16 +6357,29 @@ function WBSIntegrityPanel({ wbs, supply, nullApproved, toggleNullApproved }) {
   const C = checks;
   const allClear = C.totalIssues === 0;
 
-  const Pill = ({n,type})=>{
+  const Pill = ({n, approved, type})=>{
     const cls = type==="ok"?"bg-green-100 text-green-700":type==="warn"?"bg-amber-100 text-amber-700":"bg-red-100 text-red-700";
-    return <span className={`text-xs font-mono px-2 py-0.5 rounded-full font-semibold ${cls}`}>{n}</span>;
+    const allApproved = approved != null && approved >= n && n > 0;
+    return (
+      <span className={`text-xs font-mono px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 ${allApproved?"bg-green-100 text-green-700":cls}`}>
+        {n}
+        {approved != null && n > 0 && (
+          <span className="opacity-60 font-normal text-[10px]">·{approved}✓</span>
+        )}
+      </span>
+    );
   };
 
+  // Count approved items per section
+  const installApproved  = C.installNullHrs.filter(r=>nullApproved[r.wbs_code]).length;
+  const commApproved     = [...C.miscCommNull,...C.unexpCommNull].filter(r=>nullApproved[r.wbs_code]).length;
+  const nocommApproved   = C.installNoComm.filter(r=>nullApproved["nocomm_"+r.wbs_code]).length;
+
   const sections = [
-    {id:"install",  label:"Install hrs gaps",     count:C.installNullHrs.length,   type: C.installNullHrs.length>0?"warn":"ok"},
-    {id:"comm",     label:"Commission hrs gaps",   count:C.miscCommNull.length+C.unexpCommNull.length, type: C.unexpCommNull.length>0?"err":"ok"},
-    {id:"nocomm",   label:"No commission link",    count:C.installNoComm.length,    type: C.installNoComm.length>0?"warn":"ok"},
-    {id:"broken",   label:"Broken link targets",   count:C.brokenInstall.length+C.wrongScopeInstall.length, type: (C.brokenInstall.length+C.wrongScopeInstall.length)>0?"err":"ok"},
+    {id:"install",  label:"Install hrs gaps",     count:C.installNullHrs.length,   approved:installApproved, type: C.installNullHrs.length>0&&installApproved<C.installNullHrs.length?"warn":"ok"},
+    {id:"comm",     label:"Commission hrs gaps",   count:C.miscCommNull.length+C.unexpCommNull.length, approved:commApproved, type: C.unexpCommNull.filter(r=>!nullApproved[r.wbs_code]).length>0?"err":"ok"},
+    {id:"nocomm",   label:"No commission link",    count:C.installNoComm.length,    approved:nocommApproved, type: C.installNoComm.length>0&&nocommApproved<C.installNoComm.length?"warn":"ok"},
+    {id:"broken",   label:"Broken link targets",   count:C.brokenInstall.length+C.wrongScopeInstall.length, approved:null, type: (C.brokenInstall.length+C.wrongScopeInstall.length)>0?"err":"ok"},
   ];
 
   return (
@@ -6392,7 +6405,7 @@ function WBSIntegrityPanel({ wbs, supply, nullApproved, toggleNullApproved }) {
               className={`text-left px-4 py-2.5 text-xs flex items-center justify-between gap-2 border-l-2 transition-colors
                 ${activeSection===s.id?"border-blue-600 bg-blue-50 text-blue-800 font-semibold":"border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-800"}`}>
               <span>{s.label}</span>
-              <Pill n={s.count} type={s.type==="err"?"err":s.type==="warn"?"warn":"ok"}/>
+              <Pill n={s.count} approved={s.approved} type={s.type==="err"?"err":s.type==="warn"?"warn":"ok"}/>
             </button>
           ))}
           <div className="mt-4 mx-3 border-t pt-3">
@@ -6401,6 +6414,10 @@ function WBSIntegrityPanel({ wbs, supply, nullApproved, toggleNullApproved }) {
               <div><span className="inline-block w-2 h-2 rounded-full bg-red-400 mr-1.5"></span>Critical — fix before go-live</div>
               <div><span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1.5"></span>Warning — needs review</div>
               <div><span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1.5"></span>Pass</div>
+            </div>
+            <div className="mt-3 pt-2 border-t border-gray-100 text-[10px] text-gray-400 leading-relaxed">
+              <span className="font-mono bg-gray-100 px-1 rounded">N·M✓</span> = N total · M approved<br/>
+              Goes green when all approved
             </div>
           </div>
         </div>
