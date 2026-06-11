@@ -10021,6 +10021,483 @@ const defaultInv = {
   constrStart:"6", constrDur:"15", contInt:"10", contComm:"10",
 };
 
+// ── SME REPORT SCREEN (S8) ───────────────────────────────────────
+// Replicates the SME summary macros from the master workbook —
+// filters the live estimate to each discipline's WBS scope and rolls
+// costs up to summary WBS rows, grouped by delivery phase.
+// Priority order matters: the FIRST discipline whose prefix matches
+// claims the row (so PROT/CIVIL claim their 3.1.x groups before HV).
+const SME_DISCIPLINES = [
+  { id:"SCADA", label:"SCADA & Metering", icon:"📡", color:"teal",
+    description:"SCADA RTUs, transducers, load control, system control & metering",
+    macroName:"SCADA_Summary",
+    prefixes:["2.6.1.02","2.6.1.04","2.6.1.05","3.5.1.02","3.5.1.03","3.5.1.04","3.5.1.05","3.5.1.06","3.5.1.07","4.1.6.01","4.1.6.02","4.1.6.03","4.1.6.04","4.1.6.05"] },
+  { id:"PROT", label:"Protection", icon:"🛡", color:"red",
+    description:"Protection relays, DC systems, panels & secondary cabling",
+    macroName:"Protection_Summary",
+    prefixes:["2.6.1.01","3.1.3.19","3.1.3.20","3.1.3.21","3.1.3.22","4.1.2.14","4.1.2.15","4.1.2.16","4.1.2.17"] },
+  { id:"COMMS", label:"Comms", icon:"📶", color:"purple",
+    description:"Communications design, equipment & optical fibre",
+    macroName:"Comms_Summary",
+    prefixes:["2.2","3.2","4.1.3","4.1.4"] },
+  { id:"TRANS", label:"Subtransmission Mains", icon:"🗼", color:"orange",
+    description:"SM design, construction & commissioning",
+    macroName:"TransmissionServices_Summary",
+    prefixes:["2.3","3.3","4.1.5"] },
+  { id:"CIVIL", label:"Civil, Building & Earthing", icon:"🏗", color:"amber",
+    description:"Civil & building construction, earthing engineering & commissioning",
+    macroName:"CivilEarthing_Summary",
+    prefixes:["2.6.1.03","3.1.1","3.1.2","4.1.1"] },
+  { id:"HV", label:"HV Plant (Zone Sub)", icon:"⚡", color:"blue",
+    description:"ZS design, primary plant, procurement & electrical commissioning",
+    macroName:"HVPlant_Summary",
+    prefixes:["2.1","3.1","4.1.2"] },
+  { id:"OTHER", label:"Other / Ancillary", icon:"📦", color:"gray",
+    description:"Planning, land & routes, ancillary items & handover",
+    macroName:"Ancillary_Summary",
+    prefixes:[] },
+];
+
+const SME_COLOR = {
+  teal:   { card:"bg-teal-700",   active:"bg-teal-800 text-white",   hover:"hover:bg-teal-50"   },
+  red:    { card:"bg-red-700",    active:"bg-red-800 text-white",    hover:"hover:bg-red-50"    },
+  purple: { card:"bg-purple-700", active:"bg-purple-800 text-white", hover:"hover:bg-purple-50" },
+  orange: { card:"bg-orange-700", active:"bg-orange-800 text-white", hover:"hover:bg-orange-50" },
+  amber:  { card:"bg-amber-700",  active:"bg-amber-800 text-white",  hover:"hover:bg-amber-50"  },
+  blue:   { card:"bg-blue-700",   active:"bg-blue-800 text-white",   hover:"hover:bg-blue-50"   },
+  gray:   { card:"bg-gray-600",   active:"bg-gray-700 text-white",   hover:"hover:bg-gray-50"   },
+};
+
+const SME_PHASES = ["Planning","Design","Construction","Commissioning","Handover"];
+const SME_PHASE_STYLES = {
+  Planning:      { bg:"bg-gray-100",  border:"border-l-gray-400",   label:"bg-gray-200 text-gray-700",     bar:"bg-gray-400"   },
+  Design:        { bg:"bg-indigo-50", border:"border-l-indigo-400", label:"bg-indigo-100 text-indigo-700", bar:"bg-indigo-400" },
+  Construction:  { bg:"bg-blue-50",   border:"border-l-blue-400",   label:"bg-blue-100 text-blue-700",     bar:"bg-blue-400"   },
+  Commissioning: { bg:"bg-teal-50",   border:"border-l-teal-400",   label:"bg-teal-100 text-teal-700",     bar:"bg-teal-400"   },
+  Handover:      { bg:"bg-green-50",  border:"border-l-green-400",  label:"bg-green-100 text-green-700",   bar:"bg-green-400"  },
+};
+
+function smeClassify(code) {
+  for (const d of SME_DISCIPLINES) {
+    if (d.prefixes.some(p => code === p || code.startsWith(p + "."))) return d.id;
+  }
+  return "OTHER";
+}
+function smePhase(code) {
+  return { "1":"Planning", "2":"Design", "3":"Construction", "4":"Commissioning", "5":"Handover" }[code.split(".")[0]] || "Construction";
+}
+
+function SMEReportScreen({ inv, lines, isCommercial }) {
+  const { supply, commLookup, commProfiles } = useData();
+  const [selected, setSelected]             = useState("HV");
+  const [expandedPhases, setExpandedPhases] = useState({Planning:true,Design:true,Construction:true,Commissioning:true,Handover:true});
+  const [showMacroHint, setShowMacroHint]   = useState(false);
+  const [exporting, setExporting]           = useState(false);
+
+  // Every estimate row, tagged with discipline + phase
+  const allRows = useMemo(()=>{
+    const out = [];
+    // Supply / install / direct lines (Phases 1, 2, 3, 5)
+    supply.forEach(item=>{
+      const ln = lines[item.wbs_code];
+      if (!ln || parseFloat(ln.qty||"0")<=0) return;
+      const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, null, 0);
+      out.push({ wbs:item.wbs_code, desc:item.description, qty:c.q,
+        phase:smePhase(item.wbs_code), disc:smeClassify(item.wbs_code),
+        supplyCost:c.equipCost, installHrs:c.installHrs, commHrs:0, eeInt:c.eeInt, comm:c.comm });
+    });
+    // Phase 4 commissioning rows — same derivation as Review Lines
+    const commTotals = {};
+    supply.forEach(item=>{
+      const cw = item.commission_wbs;
+      if (!cw || !commLookup[cw] || commLookup[cw].direct_entry) return;
+      const ln  = lines[item.wbs_code];
+      const qty = parseFloat(ln?.qty||"0") * parseFloat(ln?.factor||"1");
+      if (qty<=0) return;
+      commTotals[cw] = (commTotals[cw]||0) + qty;
+    });
+    Object.entries(commLookup).forEach(([commWbs, data])=>{
+      const isDirect   = !!data.direct_entry;
+      const derivedQty = isDirect
+        ? (parseFloat(lines[`comm_direct_${commWbs}`]?.qty||"0")||0)
+        : (commTotals[commWbs]||0);
+      if (derivedQty<=0) return;
+      const scale   = getScaleFactor(commProfiles, data.profile_id, derivedQty);
+      const baseHrs = derivedQty*(data.hrs_per_unit||0);
+      const ovrd    = lines[`comm_ovrd_${commWbs}`]?.qty;
+      const commHrs = (ovrd!==undefined&&ovrd!=="") ? (parseFloat(ovrd)||0) : baseHrs*scale;
+      const rate    = data.ee_labour_rate||139.26;
+      const eeInt   = commHrs*rate;
+      out.push({ wbs:commWbs, desc:data.description, qty:derivedQty,
+        phase:"Commissioning", disc:smeClassify(commWbs),
+        supplyCost:0, installHrs:0, commHrs, eeInt, comm:eeInt*(1+ANS_LAB) });
+    });
+    return out;
+  },[supply, lines, isCommercial, commLookup, commProfiles]);
+
+  const investEETotal = useMemo(()=>allRows.reduce((a,r)=>a+r.eeInt,0),[allRows]);
+
+  const discTotals = useMemo(()=>{
+    const t = {};
+    SME_DISCIPLINES.forEach(d=>{ t[d.id]={eeInt:0,count:0}; });
+    allRows.forEach(r=>{ t[r.disc].eeInt+=r.eeInt; t[r.disc].count++; });
+    return t;
+  },[allRows]);
+
+  const discipline = SME_DISCIPLINES.find(d=>d.id===selected);
+  const rows = useMemo(()=>
+    allRows.filter(r=>r.disc===selected)
+      .sort((a,b)=>a.wbs.localeCompare(b.wbs,undefined,{numeric:true})),
+  [allRows, selected]);
+
+  const phaseTotals = useMemo(()=>{
+    const t = {};
+    SME_PHASES.forEach(ph=>{
+      const phRows = rows.filter(r=>r.phase===ph);
+      t[ph] = {
+        supplyCost: phRows.reduce((a,r)=>a+r.supplyCost,0),
+        installHrs: phRows.reduce((a,r)=>a+r.installHrs,0),
+        commHrs:    phRows.reduce((a,r)=>a+r.commHrs,0),
+        eeInt:      phRows.reduce((a,r)=>a+r.eeInt,0),
+        comm:       phRows.reduce((a,r)=>a+r.comm,0),
+        count:      phRows.length,
+      };
+    });
+    return t;
+  },[rows]);
+
+  const grandTotal = useMemo(()=>({
+    supplyCost: rows.reduce((a,r)=>a+r.supplyCost,0),
+    installHrs: rows.reduce((a,r)=>a+r.installHrs,0),
+    commHrs:    rows.reduce((a,r)=>a+r.commHrs,0),
+    eeInt:      rows.reduce((a,r)=>a+r.eeInt,0),
+    comm:       rows.reduce((a,r)=>a+r.comm,0),
+  }),[rows]);
+
+  const sharePct = investEETotal>0 ? ((grandTotal.eeInt/investEETotal)*100).toFixed(1) : "0.0";
+  const togglePhase = ph => setExpandedPhases(prev=>({...prev,[ph]:!prev[ph]}));
+  const cc = SME_COLOR[discipline.color];
+  const gridCols = "150px 1fr 60px 95px 80px 80px 105px 110px";
+  const fmtK2 = n => n>0 ? "$"+(n/1000).toFixed(0)+"k" : "–";
+
+  const exportExcel = async ()=>{
+    setExporting(true);
+    try {
+      if (!window.XLSX) {
+        await new Promise((res,rej)=>{
+          const s = document.createElement("script");
+          s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+      const XL = window.XLSX;
+      const data = [
+        [`SME Report — ${discipline.label}`],
+        [`${inv.name||"Untitled"} — ${inv.number||""} · ${isCommercial?"Commercial (ANS applied)":"EE Internal rates"}`],
+        [],
+        ["WBS Code","Description","Phase","Qty","Supply Cost","Install Hrs","Comm Hrs","EE Internal","Commercial"],
+      ];
+      rows.forEach(r=>data.push([r.wbs,r.desc,r.phase,r.qty,
+        Math.round(r.supplyCost*100)/100, Math.round(r.installHrs*10)/10, Math.round(r.commHrs*10)/10,
+        Math.round(r.eeInt*100)/100, Math.round(r.comm*100)/100]));
+      data.push(["","GRAND TOTAL","","",
+        Math.round(grandTotal.supplyCost*100)/100, Math.round(grandTotal.installHrs*10)/10, Math.round(grandTotal.commHrs*10)/10,
+        Math.round(grandTotal.eeInt*100)/100, Math.round(grandTotal.comm*100)/100]);
+      const ws = XL.utils.aoa_to_sheet(data);
+      ws["!cols"] = [{wch:16},{wch:60},{wch:14},{wch:8},{wch:13},{wch:11},{wch:11},{wch:13},{wch:13}];
+      const wb = XL.utils.book_new();
+      XL.utils.book_append_sheet(wb, ws, discipline.label.slice(0,30).replace(/[\\/?*\[\]:]/g,""));
+      XL.writeFile(wb, `SME_${discipline.id}_${(inv.number||"estimate").toString().replace(/\s+/g,"_")}.xlsx`);
+    } catch(e) { alert("Export failed: " + e.message); }
+    setExporting(false);
+  };
+
+  if (allRows.length===0) return (
+    <div className="flex-1 flex items-center justify-center bg-gray-50">
+      <div className="text-center text-gray-400">
+        <div className="text-4xl mb-3">📡</div>
+        <div className="text-sm font-semibold text-gray-500">No lines entered yet</div>
+        <div className="text-xs mt-1">Enter quantities in the Estimation tab to build SME reports</div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-1 overflow-hidden bg-gray-100">
+
+      {/* ── LEFT: DISCIPLINE SELECTOR ─────────────────────────── */}
+      <div className="w-60 bg-white border-r flex flex-col flex-shrink-0 overflow-y-auto">
+        <div className="px-3 py-2.5 bg-gray-50 border-b">
+          <div className="text-xs font-bold text-gray-700 uppercase tracking-wide">SME Discipline</div>
+          <div className="text-xs text-gray-400 mt-0.5">Select to view summary report</div>
+        </div>
+
+        <div className="flex-1 py-2 px-2 space-y-1">
+          {SME_DISCIPLINES.map(d=>{
+            const active = d.id===selected;
+            const dcc    = SME_COLOR[d.color];
+            const dt     = discTotals[d.id];
+            if (d.id==="OTHER" && dt.count===0) return null;
+            return (
+              <button key={d.id} onClick={()=>setSelected(d.id)}
+                className={`w-full text-left px-3 py-2.5 rounded-lg border transition-all ${
+                  active ? `${dcc.active} border-transparent shadow-sm`
+                         : `bg-white border-gray-200 text-gray-700 ${dcc.hover}`}`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-base">{d.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className={`font-semibold text-xs truncate ${active?"text-white":"text-gray-800"}`}>{d.label}</div>
+                    <div className={`text-xs truncate mt-0.5 ${active?"text-white opacity-75":"text-gray-400"}`}>{d.description}</div>
+                  </div>
+                </div>
+                <div className={`mt-1.5 flex items-center justify-between text-xs ${active?"text-white opacity-90":"text-gray-500"}`}>
+                  <span>{dt.count} rows</span>
+                  <span className="font-mono font-semibold">{fmtK2(dt.eeInt)}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="p-3 border-t bg-gray-50">
+          <button onClick={()=>setShowMacroHint(h=>!h)} className="text-xs text-[var(--primary-700)] hover:underline w-full text-left">
+            {showMacroHint?"▾":"▸"} About SME reports
+          </button>
+          {showMacroHint && (
+            <div className="mt-2 text-xs text-gray-500 leading-relaxed">
+              In the Excel workbook each SME macro filters the master estimate to the
+              discipline's WBS scope and rolls costs up to summary level. This page
+              replicates that output live from the current estimate — no macro run required.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── CENTRE: REPORT TABLE ──────────────────────────────── */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+
+        <div className="px-4 py-2.5 border-b flex items-center justify-between flex-shrink-0 bg-white">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">{discipline.icon}</span>
+            <div>
+              <div className="font-bold text-gray-900 text-sm">{discipline.label} — Summary WBS Report</div>
+              <div className="text-xs text-gray-500">
+                Replaces: <span className="font-mono text-gray-600">{discipline.macroName}</span>
+                &ensp;·&ensp;{rows.length} WBS rows&ensp;·&ensp;
+                <span className={isCommercial?"text-orange-700 font-semibold":"text-[var(--primary-700)] font-semibold"}>
+                  {isCommercial?"Commercial (ANS applied)":"EE Internal rates"}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {SME_PHASES.map(ph=> phaseTotals[ph].count===0 ? null : (
+              <button key={ph} onClick={()=>togglePhase(ph)}
+                className={`text-xs px-2 py-1 rounded border transition-colors ${
+                  expandedPhases[ph] ? `${SME_PHASE_STYLES[ph].label} border-transparent`
+                                     : "bg-gray-100 text-gray-400 border-gray-200"}`}>
+                {expandedPhases[ph]?"▾":"▸"} {ph}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex-shrink-0 bg-gray-100 border-b px-3 py-1.5 grid text-xs font-semibold text-gray-600"
+          style={{gridTemplateColumns:gridCols}}>
+          <div>WBS Code</div>
+          <div>Description</div>
+          <div className="text-right">Qty</div>
+          <div className="text-right">Supply Cost</div>
+          <div className="text-right">Install Hrs</div>
+          <div className="text-right">Comm Hrs</div>
+          <div className="text-right text-[var(--primary-700)]">EE Internal</div>
+          <div className="text-right text-orange-700">Commercial</div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {rows.length===0 && (
+            <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
+              No {discipline.label} lines in this estimate
+            </div>
+          )}
+          {SME_PHASES.map(phase=>{
+            const phRows = rows.filter(r=>r.phase===phase);
+            if (phRows.length===0) return null;
+            const pt = phaseTotals[phase];
+            const ps = SME_PHASE_STYLES[phase];
+            const expanded = expandedPhases[phase];
+
+            return (
+              <div key={phase}>
+                <div onClick={()=>togglePhase(phase)}
+                  className={`px-3 py-1.5 flex items-center justify-between cursor-pointer border-b border-t ${ps.bg} sticky top-0 z-10`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${ps.label}`}>{phase}</span>
+                    <span className="text-xs text-gray-500">{pt.count} items</span>
+                    {pt.installHrs>0 && <span className="text-xs text-purple-600 font-medium">{fmtHrs(pt.installHrs)} install</span>}
+                    {pt.commHrs>0 && <span className="text-xs text-teal-600 font-medium">{fmtHrs(pt.commHrs)} commission</span>}
+                  </div>
+                  <div className="flex items-center gap-4 text-xs">
+                    <span className="text-[var(--primary-800)] font-bold">{fmtK2(pt.eeInt)}</span>
+                    {isCommercial && <span className="text-orange-700 font-bold">{fmtK2(pt.comm)}</span>}
+                    <span className="text-gray-400">{expanded?"▴":"▾"}</span>
+                  </div>
+                </div>
+
+                {expanded && phRows.map((row,idx)=>(
+                  <div key={row.wbs}
+                    className={`grid items-center px-3 py-1.5 border-b text-xs border-l-4 ${ps.border} transition-colors hover:bg-gray-50 ${idx%2===0?"bg-white":"bg-gray-50/50"}`}
+                    style={{gridTemplateColumns:gridCols}}>
+                    <div className="font-mono text-gray-500 text-xs">{row.wbs}</div>
+                    <div className="text-gray-800 font-medium pr-2 truncate" title={row.desc}>{row.desc}</div>
+                    <div className="text-right font-mono text-gray-600">{row.qty>0?(Math.round(row.qty*100)/100).toLocaleString("en-AU"):"–"}</div>
+                    <div className="text-right font-mono text-gray-700">{row.supplyCost>0?fmt(row.supplyCost):"–"}</div>
+                    <div className="text-right font-mono text-purple-700">{row.installHrs>0?fmtHrs(row.installHrs):"–"}</div>
+                    <div className="text-right font-mono text-teal-700">{row.commHrs>0?fmtHrs(row.commHrs):"–"}</div>
+                    <div className="text-right font-mono font-semibold text-[var(--primary-800)]">{fmt(row.eeInt)}</div>
+                    <div className={`text-right font-mono font-semibold ${isCommercial?"text-orange-700":"text-gray-300"}`}>
+                      {isCommercial?fmt(row.comm):"—"}
+                    </div>
+                  </div>
+                ))}
+
+                {expanded && (
+                  <div className={`grid items-center px-3 py-1.5 border-b text-xs font-bold ${ps.bg} border-l-4 ${ps.border}`}
+                    style={{gridTemplateColumns:gridCols}}>
+                    <div className="col-span-3 text-gray-700 uppercase tracking-wide text-xs">{phase} Subtotal</div>
+                    <div className="text-right font-mono text-gray-700">{pt.supplyCost>0?fmt(pt.supplyCost):"–"}</div>
+                    <div className="text-right font-mono text-purple-700">{pt.installHrs>0?fmtHrs(pt.installHrs):"–"}</div>
+                    <div className="text-right font-mono text-teal-700">{pt.commHrs>0?fmtHrs(pt.commHrs):"–"}</div>
+                    <div className="text-right font-mono text-[var(--primary-900)]">{fmt(pt.eeInt)}</div>
+                    <div className="text-right font-mono text-orange-800">{isCommercial?fmt(pt.comm):"—"}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {rows.length>0 && (
+            <div className="grid items-center px-3 py-2 border-t-2 border-gray-400 text-xs font-bold bg-gray-800 text-white sticky bottom-0"
+              style={{gridTemplateColumns:gridCols}}>
+              <div className="col-span-3 uppercase tracking-wider text-gray-200">{discipline.label} — Grand Total</div>
+              <div className="text-right font-mono">{grandTotal.supplyCost>0?fmt(grandTotal.supplyCost):"–"}</div>
+              <div className="text-right font-mono text-purple-300">{grandTotal.installHrs>0?fmtHrs(grandTotal.installHrs):"–"}</div>
+              <div className="text-right font-mono text-teal-300">{grandTotal.commHrs>0?fmtHrs(grandTotal.commHrs):"–"}</div>
+              <div className="text-right font-mono text-blue-200 text-sm">{fmt(grandTotal.eeInt)}</div>
+              <div className={`text-right font-mono text-sm ${isCommercial?"text-orange-300":"text-gray-500"}`}>
+                {isCommercial?fmt(grandTotal.comm):"—"}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-gray-200 border-t text-xs text-gray-500 px-4 py-1 flex justify-between flex-shrink-0">
+          <span>Live from current estimate — {rows.length} rows for {discipline.label} · {allRows.length} rows total across all disciplines</span>
+          <span>
+            Investment: <strong className={isCommercial?"text-orange-700":"text-[var(--primary-700)]"}>{inv.type||"—"}</strong>
+            &ensp;·&ensp;{inv.estimateClass||"Class 5"} · Rev {inv.revision||"A"}
+          </span>
+        </div>
+      </div>
+
+      {/* ── RIGHT: DISCIPLINE SUMMARY PANEL ───────────────────── */}
+      <div className="w-60 bg-white border-l flex flex-col flex-shrink-0 overflow-y-auto">
+        <div className={`${cc.card} text-white text-xs font-bold px-3 py-2 uppercase tracking-wide flex items-center gap-2`}>
+          <span>{discipline.icon}</span>
+          <span>{discipline.label}</span>
+        </div>
+
+        <div className="p-3 space-y-2">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">SME Totals</div>
+          <div className="flex justify-between items-center px-2 py-1.5 rounded bg-[var(--primary-50)]">
+            <span className="text-xs text-gray-600">EE Internal Total</span>
+            <span className="text-xs font-bold text-[var(--primary-800)]">{fmt(grandTotal.eeInt)}</span>
+          </div>
+          {isCommercial && (
+            <>
+              <div className="flex justify-between items-center px-2 py-1.5 rounded bg-orange-50">
+                <span className="text-xs text-gray-600">Commercial Total</span>
+                <span className="text-xs font-bold text-orange-700">{fmt(grandTotal.comm)}</span>
+              </div>
+              <div className="flex justify-between items-center px-2 py-1.5 rounded bg-red-50">
+                <span className="text-xs text-gray-600">ANS Margin</span>
+                <span className="text-xs font-bold text-red-700">{fmt(grandTotal.comm-grandTotal.eeInt)}</span>
+              </div>
+            </>
+          )}
+
+          <div className="mt-3 pt-2 border-t">
+            <div className="text-xs text-gray-500 mb-1">Share of Investment</div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-gray-200 rounded-full h-2">
+                <div className={`${cc.card} h-2 rounded-full`} style={{width:`${Math.min(parseFloat(sharePct),100)}%`}}/>
+              </div>
+              <span className="text-xs font-bold text-gray-700">{sharePct}%</span>
+            </div>
+            <div className="text-xs text-gray-400 mt-1">of {fmt(investEETotal)} EE Internal total</div>
+          </div>
+        </div>
+
+        <div className="px-3 pb-3">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 pt-2 border-t">Phase Breakdown</div>
+          {SME_PHASES.map(ph=>{
+            const pt = phaseTotals[ph];
+            if (pt.eeInt===0) return null;
+            const pct = grandTotal.eeInt>0 ? ((pt.eeInt/grandTotal.eeInt)*100).toFixed(0) : 0;
+            const ps  = SME_PHASE_STYLES[ph];
+            return (
+              <div key={ph} className="mb-2">
+                <div className="flex justify-between text-xs mb-0.5">
+                  <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${ps.label}`}>{ph}</span>
+                  <span className="text-gray-600 font-mono text-xs">{fmtK2(pt.eeInt)}</span>
+                </div>
+                <div className="bg-gray-100 rounded-full h-1.5">
+                  <div className={`${ps.bar} h-1.5 rounded-full opacity-80`} style={{width:`${pct}%`}}/>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="px-3 pb-3">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 pt-2 border-t">Hours Summary</div>
+          {grandTotal.installHrs>0 && (
+            <div className="flex justify-between items-center px-2 py-1.5 rounded mb-1 bg-purple-50">
+              <span className="text-xs text-gray-600">Install Hours</span>
+              <span className="text-xs font-bold text-purple-700">{fmtHrs(grandTotal.installHrs)}</span>
+            </div>
+          )}
+          {grandTotal.commHrs>0 && (
+            <div className="flex justify-between items-center px-2 py-1.5 rounded mb-1 bg-teal-50">
+              <span className="text-xs text-gray-600">Commission Hours</span>
+              <span className="text-xs font-bold text-teal-700">{fmtHrs(grandTotal.commHrs)}</span>
+            </div>
+          )}
+          {grandTotal.installHrs===0 && grandTotal.commHrs===0 && (
+            <div className="text-xs text-gray-400 px-2">No EE hours in this discipline</div>
+          )}
+        </div>
+
+        <div className="p-3 border-t mt-auto">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Actions</div>
+          <button onClick={exportExcel} disabled={exporting||rows.length===0}
+            className="w-full text-xs bg-[var(--primary-700)] hover:bg-[var(--primary-600)] disabled:opacity-50 text-white px-3 py-2 rounded font-semibold mb-1.5">
+            {exporting?"⟳ Exporting…":"⬇ Export to Excel"}
+          </button>
+          <button onClick={()=>window.print()}
+            className="w-full text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded font-semibold">
+            🖨 Print Report
+          </button>
+          <div className="text-xs text-gray-400 mt-2 text-center">
+            Replaces: <span className="font-mono">{discipline.macroName}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const APP_TABS = [
   {id:"hub",        label:"🔍 Investment Hub"},
   {id:"estimation", label:"⚡ Estimation Tool"},
@@ -10285,6 +10762,7 @@ const EST_TABS = [
   {id:"review",   label:"📋 Review Lines"},
   {id:"summary",  label:"📊 Summary"},
   {id:"financial", label:"💰 Financial Report"},
+  {id:"sme",       label:"📡 SME Reports"},
 ];
 
 // ── ERROR BOUNDARY ───────────────────────────────────────────────
@@ -11001,6 +11479,7 @@ export default function App() {
                 {estTab==="review"    && <ReviewLines lines={lines} isCommercial={isCommercial}/>}
                 {estTab==="summary"   && <SummaryScreen inv={inv} lines={lines} isCommercial={isCommercial} equipSel={equipSel} onSave={effectiveLocked ? null : saveInvestment} lastSaved={lastSaved} estimateLocked={estimateLocked}/>}
                 {estTab==="financial" && <FinancialScreen inv={inv} lines={lines} isCommercial={isCommercial}/>}
+                {estTab==="sme"       && <SMEReportScreen inv={inv} lines={lines} isCommercial={isCommercial}/>}
               </div>
             </>
           )}
