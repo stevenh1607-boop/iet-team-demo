@@ -532,7 +532,7 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
   const wafhaRate  = ratesLookup?.["Work Away From Home"]
     ? (isCommercial
         ? (ratesLookup["Work Away From Home"].ee_commercial_rate || 345.83)
-        : (ratesLookup["Work Away From Home"].ee_internal_rate   || 359.50))
+        : (ratesLookup["Work Away From Home"].ee_internal_rate_ot ?? ratesLookup["Work Away From Home"].ee_internal_rate ?? 359.50))
     : (item.ee_labour_rate || 359.50);
   const eeRate     = isWAFHA ? wafhaRate : (item.ee_labour_rate || 246.95);
   // Percentage-of-total items: cost = pct × total non-prelim base for this L3 group
@@ -1199,7 +1199,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
       const resData   = ratesLookup[resName];
       const eeRate    = isCommercial
         ? (resData?.ee_commercial_rate || inst.ee_labour_rate || 246.95)
-        : (resData?.ee_internal_rate   || inst.ee_labour_rate || 246.95);
+        : (resData?.ee_internal_rate_ot ?? resData?.ee_internal_rate ?? inst.ee_labour_rate ?? 246.95);
       const contrRate = parseFloat(instLn.contrRate || "") || inst.contractor_rate || 0;
       // Cost calc
       const eeLabCost   = isContr ? 0 : activeHrs * eeRate;
@@ -5799,6 +5799,7 @@ function RatesEditor({ rates, managerMode, onUnlock }) {
 
   const EDITABLE_FIELDS = [
     {key:"ee_internal_rate",    label:"EE Internal",    type:"number", cls:"text-right w-20 border-green-300 bg-green-50"},
+    {key:"ee_internal_rate_ot", label:"EE Internal +20% OT", type:"number", cls:"text-right w-20 border-green-400 bg-green-100"},
     {key:"ee_commercial_rate",  label:"EE Commercial",  type:"number", cls:"text-right w-20 border-orange-300 bg-orange-50"},
     {key:"contractor_rate",     label:"Contr. Rate",    type:"number", cls:"text-right w-20 border-teal-300 bg-teal-50"},
     {key:"ans_margin_pct",      label:"ANS %",          type:"number", cls:"text-right w-14 border-purple-300"},
@@ -5871,6 +5872,7 @@ function RatesEditor({ rates, managerMode, onUnlock }) {
               <th className="text-left px-3 py-2 font-semibold text-gray-600 whitespace-nowrap" style={{minWidth:"200px",width:"200px"}}>Resource Name</th>
               <th className="text-center px-2 py-2 font-semibold text-gray-500 whitespace-nowrap">Unit</th>
               <th className="text-right px-2 py-2 font-semibold text-green-700 whitespace-nowrap">EE Internal</th>
+              <th className="text-right px-2 py-2 font-semibold text-green-800 whitespace-nowrap" title="Combined 80% Ordinary + 20% Overtime — used for WBS internal rate calculations">EE Internal +20% OT</th>
               <th className="text-right px-2 py-2 font-semibold text-orange-700 whitespace-nowrap">EE Commercial</th>
               <th className="text-right px-2 py-2 font-semibold text-teal-700 whitespace-nowrap">Contr. Rate</th>
               <th className="text-right px-2 py-2 font-semibold text-purple-700 whitespace-nowrap">ANS %</th>
@@ -5919,6 +5921,14 @@ function RatesEditor({ rates, managerMode, onUnlock }) {
                       ? <input type="number" step="0.01" value={editVals.ee_internal_rate||""} onChange={e=>setEditVals(p=>({...p,ee_internal_rate:e.target.value}))}
                           className="w-20 border border-green-300 bg-green-50 rounded px-1 py-0.5 text-xs text-right focus:outline-none"/>
                       : <span className="font-medium text-green-800">{dollarOrDash(r.ee_internal_rate)}</span>
+                    }
+                  </td>
+                  {/* EE Internal +20% OT — actual rate used for WBS internal calculations */}
+                  <td className="px-2 py-1.5 text-right">
+                    {isEd
+                      ? <input type="number" step="0.01" value={editVals.ee_internal_rate_ot||""} onChange={e=>setEditVals(p=>({...p,ee_internal_rate_ot:e.target.value}))}
+                          className="w-20 border border-green-400 bg-green-100 rounded px-1 py-0.5 text-xs text-right focus:outline-none"/>
+                      : <span className="font-semibold text-green-900">{dollarOrDash(r.ee_internal_rate_ot ?? r.ee_internal_rate)}</span>
                     }
                   </td>
                   {/* EE Commercial */}

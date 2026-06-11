@@ -1,0 +1,2845 @@
+{
+  "count": 284,
+  "lookup": {
+    "3.1.3.19.1.01": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "SAFT",
+      "model": "SBM112",
+      "part_no": "",
+      "contract_no": "074-2018B",
+      "lead_time_weeks": 20.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.02": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "SAFT",
+      "model": "SBM208",
+      "part_no": "",
+      "contract_no": "074-2018B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.03": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "SAFT",
+      "model": "SBM112",
+      "part_no": "",
+      "contract_no": "074-2018B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.04": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "SAFT",
+      "model": "UP1M125",
+      "part_no": "",
+      "contract_no": "074-2018B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.05": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "SAFT",
+      "model": "UP1M220",
+      "part_no": "",
+      "contract_no": "074-2018B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.06": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "SAFT",
+      "model": "UP1M125",
+      "part_no": "",
+      "contract_no": "074-2018B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.17": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "SAFT",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "074-2018B",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.18": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "SAFT",
+      "model": "08-00178-01",
+      "part_no": "",
+      "contract_no": "074-2018B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.19": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "SAFT",
+      "model": "08-00157-67 (SBM-112) 08-00157-68 (SBM208-2)",
+      "part_no": "",
+      "contract_no": "074-2018B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.20": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "SAFT",
+      "model": "08-00195-02",
+      "part_no": "",
+      "contract_no": "074-2018B",
+      "lead_time_weeks": 6.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.07": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "SAFT",
+      "model": "SGL2-2100mmL",
+      "part_no": "",
+      "contract_no": "074-2018B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.08": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "SAFT",
+      "model": "SGL2-4050mmL",
+      "part_no": "",
+      "contract_no": "074-2018B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.09": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "SAFT",
+      "model": "SGL2-1050mmL",
+      "part_no": "",
+      "contract_no": "074-2018B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.10": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "SAFT",
+      "model": "SGL2 - 2550mmL",
+      "part_no": "",
+      "contract_no": "074-2018B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.11": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "SAFT",
+      "model": "SGL2 - 3900mmL",
+      "part_no": "",
+      "contract_no": "074-2018B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.12": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "SAFT",
+      "model": "SGL2 - 1200mmL",
+      "part_no": "",
+      "contract_no": "074-2018B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.14": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Century Yuasa",
+      "model": "Intelepower CXS110 Type 4",
+      "part_no": "",
+      "contract_no": "074-2018A",
+      "lead_time_weeks": 12.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.15": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Century Yuasa",
+      "model": "Intelepower CXS110 Type 6",
+      "part_no": "",
+      "contract_no": "074-2018A",
+      "lead_time_weeks": 12.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.16": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Century Yuasa",
+      "model": "Intelepower CXS48 Type 2",
+      "part_no": "",
+      "contract_no": "074-2018A",
+      "lead_time_weeks": 12.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.02.1.01": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "Siemens Energy",
+      "model": "3AP1-FG 145kV SF6",
+      "part_no": "",
+      "contract_no": "072-2016B",
+      "lead_time_weeks": 36.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.02.1.04": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Siemens Energy",
+      "model": "3AP1-FG 145kV",
+      "part_no": "",
+      "contract_no": "072-2016B",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.1.3.02.1.02": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "Siemens Energy",
+      "model": "3AP1-DT 145kV SF6",
+      "part_no": "",
+      "contract_no": "072-2016B",
+      "lead_time_weeks": 36.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.02.1.03": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "Siemens Energy",
+      "model": "3AP1-DT 145kV SF6",
+      "part_no": "",
+      "contract_no": "072-2016B",
+      "lead_time_weeks": 36.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.02.1.07": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "Siemens Energy",
+      "model": "3AP1-FG 72.5kV SF6",
+      "part_no": "",
+      "contract_no": "072-2016B",
+      "lead_time_weeks": 36.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.02.1.08": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "Siemens Energy",
+      "model": "3AP1-DT 72.5kV SF6",
+      "part_no": "",
+      "contract_no": "072-2016B",
+      "lead_time_weeks": 36.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.02.1.09": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "Siemens Energy",
+      "model": "3AP1-DT 72.5kV SF6",
+      "part_no": "",
+      "contract_no": "072-2016B",
+      "lead_time_weeks": 36.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.02.1.15": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Siemens Energy",
+      "model": "10kg",
+      "part_no": "",
+      "contract_no": "072-2016A",
+      "lead_time_weeks": 6.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.02.1.16": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Siemens Energy",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "072-2016A",
+      "lead_time_weeks": 6.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.05.1.01": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "EPC International",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "071-2016A",
+      "lead_time_weeks": 48.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.05.1.03": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "EPC International",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "071-2016A",
+      "lead_time_weeks": 48.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.05.1.02": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "EPC International",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "071-2016A",
+      "lead_time_weeks": 48.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.17": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.37": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.23": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.18": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.38": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.19": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.39": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.20": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.40": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.24": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.21": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.41": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.22": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.42": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.09": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.31": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.15": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.10": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.32": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.11": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.33": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.12": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.34": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.16": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.13": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.35": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.14": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.36": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.01": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.25": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.07": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.02": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.26": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.03": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.27": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.04": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.28": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.08": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.05": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.29": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.06": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.04.1.30": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "nan",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.11.1.01": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Cleanawater",
+      "model": "TS1500PE",
+      "part_no": "",
+      "contract_no": "026-2018",
+      "lead_time_weeks": 2.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.11.1.02": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Cleanawater",
+      "model": "TS1500SS",
+      "part_no": "",
+      "contract_no": "026-2018",
+      "lead_time_weeks": 2.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.08.1.16": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "212-C-1328-YD",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 2.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.08.1.15": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "212-C-954-YD",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 2.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.08.1.14": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Insulect Aust",
+      "model": "212-C-1491-YD",
+      "part_no": "",
+      "contract_no": "080-2017",
+      "lead_time_weeks": 2.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.01": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Relay Monitoring Systems",
+      "model": "2C65-BBBB",
+      "part_no": "",
+      "contract_no": "087-2017B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.02": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Relay Monitoring Systems",
+      "model": "2C65-BBAB",
+      "part_no": "",
+      "contract_no": "087-2017B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.06": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Relay Monitoring Systems",
+      "model": "1S30-A",
+      "part_no": "",
+      "contract_no": "087-2017B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.08": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Relay Monitoring Systems",
+      "model": "1S30-B",
+      "part_no": "",
+      "contract_no": "087-2017B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.07": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Relay Monitoring Systems",
+      "model": "1S30-A-L",
+      "part_no": "",
+      "contract_no": "087-2017B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.09": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Relay Monitoring Systems",
+      "model": "1S30-B-L",
+      "part_no": "",
+      "contract_no": "087-2017B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.03": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Relay Monitoring Systems",
+      "model": "1S24-BAAB",
+      "part_no": "",
+      "contract_no": "087-2017B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.04": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Relay Monitoring Systems",
+      "model": "1S25-BA",
+      "part_no": "",
+      "contract_no": "087-2017B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.05": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Relay Monitoring Systems",
+      "model": "1S20-GAB",
+      "part_no": "",
+      "contract_no": "087-2017B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.10": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Relay Monitoring Systems",
+      "model": "2V73-AAA",
+      "part_no": "",
+      "contract_no": "087-2017B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.11": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Relay Monitoring Systems",
+      "model": "2V75-AAABA",
+      "part_no": "",
+      "contract_no": "087-2017B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.12": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Relay Monitoring Systems",
+      "model": "2V75-AAAABA",
+      "part_no": "",
+      "contract_no": "087-2017B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.13": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Relay Monitoring Systems",
+      "model": "1M123K12",
+      "part_no": "",
+      "contract_no": "087-2017B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.15": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Relay Monitoring Systems",
+      "model": "2HSM514B1-E-10M00B-2M28S1-",
+      "part_no": "",
+      "contract_no": "087-2017B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.16": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Relay Monitoring Systems",
+      "model": "2HSM514D1-E-20M00B-4M56S1-",
+      "part_no": "",
+      "contract_no": "087-2017B",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.42": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "Schneider",
+      "model": "P445211B4M0K49L",
+      "part_no": "",
+      "contract_no": "087-2017C",
+      "lead_time_weeks": 48.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.21": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "Schneider",
+      "model": "P543211B4M0K49M",
+      "part_no": "",
+      "contract_no": "087-2017C",
+      "lead_time_weeks": 48.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.22": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "Schneider",
+      "model": "P543211A4M0K49M",
+      "part_no": "",
+      "contract_no": "087-2017C",
+      "lead_time_weeks": 48.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.23": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "Schneider",
+      "model": "P543211C4M0K49M",
+      "part_no": "",
+      "contract_no": "087-2017C",
+      "lead_time_weeks": 48.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.24": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "Schneider",
+      "model": "P543211A4M0K49M",
+      "part_no": "",
+      "contract_no": "087-2017C",
+      "lead_time_weeks": 48.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.25": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "Schneider",
+      "model": "P543211L4M0K49M",
+      "part_no": "",
+      "contract_no": "087-2017C",
+      "lead_time_weeks": 48.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.17": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "Schneider",
+      "model": "P142211A4M0B69L",
+      "part_no": "",
+      "contract_no": "087-2017C",
+      "lead_time_weeks": 48.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.36": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Siemens Ltd",
+      "model": "7UT85 P1F348423",
+      "part_no": "",
+      "contract_no": "087-2017E",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.37": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Siemens Ltd",
+      "model": "7UT86 P1F348441",
+      "part_no": "",
+      "contract_no": "087-2017E",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.38": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Siemens Ltd",
+      "model": "7UT86 P1F348469",
+      "part_no": "",
+      "contract_no": "087-2017E",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.18": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Siemens Ltd",
+      "model": "7SR2204-2NA12-0DA0",
+      "part_no": "",
+      "contract_no": "087-2017E",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.19": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Siemens Ltd",
+      "model": "7SR1003-1KA20-2CA0",
+      "part_no": "",
+      "contract_no": "087-2017E",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.26": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "CSE Uniserve",
+      "model": "P543811B4S0820M",
+      "part_no": "",
+      "contract_no": "087-2017A",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.27": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "CSE Uniserve",
+      "model": "P543811A4S0820M",
+      "part_no": "",
+      "contract_no": "087-2017A",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.28": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "CSE Uniserve",
+      "model": "P543811C4S0820M",
+      "part_no": "",
+      "contract_no": "087-2017A",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.29": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "CSE Uniserve",
+      "model": "P543811A4S0820M",
+      "part_no": "",
+      "contract_no": "087-2017A",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.30": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "CSE Uniserve",
+      "model": "P543811L4S0820M",
+      "part_no": "",
+      "contract_no": "087-2017A",
+      "lead_time_weeks": 16.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.14": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "CSE Uniserve",
+      "model": "MFAC34V1AB3001A",
+      "part_no": "",
+      "contract_no": "087-2017A",
+      "lead_time_weeks": 18.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.39": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Schweitzer Engineering Laboratories",
+      "model": "0787EX1D1D1D71810320",
+      "part_no": "",
+      "contract_no": "087-2017D",
+      "lead_time_weeks": 12.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.40": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Schweitzer Engineering Laboratories",
+      "model": "07873EE1D1D1D72810320",
+      "part_no": "",
+      "contract_no": "087-2017D",
+      "lead_time_weeks": 12.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.41": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Schweitzer Engineering Laboratories",
+      "model": "0487E3X648XXB0X3H643XXX",
+      "part_no": "",
+      "contract_no": "087-2017D",
+      "lead_time_weeks": 12.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.43": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Schweitzer Engineering Laboratories",
+      "model": "0311C11HH3E1321",
+      "part_no": "",
+      "contract_no": "087-2017D",
+      "lead_time_weeks": 12.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.31": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Schweitzer Engineering Laboratories",
+      "model": "0311L1JD0321322XX",
+      "part_no": "",
+      "contract_no": "087-2017D",
+      "lead_time_weeks": 12.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.32": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Schweitzer Engineering Laboratories",
+      "model": "0311L1JC0321322XX",
+      "part_no": "",
+      "contract_no": "087-2017D",
+      "lead_time_weeks": 12.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.33": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Schweitzer Engineering Laboratories",
+      "model": "0311L1JDD321322XX",
+      "part_no": "",
+      "contract_no": "087-2017D",
+      "lead_time_weeks": 12.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.34": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Schweitzer Engineering Laboratories",
+      "model": "0311L1JCC321322XX",
+      "part_no": "",
+      "contract_no": "087-2017D",
+      "lead_time_weeks": 12.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.35": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Schweitzer Engineering Laboratories",
+      "model": "0311L1JDC321322XX",
+      "part_no": "",
+      "contract_no": "087-2017D",
+      "lead_time_weeks": 12.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.20.1.20": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Schweitzer Engineering Laboratories",
+      "model": "751A51D1D0X0X810000",
+      "part_no": "",
+      "contract_no": "087-2017D",
+      "lead_time_weeks": 12.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.03.1.01": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Noja Power",
+      "model": "OSM38-16-800-11_EE_ZS",
+      "part_no": "",
+      "contract_no": "nan",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.03.1.02": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Noja Power",
+      "model": "OSM38-16-800-22_EE_ZS",
+      "part_no": "",
+      "contract_no": "nan",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.03.1.03": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Noja Power",
+      "model": "OSM38-16-800-33_EE_ZS",
+      "part_no": "",
+      "contract_no": "nan",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.03.1.04": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Noja Power",
+      "model": "GMK38-16-630-11/33_EE_ZS",
+      "part_no": "",
+      "contract_no": "nan",
+      "lead_time_weeks": 14.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.03.1.05": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "Noja Power",
+      "model": "SMF-01",
+      "part_no": "",
+      "contract_no": "nan",
+      "lead_time_weeks": 1.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.06.1.10": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "ABB",
+      "model": "6002030",
+      "part_no": "",
+      "contract_no": "034-2015A",
+      "lead_time_weeks": 32.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.06.1.09": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "ABB",
+      "model": "6002050",
+      "part_no": "",
+      "contract_no": "034-2015A",
+      "lead_time_weeks": 32.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.06.1.08": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "ABB",
+      "model": "6002080",
+      "part_no": "",
+      "contract_no": "034-2015A",
+      "lead_time_weeks": 32.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.06.1.05": {
+      "type": "PCE",
+      "source": "PCE",
+      "make": "ABB",
+      "model": "2GSA005012",
+      "part_no": "",
+      "contract_no": "034-2015A",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.1.3.06.1.03": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "EPC International",
+      "model": "M161700",
+      "part_no": "",
+      "contract_no": "034-2015B",
+      "lead_time_weeks": 48.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.06.1.02": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "EPC International",
+      "model": "M161702",
+      "part_no": "",
+      "contract_no": "034-2015B",
+      "lead_time_weeks": 48.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.06.1.06": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "EPC International",
+      "model": "M161698",
+      "part_no": "",
+      "contract_no": "034-2015B",
+      "lead_time_weeks": 48.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.06.1.07": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "EPC International",
+      "model": "M161699",
+      "part_no": "",
+      "contract_no": "034-2015B",
+      "lead_time_weeks": 48.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.06.1.04": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "EPC International",
+      "model": "VPT-72.5",
+      "part_no": "",
+      "contract_no": "nan",
+      "lead_time_weeks": 75.0,
+      "catalogue_id": ""
+    },
+    "3.1.3.06.1.01": {
+      "type": "LLT",
+      "source": "PCE",
+      "make": "EPC International",
+      "model": "VPT-145",
+      "part_no": "",
+      "contract_no": "nan",
+      "lead_time_weeks": 75.0,
+      "catalogue_id": ""
+    },
+    "3.5.1.03.1.02": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD303cpu-CR-GPS",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0017"
+    },
+    "3.5.1.03.1.03": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD303cpu-FR-GPS",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0018"
+    },
+    "3.5.1.03.1.04": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD303cpu-3G",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0020"
+    },
+    "3.5.1.03.1.05": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD303cpu-MPK",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0021"
+    },
+    "3.5.1.03.1.06": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "SFP-CE",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0022"
+    },
+    "3.5.1.03.1.07": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "SFP-FE",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0023"
+    },
+    "3.5.1.03.1.08": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "SFP-SMF",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "????????"
+    },
+    "3.5.1.03.1.09": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "SFP-SX",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "????????"
+    },
+    "3.5.1.03.1.10": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD300io-r",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0001"
+    },
+    "3.5.1.03.1.11": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "DIM302-36.4",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0049"
+    },
+    "3.5.1.03.1.12": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "DOM302",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0007"
+    },
+    "3.5.1.03.1.13": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "AIM302/F07R",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0050"
+    },
+    "3.5.1.03.1.14": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "AIM302/F08R",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0008"
+    },
+    "3.5.1.03.1.15": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "E50",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0002"
+    },
+    "3.5.1.03.1.16": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CM301",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0003"
+    },
+    "3.5.1.03.1.17": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "DIM302-9.0",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0005"
+    },
+    "3.5.1.03.1.18": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "DIM302-4.0",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0006"
+    },
+    "3.5.1.03.1.19": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "AOM302",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0009"
+    },
+    "3.5.1.03.1.20": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-E20",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0026"
+    },
+    "3.5.1.03.1.21": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-CPU",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0027"
+    },
+    "3.5.1.03.1.22": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-DI",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0028"
+    },
+    "3.5.1.03.1.23": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-DO",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0029"
+    },
+    "3.5.1.03.1.24": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-DIO",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0030"
+    },
+    "3.5.1.03.1.25": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-AI",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0031"
+    },
+    "3.5.1.03.1.26": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-AIO",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0032"
+    },
+    "3.5.1.03.1.27": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-4G-CATM1",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0035"
+    },
+    "3.5.1.03.1.28": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "32 Gb Micro SD Card",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0046"
+    },
+    "3.5.1.03.1.29": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-CPU-2",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0051"
+    },
+    "3.5.1.03.1.30": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-DI-2",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0052"
+    },
+    "3.5.1.03.1.31": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-DIO-2",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0053"
+    },
+    "3.5.1.03.1.32": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-AO",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0033"
+    },
+    "3.5.1.03.1.33": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-4G-CAT1",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0034"
+    },
+    "3.5.1.03.1.34": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-TB",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0036"
+    },
+    "3.5.1.03.1.35": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-DRC",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0037"
+    },
+    "3.5.1.03.1.36": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-SFP-TX",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0038"
+    },
+    "3.5.1.03.1.37": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-SFP-T",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0039"
+    },
+    "3.5.1.03.1.38": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-SFP-FX",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0040"
+    },
+    "3.5.1.03.1.39": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-SFP-SX",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0041"
+    },
+    "3.5.1.03.1.40": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100m-SFP-SM",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0054"
+    },
+    "3.5.1.03.1.41": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD100-2E1S-xGW",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0025"
+    },
+    "3.5.1.03.1.42": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TM301-DI",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0011"
+    },
+    "3.5.1.03.1.43": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TM301-DO",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0012"
+    },
+    "3.5.1.03.1.44": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TM301-AI",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0013"
+    },
+    "3.5.1.03.1.45": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TM301-MKR",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0014"
+    },
+    "3.5.1.03.1.46": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TMA301",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0015"
+    },
+    "3.5.1.03.1.47": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TMA302",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0016"
+    },
+    "3.5.1.03.1.48": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TS4GCF220I",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0043"
+    },
+    "3.5.1.03.1.49": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TS1GCF200I",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0044"
+    },
+    "3.5.1.03.1.50": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "Cfast 3ME3 8GB",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0045"
+    },
+    "3.5.1.03.1.51": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "I/O Ribbon Cables",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0047"
+    },
+    "3.5.1.03.1.52": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "Cable 300-672",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0048"
+    },
+    "3.5.1.03.1.53": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD111-A0",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0057"
+    },
+    "3.5.1.03.1.54": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD111-A1",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0058"
+    },
+    "3.5.1.03.1.55": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "MD111-A2",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "TEC0059"
+    },
+    "3.5.1.04.1.01": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TX2-VA-1-DVO-D-ADH-X",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.02": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TX2-VA-1-DVO-D-ADL",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.03": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TX2-VA-1-DVO-D-ADL",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.04": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CVT-12-V05-A5-A1",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.05": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CVT-12-V05-A5-D4",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.06": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CVT-12-VO5-A5-A1",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.07": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CVT-12-VO5-A5-D4",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.08": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CA12-A15-A5-D4",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.09": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CA12-A55-A5-D4",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.10": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CWQ-33-A1V15-A9-AS",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.11": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CWQ-33-A1V15-A9-D4",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.12": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CWQ-33-A5V15-A9-AS",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.13": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CWQ-33-A5V15-A9-D4",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.14": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TX2-TR1-T-D-ADH",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.15": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TX2-TR1-T-D-ADL",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.16": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TX2-VA-1-DVO-O-ADH",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.17": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TX2-VA-1-DVO-O-ADL",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.18": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CVT-12-V05-A3-AS",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.19": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CVT-12-V05-A3-D4",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.20": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CVT-12-VO5-A3-AS",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.21": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CVT-12-VO5-A3-D4",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.22": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CA12-A15-A3-AS",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.23": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CA12-A15-A3-D4",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.24": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CA12-A55-A3-AS",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.25": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CA12-A55-A3-D4",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.26": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CWQ-33-A1V15-AC-AS",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.27": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CWQ-33-A1V15-AC-D4",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.28": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CWQ-33-A5V15-AC-AS",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.29": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CWQ-33-A5V15-AC-D4",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.30": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TX2-TR1-T-O-ADH",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.04.1.31": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TX2-TR1-T-O-ADL",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.03.1.01": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "XAU88069992",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.05.1.01": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TPC-BTO - TPC-315-R853B (CFast Card - EE Image)",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.05.1.02": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "APK120-4824",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.1.3.19.1.21": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "5100278 5100250 5100263 5100583 1405209",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.1.3.19.1.22": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "5100278 5100250 5100263 5100583 1405209",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.1.3.19.1.23": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "5100278 5100250 5100263 1405209",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.05.1.05": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "CS7-M22E-48E",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.05.1.17": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "DSD1402BR24/48",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.05.1.03": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "Ask technician for specifications",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.05.1.04": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "Ask technician for specifications",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.05.1.12": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "?????????",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.05.1.11": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "TPE 25",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.05.1.06": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "7940011310",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.05.1.07": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "239-302A-****-PN_S1-S2",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.05.1.08": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "239-302A-****-PN_S1-S2",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.05.1.09": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "239-302A-****-PN_S1-S2",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.05.1.10": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "239-302A-****-PN_S1-S2",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.2.2.03.1.04": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "STROLCLC09DYE2",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.05.1.13": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "APK60-4812",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.05.1.14": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "APK120-4848",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.5.1.05.1.15": {
+      "type": "SCADA",
+      "source": "SCADA",
+      "make": "",
+      "model": "",
+      "part_no": "APK120-11048",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": "-"
+    },
+    "3.2.1.02.1.01": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.02.1.02": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.02.1.03": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.02.1.04": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.02.1.05": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.03.1.01": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.03.1.02": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.03.1.03": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.03.1.04": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.03.1.05": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.06.1.01": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.06.1.02": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.06.1.03": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.06.1.04": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.06.1.05": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.07.1.01": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.07.1.02": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.07.1.03": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.07.1.04": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.07.1.05": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.07.1.06": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.07.1.07": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.07.1.08": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.07.1.09": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.07.1.10": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.04.1.01": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.04.1.02": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.04.1.03": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.04.1.04": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.04.1.05": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.04.1.06": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.04.1.07": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.05.1.01": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.24": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.25": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.26": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.27": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.28": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.29": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.1.3.19.1.30": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.1.06.1.06": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    },
+    "3.2.2.03.1.01": {
+      "type": "COMMS",
+      "source": "Comms",
+      "make": "",
+      "model": "",
+      "part_no": "",
+      "contract_no": "",
+      "lead_time_weeks": 0,
+      "catalogue_id": ""
+    }
+  }
+}

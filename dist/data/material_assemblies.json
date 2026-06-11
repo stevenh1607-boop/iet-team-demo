@@ -1,0 +1,5103 @@
+[
+  {
+    "wbs_code": "3.1.1.12.1.20",
+    "description": "Remote Earth Connection pillar",
+    "reference": "ZZZC300-6",
+    "total_cost": 1022.87,
+    "components": [
+      {
+        "item": "9",
+        "description": "Panduit E Sstyle Earth Connector",
+        "inv_code": "222350",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 46.0269,
+        "total": 92.0538
+      },
+      {
+        "item": "8",
+        "description": "Pillar Cover URD",
+        "inv_code": "400490",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 31.5744,
+        "total": 31.5744
+      },
+      {
+        "item": "7",
+        "description": "Pillar Base URD",
+        "inv_code": "400400",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 26.2368,
+        "total": 26.2368
+      },
+      {
+        "item": "6",
+        "description": "Crimp Lug 95mm2",
+        "inv_code": "232360",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 2.6612,
+        "total": 7.9835
+      },
+      {
+        "item": "5",
+        "description": "McEwan Earth Stud",
+        "inv_code": "273032",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 31.5147,
+        "total": 63.0293
+      },
+      {
+        "item": "4",
+        "description": "120mm2 Cu Conductor (Black PVC)",
+        "inv_code": "441900",
+        "uom": "m",
+        "qty": 30.0,
+        "unit_price": 20.5165,
+        "total": 615.4955
+      },
+      {
+        "item": "3",
+        "description": "95mm2 Cu Conductor (Bare Annealed)",
+        "inv_code": "441148",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 24.4267,
+        "total": 146.5603
+      },
+      {
+        "item": "2",
+        "description": "Earth Bar (50mm x 6.3mm)",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 19.879,
+        "total": 19.879
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 20.0563,
+        "total": 20.0563
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.01",
+    "description": "132kV Pole Top Assembly - Single Conductor Dual Circuit Intermediate - Vertical",
+    "reference": "CEOM7402.51 - RSV",
+    "total_cost": 10294.04,
+    "components": [
+      {
+        "item": "10",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 37.0,
+        "unit_price": 2.8848,
+        "total": 106.7376
+      },
+      {
+        "item": "9",
+        "description": "Insulator - 132kV Horizontal Line Post (Heavy Pollution)",
+        "inv_code": "261944",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 1541.1303,
+        "total": 9246.7821
+      },
+      {
+        "item": "8",
+        "description": "Threaded Rod M20 (750mm)",
+        "inv_code": "101962",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 12.5855,
+        "total": 75.5133
+      },
+      {
+        "item": "7",
+        "description": "M20 Nut - GALV",
+        "inv_code": "108950",
+        "uom": "each",
+        "qty": 24.0,
+        "unit_price": 0.4694,
+        "total": 11.2654
+      },
+      {
+        "item": "6",
+        "description": "M20 Washer Spring S/S",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 24.0,
+        "unit_price": 0.2641,
+        "total": 6.3378
+      },
+      {
+        "item": "5",
+        "description": "M20 Square Washer 65mm - GALV",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 24.0,
+        "unit_price": 0.5363,
+        "total": 12.8712
+      },
+      {
+        "item": "4",
+        "description": "Bow Shackle 120kN",
+        "inv_code": "603453",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 4.5298,
+        "total": 27.179
+      },
+      {
+        "item": "3",
+        "description": "Twisted Eye Tongue 120kN",
+        "inv_code": "111230",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 8.09,
+        "total": 48.5397
+      },
+      {
+        "item": "2",
+        "description": "AGS Suspension Unit C/W Armour Rod (Suit Phosphorous conductor)",
+        "inv_code": "266258",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 92.8284,
+        "total": 556.9703
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 201.8439,
+        "total": 201.8439
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.02",
+    "description": "132kV Pole Top Assembly - Single Conductor Dual Circuit Intermediate - Braced Vertical",
+    "reference": "CEOM7402.52 - RSW",
+    "total_cost": 11590.43,
+    "components": [
+      {
+        "item": "14",
+        "description": "Adjustable Link Plate 120kN (450 - 784mm)",
+        "inv_code": "272361",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 81.7061,
+        "total": 490.2368
+      },
+      {
+        "item": "13",
+        "description": "M20 Eye Nut 120kN",
+        "inv_code": "110600",
+        "uom": "each",
+        "qty": 5.0,
+        "unit_price": 12.6449,
+        "total": 63.2246
+      },
+      {
+        "item": "12",
+        "description": "M20 Eye Bolt (750mm)",
+        "inv_code": "103198",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 17.8616,
+        "total": 17.8616
+      },
+      {
+        "item": "11",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 37.0,
+        "unit_price": 2.8848,
+        "total": 106.7376
+      },
+      {
+        "item": "10",
+        "description": "insulator - 132kV Composite Strain 110kN (Very Heavy Pollution)",
+        "inv_code": "261962",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 111.5417,
+        "total": 669.2501
+      },
+      {
+        "item": "9",
+        "description": "Insulator - 132kV Horizontal Line Post (Heavy Pollution)",
+        "inv_code": "261944",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 1541.1303,
+        "total": 9246.7821
+      },
+      {
+        "item": "8",
+        "description": "Threaded Rod M20 (750mm)",
+        "inv_code": "101962",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 12.5855,
+        "total": 75.5133
+      },
+      {
+        "item": "7",
+        "description": "M20 Nut - GALV",
+        "inv_code": "108950",
+        "uom": "each",
+        "qty": 28.0,
+        "unit_price": 0.4694,
+        "total": 13.143
+      },
+      {
+        "item": "6",
+        "description": "M20 Washer Spring S/S",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 25.0,
+        "unit_price": 0.2641,
+        "total": 6.6019
+      },
+      {
+        "item": "5",
+        "description": "M20 Square Washer 65mm - GALV",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 26.0,
+        "unit_price": 0.5363,
+        "total": 13.9438
+      },
+      {
+        "item": "4",
+        "description": "Bow Shackle 120kN",
+        "inv_code": "603453",
+        "uom": "each",
+        "qty": 12.0,
+        "unit_price": 4.5298,
+        "total": 54.3581
+      },
+      {
+        "item": "3",
+        "description": "Twisted Eye Tongue 120kN",
+        "inv_code": "111230",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 8.09,
+        "total": 48.5397
+      },
+      {
+        "item": "2",
+        "description": "AGS Suspension Unit C/W Armour Rod (Suit Phosphorous conductor)",
+        "inv_code": "266258",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 92.8284,
+        "total": 556.9703
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 227.2633,
+        "total": 227.2633
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.03",
+    "description": "132kV Pole Top Assembly - Bundled Conductor Dual Circuit Intermediate",
+    "reference": "Refer to Guerie Detailed Design",
+    "total_cost": null,
+    "components": [
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": null,
+        "total": null
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.04",
+    "description": "132kV Pole Top Assembly - Bundled Conductor Dual Circuit Strain",
+    "reference": "Refer to Guerie Detailed Design",
+    "total_cost": null,
+    "components": [
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": null,
+        "total": null
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.05",
+    "description": "132kV Pole Top Assembly - Bundled Conductor Dual Circuit Termination",
+    "reference": "Refer to Guerie Detailed Design",
+    "total_cost": null,
+    "components": [
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": null,
+        "total": null
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.06",
+    "description": "132kV Pole Top Assembly - Single Conductor Single Circuit Intermediate - Delta",
+    "reference": "CEOM7402.40 - PSDT2",
+    "total_cost": 5257.83,
+    "components": [
+      {
+        "item": "9",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 37.0,
+        "unit_price": 2.8848,
+        "total": 106.7376
+      },
+      {
+        "item": "8",
+        "description": "Insulator - 132kV Horizontal Line Post (Heavy Pollution)",
+        "inv_code": "261944",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 1541.1303,
+        "total": 4623.391
+      },
+      {
+        "item": "7",
+        "description": "M20 Washer Spring S/S",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 0.2641,
+        "total": 1.5844
+      },
+      {
+        "item": "6",
+        "description": "M20 Square Washer 65mm - GALV",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 0.5363,
+        "total": 3.2178
+      },
+      {
+        "item": "5",
+        "description": "M20 Bolt & Nut - GALV (675mm)",
+        "inv_code": "106215",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 17.2426,
+        "total": 103.4556
+      },
+      {
+        "item": "4",
+        "description": "Bow Shackle 120kN",
+        "inv_code": "603453",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 4.5298,
+        "total": 13.5895
+      },
+      {
+        "item": "3",
+        "description": "Twisted Eye Tongue 120kN",
+        "inv_code": "111230",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 8.09,
+        "total": 24.2699
+      },
+      {
+        "item": "2",
+        "description": "AGS Suspension Unit C/W Armour Rod (Suit Phosphorous conductor)",
+        "inv_code": "266258",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 92.8284,
+        "total": 278.4852
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 103.0946,
+        "total": 103.0946
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.07",
+    "description": "132kV Pole Top Assembly - Single Conductor Single Circuit Intermediate - Braced Delta",
+    "reference": "CEOM7402.32 - PSB",
+    "total_cost": 5887.15,
+    "components": [
+      {
+        "item": "12",
+        "description": "Adjustable Link Plate 120kN (450 - 784mm)",
+        "inv_code": "272361",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 81.7061,
+        "total": 245.1184
+      },
+      {
+        "item": "11",
+        "description": "M20 Eye Bolt (750mm)",
+        "inv_code": "103198",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 17.8616,
+        "total": 53.5847
+      },
+      {
+        "item": "10",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 37.0,
+        "unit_price": 2.8848,
+        "total": 106.7376
+      },
+      {
+        "item": "9",
+        "description": "insulator - 132kV Composite Strain 110kN (Very Heavy Pollution)",
+        "inv_code": "261962",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 111.5417,
+        "total": 334.625
+      },
+      {
+        "item": "8",
+        "description": "Insulator - 132kV Horizontal Line Post (Heavy Pollution)",
+        "inv_code": "261944",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 1541.1303,
+        "total": 4623.391
+      },
+      {
+        "item": "7",
+        "description": "M20 Washer Spring S/S",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 7.0,
+        "unit_price": 0.2641,
+        "total": 1.8485
+      },
+      {
+        "item": "6",
+        "description": "M20 Square Washer 65mm - GALV",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 14.0,
+        "unit_price": 0.5363,
+        "total": 7.5082
+      },
+      {
+        "item": "5",
+        "description": "M20 Bolt & Nut - GALV (675mm)",
+        "inv_code": "106215",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 17.2426,
+        "total": 68.9704
+      },
+      {
+        "item": "4",
+        "description": "Bow Shackle 120kN",
+        "inv_code": "603453",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 4.5298,
+        "total": 27.179
+      },
+      {
+        "item": "3",
+        "description": "Twisted Eye Tongue 120kN",
+        "inv_code": "111230",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 8.09,
+        "total": 24.2699
+      },
+      {
+        "item": "2",
+        "description": "AGS Suspension Unit C/W Armour Rod (Suit Phosphorous conductor)",
+        "inv_code": "266258",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 92.8284,
+        "total": 278.4852
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 115.4344,
+        "total": 115.4344
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.08",
+    "description": "132kV Pole Top Assembly - Single Conductor Single Circuit Intermediate - Flying Angle",
+    "reference": "CEOM7402.38 - PUW",
+    "total_cost": 2301.41,
+    "components": [
+      {
+        "item": "7",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 37.0,
+        "unit_price": 2.8848,
+        "total": 106.7376
+      },
+      {
+        "item": "6",
+        "description": "Insulator - 132kV Composite Strain 110kN (Very Heavy Pollution)",
+        "inv_code": "261962",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 111.5417,
+        "total": 334.625
+      },
+      {
+        "item": "5",
+        "description": "Link Plate 160kN GALV (150mm Centres, 22mm \u00d8 Holes)",
+        "inv_code": "272363",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 33.9471,
+        "total": 101.8412
+      },
+      {
+        "item": "4",
+        "description": "Pole Band - 3 Bolt - 120kN (700mm)",
+        "inv_code": "604346",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 160.3073,
+        "total": 480.9219
+      },
+      {
+        "item": "3",
+        "description": "Bow Shackle 120kN",
+        "inv_code": "603453",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 4.5298,
+        "total": 13.5895
+      },
+      {
+        "item": "2",
+        "description": "Double AGS Suspension Assembly C/W Armour Rod (Suit Phosphorous conductor)",
+        "inv_code": "266262",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 406.1901,
+        "total": 1218.5702
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 45.1257,
+        "total": 45.1257
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.09",
+    "description": "132kV Pole Top Assembly - Single Conductor Single Circuit Strain - Vertical (2 off for dual circuit)",
+    "reference": "CEOM7402.46 - QTV",
+    "total_cost": 11202.89,
+    "components": [
+      {
+        "item": "15",
+        "description": "Adjustable Link Plate 120kN (450 - 784mm)",
+        "inv_code": "272361",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 81.7061,
+        "total": 490.2368
+      },
+      {
+        "item": "14",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 37.0,
+        "unit_price": 2.8848,
+        "total": 106.7376
+      },
+      {
+        "item": "13",
+        "description": "Insulator - 132kV Composite Strain 110kN (Very Heavy Pollution)",
+        "inv_code": "261962",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 111.5417,
+        "total": 669.2501
+      },
+      {
+        "item": "12",
+        "description": "Insulator - 132kV Horizontal Line Post (Heavy Pollution)",
+        "inv_code": "261944",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 1541.1303,
+        "total": 4623.391
+      },
+      {
+        "item": "11",
+        "description": "Horizontal Line Post Insulator Extension Bracket",
+        "inv_code": "115751",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 431.036,
+        "total": 1293.1079
+      },
+      {
+        "item": "10",
+        "description": "Compression Deadend & Lug (to suit Phosphorus conductor)",
+        "inv_code": "266623",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 354.8257,
+        "total": 2128.9543
+      },
+      {
+        "item": "9",
+        "description": "Link Plate 160kN GALV (150mm Centres, 22mm \u00d8 Holes)",
+        "inv_code": "272363",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 33.9471,
+        "total": 203.6823
+      },
+      {
+        "item": "8",
+        "description": "Pole Band - 3 Bolt - 120kN (700mm)",
+        "inv_code": "604346",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 160.3073,
+        "total": 961.8437
+      },
+      {
+        "item": "7",
+        "description": "Jumper Clamp",
+        "inv_code": "266230",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 63.9294,
+        "total": 191.7882
+      },
+      {
+        "item": "6",
+        "description": "M20 Nut - GALV",
+        "inv_code": "108950",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 0.4694,
+        "total": 1.4082
+      },
+      {
+        "item": "5",
+        "description": "M20 Washer Spring S/S",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 0.5363,
+        "total": 3.2178
+      },
+      {
+        "item": "4",
+        "description": "M20 Square Washer 65mm - GALV",
+        "inv_code": "106215",
+        "uom": "each",
+        "qty": 12.0,
+        "unit_price": 17.2426,
+        "total": 206.9113
+      },
+      {
+        "item": "3",
+        "description": "M20 Bolt & Nut - GALV (675mm)",
+        "inv_code": "101962",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 12.5855,
+        "total": 75.5133
+      },
+      {
+        "item": "2",
+        "description": "Bow Shackle 120kN",
+        "inv_code": "603453",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 4.5298,
+        "total": 27.179
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 219.6644,
+        "total": 219.6644
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.10",
+    "description": "132kV Pole Top Assembly - Single Conductor Single Circuit Termination - Vertical (2 off for dual circuit)",
+    "reference": "CEOM7402.46 - QTV\nModified",
+    "total_cost": 2394.26,
+    "components": [
+      {
+        "item": "15",
+        "description": "Adjustable Link Plate 120kN (450 - 784mm)",
+        "inv_code": "272361",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 81.7061,
+        "total": 245.1184
+      },
+      {
+        "item": "14",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 37.0,
+        "unit_price": 2.8848,
+        "total": 106.7376
+      },
+      {
+        "item": "13",
+        "description": "Insulator - 132kV Composite Strain 110kN (Very Heavy Pollution)",
+        "inv_code": "261962",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 111.5417,
+        "total": 334.625
+      },
+      {
+        "item": "10",
+        "description": "Compression Deadend & Lug (to suit Phosphorus conductor)",
+        "inv_code": "266623",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 354.8257,
+        "total": 1064.4771
+      },
+      {
+        "item": "9",
+        "description": "Link Plate 160kN GALV (150mm Centres, 22mm \u00d8 Holes)",
+        "inv_code": "272363",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 33.9471,
+        "total": 101.8412
+      },
+      {
+        "item": "8",
+        "description": "Pole Band - 3 Bolt - 120kN (700mm)",
+        "inv_code": "604346",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 160.3073,
+        "total": 480.9219
+      },
+      {
+        "item": "2",
+        "description": "Bow Shackle 120kN",
+        "inv_code": "603453",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 4.5298,
+        "total": 13.5895
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 46.9462,
+        "total": 46.9462
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.11",
+    "description": "132kV Pole Top Assembly - Single Conductor Single Circuit Tee - Vertical",
+    "reference": "CEOM7402.67",
+    "total_cost": 6726.14,
+    "components": [
+      {
+        "item": "9",
+        "description": "Compression Deadend & 2 x Lugs (to suit Phosphorus conductor)",
+        "inv_code": "266627",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 116.4509,
+        "total": 349.3528
+      },
+      {
+        "item": "8",
+        "description": "Adjustable Link Plate 120kN (450 - 784mm)",
+        "inv_code": "272361",
+        "uom": "each",
+        "qty": 9.0,
+        "unit_price": 81.7061,
+        "total": 735.3552
+      },
+      {
+        "item": "7",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 37.0,
+        "unit_price": 2.8848,
+        "total": 106.7376
+      },
+      {
+        "item": "6",
+        "description": "Insulator - 132kV Composite Strain 110kN (Very Heavy Pollution)",
+        "inv_code": "261962",
+        "uom": "each",
+        "qty": 9.0,
+        "unit_price": 111.5417,
+        "total": 1003.8751
+      },
+      {
+        "item": "5",
+        "description": "Compression Deadend & Lug (to suit Phosphorus conductor)",
+        "inv_code": "266623",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 354.8257,
+        "total": 2128.9543
+      },
+      {
+        "item": "4",
+        "description": "Link Plate 160kN GALV (150mm Centres, 22mm \u00d8 Holes)",
+        "inv_code": "272363",
+        "uom": "each",
+        "qty": 9.0,
+        "unit_price": 33.9471,
+        "total": 305.5235
+      },
+      {
+        "item": "3",
+        "description": "Pole Band - 3 Bolt - 120kN (700mm)",
+        "inv_code": "604346",
+        "uom": "each",
+        "qty": 12.0,
+        "unit_price": 160.3073,
+        "total": 1923.6874
+      },
+      {
+        "item": "2",
+        "description": "Bow Shackle 120kN",
+        "inv_code": "603453",
+        "uom": "each",
+        "qty": 9.0,
+        "unit_price": 4.5298,
+        "total": 40.7685
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 131.8851,
+        "total": 131.8851
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.12",
+    "description": "66kV Pole Top Assembly - Single Conductor Dual Circuit Intermediate - Vertical",
+    "reference": "CEOM7401.51 - KSV",
+    "total_cost": 6067.46,
+    "components": [
+      {
+        "item": "10",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 37.0,
+        "unit_price": 2.8848,
+        "total": 106.7376
+      },
+      {
+        "item": "9",
+        "description": "Insulator - 66kV Horizontal Line Post (Heavy Pollution)",
+        "inv_code": "261232",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 850.5134,
+        "total": 5103.0804
+      },
+      {
+        "item": "8",
+        "description": "Threaded Rod M20 (750mm)",
+        "inv_code": "101962",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 12.5855,
+        "total": 75.5133
+      },
+      {
+        "item": "7",
+        "description": "M20 Nut - GALV",
+        "inv_code": "108950",
+        "uom": "each",
+        "qty": 24.0,
+        "unit_price": 0.4694,
+        "total": 11.2654
+      },
+      {
+        "item": "6",
+        "description": "M20 Washer Spring S/S",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 24.0,
+        "unit_price": 0.2641,
+        "total": 6.3378
+      },
+      {
+        "item": "5",
+        "description": "M20 Square Washer 65mm - GALV",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 24.0,
+        "unit_price": 0.5363,
+        "total": 12.8712
+      },
+      {
+        "item": "4",
+        "description": "Bow Shackle 120kN",
+        "inv_code": "603453",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 4.5298,
+        "total": 27.179
+      },
+      {
+        "item": "3",
+        "description": "Twisted Eye Tongue 120kN",
+        "inv_code": "111230",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 8.09,
+        "total": 48.5397
+      },
+      {
+        "item": "2",
+        "description": "AGS Suspension Unit C/W Armour Rod (Suit Phosphorous conductor)",
+        "inv_code": "266258",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 92.8284,
+        "total": 556.9703
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 118.9699,
+        "total": 118.9699
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.13",
+    "description": "66kV Pole Top Assembly - Bundled Conductor Dual Circuit Intermediate",
+    "reference": "TBD",
+    "total_cost": null,
+    "components": [
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": null,
+        "total": null
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.14",
+    "description": "66kV Pole Top Assembly - Bundled Conductor Dual Circuit Strain",
+    "reference": "TBD",
+    "total_cost": null,
+    "components": [
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": null,
+        "total": null
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.15",
+    "description": "66kV Pole Top Assembly - Bundled Conductor Dual Circuit Termination",
+    "reference": "TBD",
+    "total_cost": null,
+    "components": [
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": null,
+        "total": null
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.16",
+    "description": "66kV Pole Top Assembly - Single Conductor Single Circuit Intermediate - Delta",
+    "reference": "CEOM7401.38 - GSD",
+    "total_cost": 3147.82,
+    "components": [
+      {
+        "item": "9",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 37.0,
+        "unit_price": 2.8848,
+        "total": 106.7376
+      },
+      {
+        "item": "8",
+        "description": "Insulator - 66kV Horizontal Line Post (Heavy Pollution)",
+        "inv_code": "261232",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 850.5134,
+        "total": 2551.5402
+      },
+      {
+        "item": "7",
+        "description": "M20 Washer Spring S/S",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 0.2641,
+        "total": 1.5844
+      },
+      {
+        "item": "6",
+        "description": "M20 Square Washer 65mm - GALV",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 12.0,
+        "unit_price": 0.5363,
+        "total": 6.4356
+      },
+      {
+        "item": "5",
+        "description": "M20 Bolt & Nut - GALV (675mm)",
+        "inv_code": "106215",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 17.2426,
+        "total": 103.4556
+      },
+      {
+        "item": "4",
+        "description": "Bow Shackle 120kN",
+        "inv_code": "603453",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 4.5298,
+        "total": 13.5895
+      },
+      {
+        "item": "3",
+        "description": "Twisted Eye Tongue 120kN",
+        "inv_code": "111230",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 8.09,
+        "total": 24.2699
+      },
+      {
+        "item": "2",
+        "description": "AGS Suspension Unit C/W Armour Rod (Suit Phosphorous conductor)",
+        "inv_code": "266258",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 92.8284,
+        "total": 278.4852
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 61.722,
+        "total": 61.722
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.17",
+    "description": "66kV Pole Top Assembly - Single Conductor Single Circuit Intermediate - Flying Angle",
+    "reference": "CEOM7401.36 - GUW",
+    "total_cost": 2194.19,
+    "components": [
+      {
+        "item": "7",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 37.0,
+        "unit_price": 2.8848,
+        "total": 106.7376
+      },
+      {
+        "item": "6",
+        "description": "Insulator - 66kV Composite Strain 70kN (Very Heavy Pollution)",
+        "inv_code": "261128",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 71.9711,
+        "total": 215.9133
+      },
+      {
+        "item": "5",
+        "description": "Link Plate 160kN GALV (150mm Centres, 22mm \u00d8 Holes)",
+        "inv_code": "272363",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 33.9471,
+        "total": 101.8412
+      },
+      {
+        "item": "4",
+        "description": "Pole Band - 3 Bolt - 120kN (700mm)",
+        "inv_code": "604346",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 160.3073,
+        "total": 480.9219
+      },
+      {
+        "item": "3",
+        "description": "Bow Shackle 120kN",
+        "inv_code": "603453",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 4.5298,
+        "total": 27.179
+      },
+      {
+        "item": "2",
+        "description": "Double AGS Suspension Assembly C/W Armour Rod (Suit Phosphorous conductor)",
+        "inv_code": "266262",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 406.1901,
+        "total": 1218.5702
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 43.0233,
+        "total": 43.0233
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.18",
+    "description": "66kV Pole Top Assembly - Single Conductor Single Circuit Strain - Vertical (2 off for dual circuit)",
+    "reference": "CEOM7401.26 - FTV",
+    "total_cost": 7519.63,
+    "components": [
+      {
+        "item": "15",
+        "description": "Adjustable Link Plate 120kN (450 - 784mm)",
+        "inv_code": "272361",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 81.7061,
+        "total": 490.2368
+      },
+      {
+        "item": "14",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 34.0,
+        "unit_price": 2.8848,
+        "total": 98.0832
+      },
+      {
+        "item": "13",
+        "description": "Insulator - 66kV Composite Strain 70kN (Very Heavy Pollution)",
+        "inv_code": "261128",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 71.9711,
+        "total": 431.8266
+      },
+      {
+        "item": "12",
+        "description": "Insulator - 66kV Horizontal Line Post (Heavy Pollution)",
+        "inv_code": "261232",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 850.5134,
+        "total": 2551.5402
+      },
+      {
+        "item": "10",
+        "description": "Compression Deadend & Lug (to suit Phosphorus conductor)",
+        "inv_code": "266623",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 354.8257,
+        "total": 2128.9543
+      },
+      {
+        "item": "9",
+        "description": "Link Plate 160kN GALV (150mm Centres, 22mm \u00d8 Holes)",
+        "inv_code": "272363",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 33.9471,
+        "total": 203.6823
+      },
+      {
+        "item": "8",
+        "description": "Pole Band - 3 Bolt - 120kN (700mm)",
+        "inv_code": "604346",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 160.3073,
+        "total": 961.8437
+      },
+      {
+        "item": "7",
+        "description": "Jumper Clamp",
+        "inv_code": "266230",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 63.9294,
+        "total": 191.7882
+      },
+      {
+        "item": "6",
+        "description": "M20 Nut - GALV",
+        "inv_code": "108950",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 0.4694,
+        "total": 1.4082
+      },
+      {
+        "item": "5",
+        "description": "M20 Washer Spring S/S",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 0.5363,
+        "total": 3.2178
+      },
+      {
+        "item": "4",
+        "description": "M20 Square Washer 65mm - GALV",
+        "inv_code": "106215",
+        "uom": "each",
+        "qty": 12.0,
+        "unit_price": 17.2426,
+        "total": 206.9113
+      },
+      {
+        "item": "3",
+        "description": "M20 Bolt & Nut - GALV (675mm)",
+        "inv_code": "101962",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 12.5855,
+        "total": 75.5133
+      },
+      {
+        "item": "2",
+        "description": "Bow Shackle 120kN",
+        "inv_code": "603453",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 4.5298,
+        "total": 27.179
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 147.4437,
+        "total": 147.4437
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.19",
+    "description": "66kV Pole Top Assembly - Single Conductor Single Circuit Termination - Vertical  (2 off for dual circuit)",
+    "reference": "CEOM7401.26 - FTV\nModified",
+    "total_cost": 2265.78,
+    "components": [
+      {
+        "item": "15",
+        "description": "Adjustable Link Plate 120kN (450 - 784mm)",
+        "inv_code": "272361",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 81.7061,
+        "total": 245.1184
+      },
+      {
+        "item": "14",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 34.0,
+        "unit_price": 2.8848,
+        "total": 98.0832
+      },
+      {
+        "item": "13",
+        "description": "Insulator - 66kV Composite Strain 70kN (Very Heavy Pollution)",
+        "inv_code": "261128",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 71.9711,
+        "total": 215.9133
+      },
+      {
+        "item": "10",
+        "description": "Compression Deadend & Lug (to suit Phosphorus conductor)",
+        "inv_code": "266623",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 354.8257,
+        "total": 1064.4771
+      },
+      {
+        "item": "9",
+        "description": "Link Plate 160kN GALV (150mm Centres, 22mm \u00d8 Holes)",
+        "inv_code": "272363",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 33.9471,
+        "total": 101.8412
+      },
+      {
+        "item": "8",
+        "description": "Pole Band - 3 Bolt - 120kN (700mm)",
+        "inv_code": "604346",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 160.3073,
+        "total": 480.9219
+      },
+      {
+        "item": "6",
+        "description": "M20 Nut - GALV",
+        "inv_code": "108950",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 0.4694,
+        "total": 1.4082
+      },
+      {
+        "item": "2",
+        "description": "Bow Shackle 120kN",
+        "inv_code": "603453",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 4.5298,
+        "total": 13.5895
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 44.4271,
+        "total": 44.4271
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.20",
+    "description": "66kV Pole Top Assembly - Single Conductor Single Circuit Tee - Vertical",
+    "reference": "CEOM7401.67",
+    "total_cost": 6362.88,
+    "components": [
+      {
+        "item": "9",
+        "description": "Compression Deadend & 2 x Lugs (to suit Phosphorus conductor)",
+        "inv_code": "266627",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 116.4509,
+        "total": 349.3528
+      },
+      {
+        "item": "8",
+        "description": "Adjustable Link Plate 120kN (450 - 784mm)",
+        "inv_code": "272361",
+        "uom": "each",
+        "qty": 9.0,
+        "unit_price": 81.7061,
+        "total": 735.3552
+      },
+      {
+        "item": "7",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 37.0,
+        "unit_price": 2.8848,
+        "total": 106.7376
+      },
+      {
+        "item": "6",
+        "description": "Insulator - 66kV Composite Strain 70kN (Very Heavy Pollution)",
+        "inv_code": "261128",
+        "uom": "each",
+        "qty": 9.0,
+        "unit_price": 71.9711,
+        "total": 647.7399
+      },
+      {
+        "item": "5",
+        "description": "Compression Deadend & Lug (to suit Phosphorus conductor)",
+        "inv_code": "266623",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 354.8257,
+        "total": 2128.9543
+      },
+      {
+        "item": "4",
+        "description": "Link Plate 160kN GALV (150mm Centres, 22mm \u00d8 Holes)",
+        "inv_code": "272363",
+        "uom": "each",
+        "qty": 9.0,
+        "unit_price": 33.9471,
+        "total": 305.5235
+      },
+      {
+        "item": "3",
+        "description": "Pole Band - 3 Bolt - 120kN (700mm)",
+        "inv_code": "604346",
+        "uom": "each",
+        "qty": 12.0,
+        "unit_price": 160.3073,
+        "total": 1923.6874
+      },
+      {
+        "item": "2",
+        "description": "Bow Shackle 120kN",
+        "inv_code": "603453",
+        "uom": "each",
+        "qty": 9.0,
+        "unit_price": 4.5298,
+        "total": 40.7685
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 124.7624,
+        "total": 124.7624
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.21",
+    "description": "33kV Pole Top Assembly- Single Conductor Single Circuit Intermediate - Delta",
+    "reference": "CEOM7102.57",
+    "total_cost": 720.07,
+    "components": [
+      {
+        "item": "19",
+        "description": "M22 Washer Square GALV (75 x 75 x 6mm)",
+        "inv_code": "109490",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.9599,
+        "total": 1.9197
+      },
+      {
+        "item": "18",
+        "description": "M20 Bolt & Nut GALV (550mm)",
+        "inv_code": "106160",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 6.8256,
+        "total": 6.8256
+      },
+      {
+        "item": "17",
+        "description": "M24 Washer Flat Round GALV",
+        "inv_code": "110184",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.5575,
+        "total": 1.115
+      },
+      {
+        "item": "16",
+        "description": "M24 Washer Spring GALV",
+        "inv_code": "110470",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 2.9826,
+        "total": 5.9652
+      },
+      {
+        "item": "15",
+        "description": "Earth Bond - 25mm2 Cu Conductor (Black PVC)",
+        "inv_code": "441780",
+        "uom": "m",
+        "qty": 1.0,
+        "unit_price": 6.1412,
+        "total": 6.1412
+      },
+      {
+        "item": "14",
+        "description": "Earth Bond - 25mm2 Cu Crimp Lug",
+        "inv_code": "234400",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 1.6471,
+        "total": 3.2941
+      },
+      {
+        "item": "13",
+        "description": "Earth Bond - M12 Washer Flat Round SS",
+        "inv_code": "109580",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 0.0786,
+        "total": 0.2358
+      },
+      {
+        "item": "12",
+        "description": "Earth Bond - M12 Washer Spring SS",
+        "inv_code": "110450",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.0587,
+        "total": 0.1174
+      },
+      {
+        "item": "11",
+        "description": "Earth Bond - M12 Bolt & Nut SS (130mm)",
+        "inv_code": "107110",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 1.9558,
+        "total": 3.9116
+      },
+      {
+        "item": "14",
+        "description": "Stud M24 x 220mm (Suit Post Insulator)",
+        "inv_code": "273020",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 16.2204,
+        "total": 48.6611
+      },
+      {
+        "item": "13",
+        "description": "M20 Bolt & Nut - GALV (160mm)",
+        "inv_code": "105680",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 2.389,
+        "total": 4.778
+      },
+      {
+        "item": "12",
+        "description": "Brace Strap Angle (545mm Long)",
+        "inv_code": "271074",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 16.3198,
+        "total": 16.3198
+      },
+      {
+        "item": "11",
+        "description": "Conductor Tie (Neon Conductor)",
+        "inv_code": "279390",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 4.0341,
+        "total": 12.1023
+      },
+      {
+        "item": "10",
+        "description": "Conductor Tie Protection (Neon Conductor)",
+        "inv_code": "268650",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 20.2454,
+        "total": 60.7363
+      },
+      {
+        "item": "9",
+        "description": "M24 Washer Spring SS",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.2641,
+        "total": 1.0563
+      },
+      {
+        "item": "8",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 17.0,
+        "unit_price": 2.8848,
+        "total": 49.0416
+      },
+      {
+        "item": "7",
+        "description": "Gain Block 100mm AL",
+        "inv_code": "283110",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 4.9298,
+        "total": 4.9298
+      },
+      {
+        "item": "6",
+        "description": "Bracket Centre Phase Support",
+        "inv_code": "115440",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 31.5763,
+        "total": 31.5763
+      },
+      {
+        "item": "6",
+        "description": "M20 Bolt & Nut - GALV (450mm)",
+        "inv_code": "106100",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 5.6555,
+        "total": 5.6555
+      },
+      {
+        "item": "5",
+        "description": "M20 Washer Flat Round GALV",
+        "inv_code": "110180",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 0.5189,
+        "total": 3.1137
+      },
+      {
+        "item": "4",
+        "description": "Insulator - 33kV Line Post",
+        "inv_code": "263648",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 36.3925,
+        "total": 109.1775
+      },
+      {
+        "item": "3",
+        "description": "Crossarm Composite Fibre - Pin (100mm SQ x 3000mm Long)",
+        "inv_code": "133065",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 216.1972,
+        "total": 216.1972
+      },
+      {
+        "item": "2",
+        "description": "Crossarm Composite Fibre - Vertical Riser (100mm SQ x 1400mm Long)",
+        "inv_code": "133050",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 113.0803,
+        "total": 113.0803
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 14.119,
+        "total": 14.119
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.22",
+    "description": "33kV Pole Top Assembly- Single Conductor Single Circuit Strain - Delta",
+    "reference": "CEOM7102.75 - Assembly 2",
+    "total_cost": 1315.3,
+    "components": [
+      {
+        "item": "29",
+        "description": "Bracket Centre Phase Support",
+        "inv_code": "115440",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 31.5763,
+        "total": 31.5763
+      },
+      {
+        "item": "28",
+        "description": "M20 Bolt & Nut - GALV (65mm)",
+        "inv_code": "105652",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 1.3495,
+        "total": 1.3495
+      },
+      {
+        "item": "27",
+        "description": "M20 Bolt & Nut - GALV (160mm)",
+        "inv_code": "105680",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 2.389,
+        "total": 4.778
+      },
+      {
+        "item": "26",
+        "description": "Bracket Composite Fibre Crossarm",
+        "inv_code": "115444",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 130.3538,
+        "total": 130.3538
+      },
+      {
+        "item": "25",
+        "description": "M16 Washer Spring SS",
+        "inv_code": "110452",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.158,
+        "total": 0.6322
+      },
+      {
+        "item": "24",
+        "description": "M16 Washer Flat Round SS",
+        "inv_code": "109582",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.0783,
+        "total": 0.3133
+      },
+      {
+        "item": "23",
+        "description": "M16 Bolt & Nut GALV (200mm)",
+        "inv_code": "105200",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 1.7647,
+        "total": 7.0589
+      },
+      {
+        "item": "22",
+        "description": "Pole Band - 3 Bolt (375mm)",
+        "inv_code": "604140",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 77.2056,
+        "total": 154.4113
+      },
+      {
+        "item": "21",
+        "description": "M22 Washer Square GALV (75 x 75 x 6mm)",
+        "inv_code": "109490",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.9599,
+        "total": 1.9197
+      },
+      {
+        "item": "20",
+        "description": "Stud M24 x 220mm (Suit Post Insulator)",
+        "inv_code": "273020",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 16.2204,
+        "total": 16.2204
+      },
+      {
+        "item": "19",
+        "description": "M20 Washer Spring SS",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 0.2641,
+        "total": 1.5844
+      },
+      {
+        "item": "18",
+        "description": "M20 Bolt & Nut - GALV (160mm)",
+        "inv_code": "105680",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 2.389,
+        "total": 2.389
+      },
+      {
+        "item": "17",
+        "description": "Brace Strap Angle (545mm Long)",
+        "inv_code": "271074",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 16.3198,
+        "total": 16.3198
+      },
+      {
+        "item": "16",
+        "description": "M20 Bolt & Nut - GALV (500mm)",
+        "inv_code": "106130",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 6.2406,
+        "total": 12.4812
+      },
+      {
+        "item": "15",
+        "description": "Crossarm Composite Fibre - Vertical Riser (900mm Long)",
+        "inv_code": "133046",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 102.8361,
+        "total": 102.8361
+      },
+      {
+        "item": "14",
+        "description": "Insulator - 33kV Line Post",
+        "inv_code": "263648",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 36.3925,
+        "total": 36.3925
+      },
+      {
+        "item": "13",
+        "description": "Connection Clamp - Parallel Groove",
+        "inv_code": "291971",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 26.2592,
+        "total": 157.5554
+      },
+      {
+        "item": "12",
+        "description": "Tie Wire - AL",
+        "inv_code": "584400",
+        "uom": "kg",
+        "qty": 0.5,
+        "unit_price": 13.9373,
+        "total": 6.9686
+      },
+      {
+        "item": "11",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 14.0,
+        "unit_price": 2.8848,
+        "total": 40.3872
+      },
+      {
+        "item": "10",
+        "description": "Deadend Preformed (Neon Conductor)",
+        "inv_code": "277920",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 11.3562,
+        "total": 68.1372
+      },
+      {
+        "item": "9",
+        "description": "M20 Eye Bolt & Nut - GALV (200mm)",
+        "inv_code": "102740",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 8.3619,
+        "total": 33.4477
+      },
+      {
+        "item": "8",
+        "description": "M20 Eye Nut",
+        "inv_code": "110600",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 12.6449,
+        "total": 12.6449
+      },
+      {
+        "item": "7",
+        "description": "M20 Eye Bolt & Nut - GALV (500mm)",
+        "inv_code": "103130",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 12.9474,
+        "total": 12.9474
+      },
+      {
+        "item": "6",
+        "description": "M20 Washer Flat Round GALV",
+        "inv_code": "110180",
+        "uom": "each",
+        "qty": 15.0,
+        "unit_price": 0.5189,
+        "total": 7.7842
+      },
+      {
+        "item": "5",
+        "description": "Thimble Clevis",
+        "inv_code": "111560",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 5.8315,
+        "total": 34.9891
+      },
+      {
+        "item": "4",
+        "description": "Bow Shackle 70kN",
+        "inv_code": "603450",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 3.6451,
+        "total": 21.8706
+      },
+      {
+        "item": "3",
+        "description": "Insulator - 33kV Polymer Strain",
+        "inv_code": "261168",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 17.6106,
+        "total": 105.6636
+      },
+      {
+        "item": "2",
+        "description": "Crossarm Composite Fibre - Strain (125mm SQ x 3000mm Long)",
+        "inv_code": "133086",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 266.4927,
+        "total": 266.4927
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 25.7901,
+        "total": 25.7901
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.23",
+    "description": "33kV Pole Top Assembly- Single Conductor Single Circuit Strain - Vertical",
+    "reference": "CEOM7102.42 Assembly 2",
+    "total_cost": 1753.32,
+    "components": [
+      {
+        "item": "23",
+        "description": "M24 Washer Flat Round GALV",
+        "inv_code": "110184",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 0.5575,
+        "total": 1.6725
+      },
+      {
+        "item": "22",
+        "description": "M20 Washer Spring SS",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 0.2641,
+        "total": 0.7922
+      },
+      {
+        "item": "21",
+        "description": "M20 Eye Bolt & Nut - GALV (450mm)",
+        "inv_code": "103070",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 11.9127,
+        "total": 35.7381
+      },
+      {
+        "item": "20",
+        "description": "Bird Cover Disc",
+        "inv_code": "276875",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 55.6388,
+        "total": 166.9163
+      },
+      {
+        "item": "19",
+        "description": "M24 Washer Spring SS",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 0.2641,
+        "total": 0.7922
+      },
+      {
+        "item": "18",
+        "description": "Stud M24 x 220mm (Suit Post Insulator)",
+        "inv_code": "273020",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 16.2204,
+        "total": 48.6611
+      },
+      {
+        "item": "17",
+        "description": "M16 Bolt & Nut - GALV (200mm)",
+        "inv_code": "105200",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 1.7647,
+        "total": 10.5883
+      },
+      {
+        "item": "16",
+        "description": "Pole Band - 3 Bolt (375mm)",
+        "inv_code": "604140",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 77.2056,
+        "total": 463.2338
+      },
+      {
+        "item": "15",
+        "description": "Connection Clamp - Parallel Groove",
+        "inv_code": "291971",
+        "uom": "each",
+        "qty": 12.0,
+        "unit_price": 26.2592,
+        "total": 315.1108
+      },
+      {
+        "item": "14",
+        "description": "Earth Bond - 25mm2 Cu Conductor (Black PVC)",
+        "inv_code": "441780",
+        "uom": "m",
+        "qty": 2.0,
+        "unit_price": 6.1412,
+        "total": 12.2824
+      },
+      {
+        "item": "13",
+        "description": "Earth Bond - 25mm2 Cu Crimp Lug",
+        "inv_code": "234400",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 1.6471,
+        "total": 9.8824
+      },
+      {
+        "item": "12",
+        "description": "Earth Bond - M12 Washer Flat Round SS",
+        "inv_code": "109580",
+        "uom": "each",
+        "qty": 9.0,
+        "unit_price": 0.0786,
+        "total": 0.7075
+      },
+      {
+        "item": "11",
+        "description": "Earth Bond - M12 Washer Spring SS",
+        "inv_code": "110450",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 0.0587,
+        "total": 0.3521
+      },
+      {
+        "item": "10",
+        "description": "Earth Bond - M12 Bolt & Nut SS (130mm)",
+        "inv_code": "107110",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 1.9558,
+        "total": 11.7348
+      },
+      {
+        "item": "9",
+        "description": "Thimble Clevis",
+        "inv_code": "111560",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 5.8315,
+        "total": 34.9891
+      },
+      {
+        "item": "8",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 17.0,
+        "unit_price": 2.8848,
+        "total": 49.0416
+      },
+      {
+        "item": "7",
+        "description": "Deadend Preformed (Neon Conductor)",
+        "inv_code": "277920",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 11.3562,
+        "total": 68.1372
+      },
+      {
+        "item": "6",
+        "description": "Bracket Bridging Assembly",
+        "inv_code": "115640",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 82.828,
+        "total": 248.4839
+      },
+      {
+        "item": "5",
+        "description": "M20 Washer Flat Round GALV",
+        "inv_code": "110180",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 0.5189,
+        "total": 3.1137
+      },
+      {
+        "item": "4",
+        "description": "Bow Shackle 70kN",
+        "inv_code": "603450",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 3.6451,
+        "total": 21.8706
+      },
+      {
+        "item": "3",
+        "description": "Insulator - 33kV Line Post",
+        "inv_code": "263648",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 36.3925,
+        "total": 109.1775
+      },
+      {
+        "item": "2",
+        "description": "Insulator - 33kV Polymer Strain",
+        "inv_code": "261168",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 17.6106,
+        "total": 105.6636
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 34.3788,
+        "total": 34.3788
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.24",
+    "description": "33kV Pole Top Assembly- Single Conductor Single Circuit Termination - Delta",
+    "reference": "CEOM7102.74 Assembly 2",
+    "total_cost": 696.76,
+    "components": [
+      {
+        "item": "19",
+        "description": "M20 Bolt & Nut - GALV (65mm)",
+        "inv_code": "105652",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 1.3495,
+        "total": 1.3495
+      },
+      {
+        "item": "18",
+        "description": "M20 Bolt & Nut - GALV (160mm)",
+        "inv_code": "105680",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 2.389,
+        "total": 4.778
+      },
+      {
+        "item": "17",
+        "description": "M20 Washer Spring SS",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.2641,
+        "total": 1.0563
+      },
+      {
+        "item": "16",
+        "description": "M20 Washer Flat Round GALV",
+        "inv_code": "110180",
+        "uom": "each",
+        "qty": 9.0,
+        "unit_price": 0.5189,
+        "total": 4.6705
+      },
+      {
+        "item": "15",
+        "description": "M16 Bolt & Nut - GALV (200mm)",
+        "inv_code": "105200",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 1.7647,
+        "total": 7.0589
+      },
+      {
+        "item": "14",
+        "description": "M16 Washer Flat Round GALV",
+        "inv_code": "110145",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.0884,
+        "total": 0.3537
+      },
+      {
+        "item": "13",
+        "description": "M16 Washer Spring SS",
+        "inv_code": "110330",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.0782,
+        "total": 0.3129
+      },
+      {
+        "item": "12",
+        "description": "Pole Band - Bracket Attachment (500mm)",
+        "inv_code": "604326",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 38.4445,
+        "total": 76.889
+      },
+      {
+        "item": "11",
+        "description": "Bracket - Parallel Flange Channel (570mm Long)",
+        "inv_code": "115446",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 124.1582,
+        "total": 124.1582
+      },
+      {
+        "item": "10",
+        "description": "Brace Strap Angle (545mm Long)",
+        "inv_code": "271074",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 16.3198,
+        "total": 16.3198
+      },
+      {
+        "item": "9",
+        "description": "M20 Bolt & Nut - GALV (550mm)",
+        "inv_code": "106160",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 6.8256,
+        "total": 6.8256
+      },
+      {
+        "item": "8",
+        "description": "Pole Step - Screw In",
+        "inv_code": "275790",
+        "uom": "each",
+        "qty": 14.0,
+        "unit_price": 2.8848,
+        "total": 40.3872
+      },
+      {
+        "item": "7",
+        "description": "Deadend Preformed (Neon Conductor)",
+        "inv_code": "277920",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 11.3562,
+        "total": 34.0686
+      },
+      {
+        "item": "6",
+        "description": "M20 Eye Bolt & Nut - GALV (200mm)",
+        "inv_code": "102740",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 8.3619,
+        "total": 16.7238
+      },
+      {
+        "item": "5",
+        "description": "M20 Eye Bolt & Nut - GALV (400mm)",
+        "inv_code": "103010",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 11.3293,
+        "total": 11.3293
+      },
+      {
+        "item": "4",
+        "description": "Thimble Clevis",
+        "inv_code": "111560",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 5.8315,
+        "total": 17.4945
+      },
+      {
+        "item": "3",
+        "description": "Insulator - 33kV Polymer Strain",
+        "inv_code": "261168",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 17.6106,
+        "total": 52.8318
+      },
+      {
+        "item": "2",
+        "description": "Crossarm Composite Fibre - Strain (125mm SQ x 3000mm Long)",
+        "inv_code": "133086",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 266.4927,
+        "total": 266.4927
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 13.662,
+        "total": 13.662
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.25",
+    "description": "100kN Pole Stay Assembly",
+    "reference": "CEOM7405.02",
+    "total_cost": 1430.0,
+    "components": [
+      {
+        "item": "14",
+        "description": "Insulator GY4 222kN Strain Type",
+        "inv_code": "261520",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 9.6843,
+        "total": 19.3686
+      },
+      {
+        "item": "13",
+        "description": "Staywire 19/2.75 SC/GZ",
+        "inv_code": "600493",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 429.1589,
+        "total": 429.1589
+      },
+      {
+        "item": "12",
+        "description": "200kN Turnbuckle Eye/Eye - Galv.",
+        "inv_code": "112860",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 221.7724,
+        "total": 221.7724
+      },
+      {
+        "item": "11",
+        "description": "Deadend 19/2.75 SC/GZ",
+        "inv_code": "279030",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 7.4473,
+        "total": 29.7893
+      },
+      {
+        "item": "10",
+        "description": "Sight Sleeve - PVC White Split Conduit (\u00d830mm x 1800 Long)",
+        "inv_code": "602190",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 6.6595,
+        "total": 6.6595
+      },
+      {
+        "item": "9",
+        "description": "Stay Thimble  (\u00d8150mm x 32mm Hole)",
+        "inv_code": "111594",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 28.7961,
+        "total": 28.7961
+      },
+      {
+        "item": "8",
+        "description": "Link Plate Double 200kN GALV (150mm Centres - \u00d822mm Holes)",
+        "inv_code": "272364",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 83.4404,
+        "total": 83.4404
+      },
+      {
+        "item": "7",
+        "description": "M20 Stay Collar",
+        "inv_code": "115775",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 14.403,
+        "total": 28.806
+      },
+      {
+        "item": "6",
+        "description": "M20 Washer Spring SS",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 0.2641,
+        "total": 0.2641
+      },
+      {
+        "item": "5",
+        "description": "M20 Square Washer",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.5363,
+        "total": 1.0726
+      },
+      {
+        "item": "4",
+        "description": "M20 Bolt & Nut",
+        "inv_code": "106196",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 9.3844,
+        "total": 9.3844
+      },
+      {
+        "item": "3",
+        "description": "Earth Bond - Wedge Clamp",
+        "inv_code": "293023",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 9.9559,
+        "total": 9.9559
+      },
+      {
+        "item": "2",
+        "description": "Earth Bond - Earthwire 19/2.00 SC/GZ",
+        "inv_code": "600461",
+        "uom": "each",
+        "qty": 5.0,
+        "unit_price": 106.6977,
+        "total": 533.4887
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 28.0391,
+        "total": 28.0391
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.26",
+    "description": "100kN Bollard Stay Assembly",
+    "reference": "CEOM7405.011",
+    "total_cost": 468.13,
+    "components": [
+      {
+        "item": "3",
+        "description": "Staywire 19/2.75 SC/GZ",
+        "inv_code": "600493",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 429.1589,
+        "total": 429.1589
+      },
+      {
+        "item": "2",
+        "description": "Deadend 19/2.75 SC/GZ",
+        "inv_code": "279030",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 7.4473,
+        "total": 29.7893
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 9.179,
+        "total": 9.179
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.27",
+    "description": "200kN Pole Stay Assembly",
+    "reference": "CEOM7405.10",
+    "total_cost": 1546.85,
+    "components": [
+      {
+        "item": "14",
+        "description": "Insulator GY4 222kN Strain Type",
+        "inv_code": "261520",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 9.6843,
+        "total": 19.3686
+      },
+      {
+        "item": "13",
+        "description": "Stay Wire \u00d816mm Wire Rope (6x20 2070)",
+        "inv_code": "600498",
+        "uom": "each",
+        "qty": 55.0,
+        "unit_price": 8.0946,
+        "total": 445.2007
+      },
+      {
+        "item": "12",
+        "description": "200kN Turnbuckle Eye/Eye - Galv.",
+        "inv_code": "112860",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 221.7724,
+        "total": 221.7724
+      },
+      {
+        "item": "11",
+        "description": "Deadend Suit 16mm Wire Rope (SC/GZ)",
+        "inv_code": "266624",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 32.0773,
+        "total": 128.3093
+      },
+      {
+        "item": "10",
+        "description": "Sight Sleeve - PVC White Split Conduit (\u00d830mm x 1800 Long)",
+        "inv_code": "602190",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 6.6595,
+        "total": 6.6595
+      },
+      {
+        "item": "9",
+        "description": "Stay Thimble  (\u00d8150mm x 32mm Hole)",
+        "inv_code": "111594",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 28.7961,
+        "total": 28.7961
+      },
+      {
+        "item": "8",
+        "description": "Link Plate Double 200kN GALV (150mm Centres - \u00d822mm Holes)",
+        "inv_code": "272364",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 83.4404,
+        "total": 83.4404
+      },
+      {
+        "item": "7",
+        "description": "M20 Stay Collar",
+        "inv_code": "115775",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 14.403,
+        "total": 28.806
+      },
+      {
+        "item": "6",
+        "description": "M20 Washer Spring SS",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 0.2641,
+        "total": 0.2641
+      },
+      {
+        "item": "5",
+        "description": "M20 Square Washer",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.5363,
+        "total": 1.0726
+      },
+      {
+        "item": "4",
+        "description": "M20 Bolt & Nut",
+        "inv_code": "106196",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 9.3844,
+        "total": 9.3844
+      },
+      {
+        "item": "3",
+        "description": "Earth Bond - Wedge Clamp",
+        "inv_code": "293023",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 9.9559,
+        "total": 9.9559
+      },
+      {
+        "item": "2",
+        "description": "Earth Bond - Earthwire 19/2.00 SC/GZ",
+        "inv_code": "600461",
+        "uom": "each",
+        "qty": 5.0,
+        "unit_price": 106.6977,
+        "total": 533.4887
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 30.3304,
+        "total": 30.3304
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.28",
+    "description": "180kN Bollard Stay Assembly",
+    "reference": "CEOM7405.12",
+    "total_cost": 584.98,
+    "components": [
+      {
+        "item": "3",
+        "description": "Stay Wire \u00d816mm Wire Rope (6x20 2070)",
+        "inv_code": "600498",
+        "uom": "each",
+        "qty": 55.0,
+        "unit_price": 8.0946,
+        "total": 445.2007
+      },
+      {
+        "item": "2",
+        "description": "Deadend Suit 16mm Wire Rope (SC/GZ)",
+        "inv_code": "266624",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 32.0773,
+        "total": 128.3093
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 11.4702,
+        "total": 11.4702
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.29",
+    "description": "100kN Stay Anchor Assembly - Normal Soil",
+    "reference": "CEOM7405.04",
+    "total_cost": 1134.32,
+    "components": [
+      {
+        "item": "5",
+        "description": "Anchor Rod M24x3800mm GALV. C/W 150mm Sheave",
+        "inv_code": "602522",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 229.6784,
+        "total": 229.6784
+      },
+      {
+        "item": "4",
+        "description": "Stay Anchor Extension Rod",
+        "inv_code": "602521",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 113.0024,
+        "total": 113.0024
+      },
+      {
+        "item": "3",
+        "description": "100mm PVC Pipe - UV Stabilised",
+        "inv_code": "281025",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 71.3502,
+        "total": 71.3502
+      },
+      {
+        "item": "2",
+        "description": "General Purpose Concrete - 20kg BAG",
+        "inv_code": "130150",
+        "uom": "each",
+        "qty": 66.0,
+        "unit_price": 10.5765,
+        "total": 698.048
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 22.2416,
+        "total": 22.2416
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.30",
+    "description": "100kN Stay Anchor Assembly - Poor Soil",
+    "reference": "CEOM7405.05",
+    "total_cost": 2137.61,
+    "components": [
+      {
+        "item": "5",
+        "description": "Anchor Rod M24x3800mm GALV. C/W 150mm Sheave",
+        "inv_code": "602522",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 229.6784,
+        "total": 229.6784
+      },
+      {
+        "item": "4",
+        "description": "Stay Anchor Extension Rod",
+        "inv_code": "602521",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 113.0024,
+        "total": 113.0024
+      },
+      {
+        "item": "3",
+        "description": "100mm PVC Pipe - UV Stabilised",
+        "inv_code": "281025",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 71.3502,
+        "total": 71.3502
+      },
+      {
+        "item": "2",
+        "description": "General Purpose Concrete - 20kg BAG",
+        "inv_code": "130150",
+        "uom": "each",
+        "qty": 159.0,
+        "unit_price": 10.5765,
+        "total": 1681.6612
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 41.9138,
+        "total": 41.9138
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.31",
+    "description": "100kN Stay Anchor Assembly - Rock",
+    "reference": "CEOM7405.06",
+    "total_cost": 443.89,
+    "components": [
+      {
+        "item": "5",
+        "description": "Anchor Rod M24x3800mm GALV. C/W 150mm Sheave",
+        "inv_code": "602522",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 229.6784,
+        "total": 229.6784
+      },
+      {
+        "item": "4",
+        "description": "Stay Anchor Extension Rod",
+        "inv_code": "602521",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 113.0024,
+        "total": 113.0024
+      },
+      {
+        "item": "3",
+        "description": "100mm PVC Pipe - UV Stabilised",
+        "inv_code": "281025",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 71.3502,
+        "total": 71.3502
+      },
+      {
+        "item": "2",
+        "description": "General Purpose Concrete - 20kg BAG",
+        "inv_code": "130150",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 10.5765,
+        "total": 21.153
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 8.7037,
+        "total": 8.7037
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.32",
+    "description": "200kN Stay Anchor Assembly - Normal Soil",
+    "reference": "CEOM7405.07",
+    "total_cost": 1720.17,
+    "components": [
+      {
+        "item": "5",
+        "description": "Anchor Rod M36x5100mm GALV. C/W 150mm Sheave",
+        "inv_code": "602511",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 442.1449,
+        "total": 442.1449
+      },
+      {
+        "item": "4",
+        "description": "Stay Anchor Extension Link 200kN",
+        "inv_code": "602513",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 474.8958,
+        "total": 474.8958
+      },
+      {
+        "item": "3",
+        "description": "100mm PVC Pipe - UV Stabilised",
+        "inv_code": "281025",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 71.3502,
+        "total": 71.3502
+      },
+      {
+        "item": "2",
+        "description": "General Purpose Concrete - 20kg BAG",
+        "inv_code": "130150",
+        "uom": "each",
+        "qty": 66.0,
+        "unit_price": 10.5765,
+        "total": 698.048
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 33.7288,
+        "total": 33.7288
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.33",
+    "description": "200kN Stay Anchor Assembly - Poor Soil",
+    "reference": "CEOM7405.08",
+    "total_cost": 2723.45,
+    "components": [
+      {
+        "item": "5",
+        "description": "Anchor Rod M36x5100mm GALV. C/W 150mm Sheave",
+        "inv_code": "602511",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 442.1449,
+        "total": 442.1449
+      },
+      {
+        "item": "4",
+        "description": "Stay Anchor Extension Link 200kN",
+        "inv_code": "602513",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 474.8958,
+        "total": 474.8958
+      },
+      {
+        "item": "3",
+        "description": "100mm PVC Pipe - UV Stabilised",
+        "inv_code": "281025",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 71.3502,
+        "total": 71.3502
+      },
+      {
+        "item": "2",
+        "description": "General Purpose Concrete - 20kg BAG",
+        "inv_code": "130150",
+        "uom": "each",
+        "qty": 159.0,
+        "unit_price": 10.5765,
+        "total": 1681.6612
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 53.401,
+        "total": 53.401
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.34",
+    "description": "200kN Stay Anchor Assembly - Rock",
+    "reference": "CEOM7405.09",
+    "total_cost": 1029.73,
+    "components": [
+      {
+        "item": "5",
+        "description": "Anchor Rod M36x5100mm GALV. C/W 150mm Sheave",
+        "inv_code": "602511",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 442.1449,
+        "total": 442.1449
+      },
+      {
+        "item": "4",
+        "description": "Stay Anchor Extension Link 200kN",
+        "inv_code": "602513",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 474.8958,
+        "total": 474.8958
+      },
+      {
+        "item": "3",
+        "description": "100mm PVC Pipe - UV Stabilised",
+        "inv_code": "281025",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 71.3502,
+        "total": 71.3502
+      },
+      {
+        "item": "2",
+        "description": "General Purpose Concrete - 20kg BAG",
+        "inv_code": "130150",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 10.5765,
+        "total": 21.153
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 20.1909,
+        "total": 20.1909
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.35",
+    "description": "Single OPGW Bracket Assembly Intermediate",
+    "reference": "CEOM7406.18,\nCEOM7406.19",
+    "total_cost": 805.42,
+    "components": [
+      {
+        "item": "14",
+        "description": "OHEW Riser Bracket Type A2",
+        "inv_code": "115772",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 448.4569,
+        "total": 448.4569
+      },
+      {
+        "item": "13",
+        "description": "M20 Bolt & Nut - GALV (550mm)",
+        "inv_code": "106211",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 16.4382,
+        "total": 32.8765
+      },
+      {
+        "item": "12",
+        "description": "M20 Washer Spring SS",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.2641,
+        "total": 0.5281
+      },
+      {
+        "item": "11",
+        "description": "M20 Washer Square GALV (75 x 75 x 6mm)",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.5363,
+        "total": 2.1452
+      },
+      {
+        "item": "10",
+        "description": "OPGW Suspension Unit 96 Core",
+        "inv_code": "266225",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 248.6269,
+        "total": 248.6269
+      },
+      {
+        "item": "9",
+        "description": "OPGW Spiral Vibration Damper 96 Core",
+        "inv_code": "283620",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 17.4734,
+        "total": 34.9468
+      },
+      {
+        "item": "8",
+        "description": "Compression Lug M12 Hole (Hydrogen Conductor)",
+        "inv_code": "231728",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 4.1972,
+        "total": 4.1972
+      },
+      {
+        "item": "7",
+        "description": "Hydrogen Conductor (7/4.50 AAAC)",
+        "inv_code": "443970",
+        "uom": "m",
+        "qty": 2.0,
+        "unit_price": 2.4854,
+        "total": 4.9709
+      },
+      {
+        "item": "6",
+        "description": "M12 Washer Spring SS",
+        "inv_code": "110450",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 0.0587,
+        "total": 0.0587
+      },
+      {
+        "item": "5",
+        "description": "M12 Washer Flat Round SS",
+        "inv_code": "109580",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.0786,
+        "total": 0.1572
+      },
+      {
+        "item": "4",
+        "description": "M12 Set Screw SS (50mm)",
+        "inv_code": "100370",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 0.929,
+        "total": 0.929
+      },
+      {
+        "item": "3",
+        "description": "Bow Shackle 70kN",
+        "inv_code": "603450",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 3.6451,
+        "total": 3.6451
+      },
+      {
+        "item": "2",
+        "description": "Twisted Eye Tongue 120kN",
+        "inv_code": "111230",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 8.09,
+        "total": 8.09
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 15.7926,
+        "total": 15.7926
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.36",
+    "description": "Single OPGW Bracket Assembly Intermediate - Flying Angle",
+    "reference": "CEOM7406.18,\nCEOM7406.19",
+    "total_cost": 1021.88,
+    "components": [
+      {
+        "item": "15",
+        "description": "M20 Bolt & Nut - GALV (550mm)",
+        "inv_code": "106211",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 16.4382,
+        "total": 32.8765
+      },
+      {
+        "item": "14",
+        "description": "M20 Washer Spring SS",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.2641,
+        "total": 0.5281
+      },
+      {
+        "item": "13",
+        "description": "M20 Washer Square GALV (75 x 75 x 6mm)",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.5363,
+        "total": 2.1452
+      },
+      {
+        "item": "12",
+        "description": "OPGW Double Suspension Unit 96 Core",
+        "inv_code": "266226",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 730.619,
+        "total": 730.619
+      },
+      {
+        "item": "11",
+        "description": "OPGW Spiral Vibration Damper 96 Core",
+        "inv_code": "283620",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 17.4734,
+        "total": 34.9468
+      },
+      {
+        "item": "10",
+        "description": "Link Plate Double 200kN GALV (150mm Centres - \u00d822mm Holes)",
+        "inv_code": "272364",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 83.4404,
+        "total": 83.4404
+      },
+      {
+        "item": "9",
+        "description": "Pole Band - 3 Bolt (500mm)",
+        "inv_code": "604317",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 99.7661,
+        "total": 99.7661
+      },
+      {
+        "item": "8",
+        "description": "Compression Lug M12 Hole (Hydrogen Conductor)",
+        "inv_code": "231728",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 4.1972,
+        "total": 4.1972
+      },
+      {
+        "item": "7",
+        "description": "Hydrogen Conductor (7/4.50 AAAC)",
+        "inv_code": "443970",
+        "uom": "m",
+        "qty": 2.0,
+        "unit_price": 2.4854,
+        "total": 4.9709
+      },
+      {
+        "item": "6",
+        "description": "M12 Washer Spring SS",
+        "inv_code": "110450",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 0.0587,
+        "total": 0.0587
+      },
+      {
+        "item": "5",
+        "description": "M12 Washer Flat Round SS",
+        "inv_code": "109580",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 0.0786,
+        "total": 0.0786
+      },
+      {
+        "item": "4",
+        "description": "M12 Set Screw SS (50mm)",
+        "inv_code": "100370",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 0.929,
+        "total": 0.929
+      },
+      {
+        "item": "3",
+        "description": "Bow Shackle 70kN",
+        "inv_code": "603450",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 3.6451,
+        "total": 7.2902
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 20.0369,
+        "total": 20.0369
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.37",
+    "description": "Single OPGW Bracket Assembly Strain",
+    "reference": "CEOM7406.18,\nCEOM7406.19",
+    "total_cost": 1807.14,
+    "components": [
+      {
+        "item": "19",
+        "description": "OHEW Riser Bracket Type F1",
+        "inv_code": "115769",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 551.1985,
+        "total": 551.1985
+      },
+      {
+        "item": "18",
+        "description": "M20 Threaded Rod (750mm)",
+        "inv_code": "101962",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 12.5855,
+        "total": 12.5855
+      },
+      {
+        "item": "17",
+        "description": "M20 Nut GALV",
+        "inv_code": "108950",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.4694,
+        "total": 0.9388
+      },
+      {
+        "item": "16",
+        "description": "M20 Washer Spring SS",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.2641,
+        "total": 1.0563
+      },
+      {
+        "item": "15",
+        "description": "M20 Washer Square GALV (75 x 75 x 6mm)",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 0.5363,
+        "total": 3.2178
+      },
+      {
+        "item": "14",
+        "description": "M20 Bolt & Nut GALV (550mm)",
+        "inv_code": "106211",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 16.4382,
+        "total": 32.8765
+      },
+      {
+        "item": "13",
+        "description": "OPGW Spiral Vibration Damper 96 Core",
+        "inv_code": "283620",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 17.4734,
+        "total": 69.8936
+      },
+      {
+        "item": "12",
+        "description": "OPGW Deadend 96 Core",
+        "inv_code": "279001",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 293.0935,
+        "total": 586.1871
+      },
+      {
+        "item": "11",
+        "description": "Thimble Clevis",
+        "inv_code": "111560",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 5.8315,
+        "total": 17.4945
+      },
+      {
+        "item": "10",
+        "description": "Link Plate Double 200kN GALV (150mm Centres - \u00d822mm Holes)",
+        "inv_code": "272364",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 83.4404,
+        "total": 333.7617
+      },
+      {
+        "item": "9",
+        "description": "Compression Lug M12 Hole (Hydrogen Conductor)",
+        "inv_code": "231728",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 4.1972,
+        "total": 16.7888
+      },
+      {
+        "item": "8",
+        "description": "Hydrogen Conductor (7/4.50 AAAC)",
+        "inv_code": "443970",
+        "uom": "m",
+        "qty": 6.0,
+        "unit_price": 2.4854,
+        "total": 14.9127
+      },
+      {
+        "item": "7",
+        "description": "M12 Washer Spring SS",
+        "inv_code": "110450",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.0587,
+        "total": 0.1174
+      },
+      {
+        "item": "6",
+        "description": "M12 Washer Flat Round SS",
+        "inv_code": "109580",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.0786,
+        "total": 0.3144
+      },
+      {
+        "item": "5",
+        "description": "M12 Set Screw SS (50mm)",
+        "inv_code": "100370",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.929,
+        "total": 1.858
+      },
+      {
+        "item": "4",
+        "description": "Bow Shackle 70kN",
+        "inv_code": "603450",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 3.6451,
+        "total": 7.2902
+      },
+      {
+        "item": "3",
+        "description": "Twisted Eye Tongue 120kN",
+        "inv_code": "111230",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 8.09,
+        "total": 16.1799
+      },
+      {
+        "item": "2",
+        "description": "Connection Clamp - Parallel Groove",
+        "inv_code": "291971",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 26.2592,
+        "total": 105.0369
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 35.4342,
+        "total": 35.4342
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.38",
+    "description": "Dual OPGW Bracket Assembly Intermediate",
+    "reference": "CEOM7406.18,\nCEOM7406.19",
+    "total_cost": 1286.74,
+    "components": [
+      {
+        "item": "14",
+        "description": "OHEW Riser Bracket Type D2",
+        "inv_code": "115773",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 611.2943,
+        "total": 611.2943
+      },
+      {
+        "item": "13",
+        "description": "M20 Bolt & Nut - GALV (550mm)",
+        "inv_code": "106211",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 16.4382,
+        "total": 32.8765
+      },
+      {
+        "item": "12",
+        "description": "M20 Washer Spring SS",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.2641,
+        "total": 0.5281
+      },
+      {
+        "item": "11",
+        "description": "M20 Washer Square GALV (75 x 75 x 6mm)",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.5363,
+        "total": 2.1452
+      },
+      {
+        "item": "10",
+        "description": "OPGW Suspension Unit 96 Core",
+        "inv_code": "266225",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 248.6269,
+        "total": 497.2538
+      },
+      {
+        "item": "9",
+        "description": "OPGW Spiral Vibration Damper 96 Core",
+        "inv_code": "283620",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 17.4734,
+        "total": 69.8936
+      },
+      {
+        "item": "8",
+        "description": "Compression Lug M12 Hole (Hydrogen Conductor)",
+        "inv_code": "231728",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 4.1972,
+        "total": 16.7888
+      },
+      {
+        "item": "7",
+        "description": "Hydrogen Conductor (7/4.50 AAAC)",
+        "inv_code": "443970",
+        "uom": "m",
+        "qty": 2.0,
+        "unit_price": 2.4854,
+        "total": 4.9709
+      },
+      {
+        "item": "6",
+        "description": "M12 Washer Spring SS",
+        "inv_code": "110450",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.0587,
+        "total": 0.1174
+      },
+      {
+        "item": "5",
+        "description": "M12 Washer Flat Round SS",
+        "inv_code": "109580",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.0786,
+        "total": 0.3144
+      },
+      {
+        "item": "4",
+        "description": "M12 Set Screw SS (50mm)",
+        "inv_code": "100370",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.929,
+        "total": 1.858
+      },
+      {
+        "item": "3",
+        "description": "Bow Shackle 70kN",
+        "inv_code": "603450",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 3.6451,
+        "total": 7.2902
+      },
+      {
+        "item": "2",
+        "description": "Twisted Eye Tongue 120kN",
+        "inv_code": "111230",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 8.09,
+        "total": 16.1799
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 25.2302,
+        "total": 25.2302
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.39",
+    "description": "OPGW Splice Assembly - 96 Core",
+    "reference": "CEOM7406.20,\nCEOM7406.24",
+    "total_cost": 2216.79,
+    "components": [
+      {
+        "item": "6",
+        "description": "OPGW Cable Coil Bracket",
+        "inv_code": "266238",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 160.2413,
+        "total": 160.2413
+      },
+      {
+        "item": "5",
+        "description": "OPGW Downlead Cushion Kit",
+        "inv_code": "266233",
+        "uom": "each",
+        "qty": 15.0,
+        "unit_price": 27.0318,
+        "total": 405.4776
+      },
+      {
+        "item": "4",
+        "description": "19mm Strap SS",
+        "inv_code": "605502",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 32.296,
+        "total": 32.296
+      },
+      {
+        "item": "3",
+        "description": "19mm Band Lock SS",
+        "inv_code": "605501",
+        "uom": "each",
+        "qty": 34.0,
+        "unit_price": 6.8225,
+        "total": 231.9644
+      },
+      {
+        "item": "2",
+        "description": "OPGW Splicing Box",
+        "inv_code": "266237",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 1343.3429,
+        "total": 1343.3429
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 43.4664,
+        "total": 43.4664
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.40",
+    "description": "Single OHEW Bracket Assembly Intermediate",
+    "reference": "CEOM7406.18,\nCEOM7406.19",
+    "total_cost": 609.0,
+    "components": [
+      {
+        "item": "15",
+        "description": "OHEW Riser Bracket Type A2",
+        "inv_code": "115772",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 448.4569,
+        "total": 448.4569
+      },
+      {
+        "item": "14",
+        "description": "M20 Bolt & Nut - GALV (550mm)",
+        "inv_code": "106211",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 16.4382,
+        "total": 32.8765
+      },
+      {
+        "item": "13",
+        "description": "M20 Washer Spring SS",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.2641,
+        "total": 0.5281
+      },
+      {
+        "item": "12",
+        "description": "M20 Washer Square GALV (75 x 75 x 6mm)",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.5363,
+        "total": 2.1452
+      },
+      {
+        "item": "11",
+        "description": "AGS Suspension Unit C/W Armour Rod (Suit Hydrogen conductor)",
+        "inv_code": "272241",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 30.6807,
+        "total": 30.6807
+      },
+      {
+        "item": "10",
+        "description": "Spiral Vibration Damper (Suit Hydrogen conductor)",
+        "inv_code": "283590",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 3.9024,
+        "total": 7.8049
+      },
+      {
+        "item": "9",
+        "description": "Compression Lug M12 Hole (Hydrogen Conductor)",
+        "inv_code": "231728",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 4.1972,
+        "total": 4.1972
+      },
+      {
+        "item": "8",
+        "description": "Hydrogen Conductor (7/4.50 AAAC)",
+        "inv_code": "443970",
+        "uom": "m",
+        "qty": 2.0,
+        "unit_price": 2.4854,
+        "total": 4.9709
+      },
+      {
+        "item": "7",
+        "description": "M12 Washer Spring SS",
+        "inv_code": "110450",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 0.0587,
+        "total": 0.0587
+      },
+      {
+        "item": "6",
+        "description": "M12 Washer Flat Round SS",
+        "inv_code": "109580",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.0786,
+        "total": 0.1572
+      },
+      {
+        "item": "5",
+        "description": "M12 Set Screw SS (50mm)",
+        "inv_code": "100370",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 0.929,
+        "total": 0.929
+      },
+      {
+        "item": "4",
+        "description": "Bow Shackle 70kN",
+        "inv_code": "603450",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 3.6451,
+        "total": 3.6451
+      },
+      {
+        "item": "3",
+        "description": "Twisted Eye Tongue 120kN",
+        "inv_code": "111230",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 8.09,
+        "total": 8.09
+      },
+      {
+        "item": "2",
+        "description": "Connection Clamp - Parallel Groove",
+        "inv_code": "291971",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 26.2592,
+        "total": 52.5185
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 11.9412,
+        "total": 11.9412
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.41",
+    "description": "Single OHEW Bracket Assembly Intermediate - Flying Angle",
+    "reference": "CEOM7406.18,\nCEOM7406.19",
+    "total_cost": 333.83,
+    "components": [
+      {
+        "item": "15",
+        "description": "M20 Bolt & Nut - GALV (550mm)",
+        "inv_code": "106211",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 16.4382,
+        "total": 32.8765
+      },
+      {
+        "item": "14",
+        "description": "M20 Washer Spring SS",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.2641,
+        "total": 0.5281
+      },
+      {
+        "item": "13",
+        "description": "M20 Washer Square GALV (75 x 75 x 6mm)",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.5363,
+        "total": 2.1452
+      },
+      {
+        "item": "12",
+        "description": "AGS Suspension Unit C/W Armour Rod (Suit Hydrogen conductor)",
+        "inv_code": "272241",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 30.6807,
+        "total": 30.6807
+      },
+      {
+        "item": "11",
+        "description": "Spiral Vibration Damper (Suit Hydrogen conductor)",
+        "inv_code": "283590",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 3.9024,
+        "total": 7.8049
+      },
+      {
+        "item": "10",
+        "description": "Link Plate Double 200kN GALV (150mm Centres - \u00d822mm Holes)",
+        "inv_code": "272364",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 83.4404,
+        "total": 83.4404
+      },
+      {
+        "item": "9",
+        "description": "Pole Band - 3 Bolt (500mm)",
+        "inv_code": "604317",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 99.7661,
+        "total": 99.7661
+      },
+      {
+        "item": "8",
+        "description": "Compression Lug M12 Hole (Hydrogen Conductor)",
+        "inv_code": "231728",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 4.1972,
+        "total": 4.1972
+      },
+      {
+        "item": "7",
+        "description": "Hydrogen Conductor (7/4.50 AAAC)",
+        "inv_code": "443970",
+        "uom": "m",
+        "qty": 2.0,
+        "unit_price": 2.4854,
+        "total": 4.9709
+      },
+      {
+        "item": "6",
+        "description": "M12 Washer Spring SS",
+        "inv_code": "110450",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 0.0587,
+        "total": 0.0587
+      },
+      {
+        "item": "5",
+        "description": "M12 Washer Flat Round SS",
+        "inv_code": "109580",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 0.0786,
+        "total": 0.0786
+      },
+      {
+        "item": "4",
+        "description": "M12 Set Screw SS (50mm)",
+        "inv_code": "100370",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 0.929,
+        "total": 0.929
+      },
+      {
+        "item": "3",
+        "description": "Bow Shackle 70kN",
+        "inv_code": "603450",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 3.6451,
+        "total": 7.2902
+      },
+      {
+        "item": "2",
+        "description": "Connection Clamp - Parallel Groove",
+        "inv_code": "291971",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 26.2592,
+        "total": 52.5185
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 6.5457,
+        "total": 6.5457
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.42",
+    "description": "Single OHEW Bracket Assembly Strain",
+    "reference": "CEOM7406.18,\nCEOM7406.19",
+    "total_cost": 961.3,
+    "components": [
+      {
+        "item": "19",
+        "description": "OHEW Riser Bracket Type F1",
+        "inv_code": "115769",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 551.1985,
+        "total": 551.1985
+      },
+      {
+        "item": "18",
+        "description": "M20 Threaded Rod (750mm)",
+        "inv_code": "101962",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 12.5855,
+        "total": 12.5855
+      },
+      {
+        "item": "17",
+        "description": "M20 Nut GALV",
+        "inv_code": "108950",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.4694,
+        "total": 0.9388
+      },
+      {
+        "item": "16",
+        "description": "M20 Washer Spring SS",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.2641,
+        "total": 1.0563
+      },
+      {
+        "item": "15",
+        "description": "M20 Washer Square GALV (75 x 75 x 6mm)",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 0.5363,
+        "total": 3.2178
+      },
+      {
+        "item": "14",
+        "description": "M20 Bolt & Nut GALV (550mm)",
+        "inv_code": "106211",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 16.4382,
+        "total": 32.8765
+      },
+      {
+        "item": "13",
+        "description": "Spiral Vibration Damper (Suit Hydrogen conductor)",
+        "inv_code": "283590",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 3.9024,
+        "total": 7.8049
+      },
+      {
+        "item": "12",
+        "description": "Deadend - Hydrogen Conductor (7/4.50 AAAC)",
+        "inv_code": "278850",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 5.0344,
+        "total": 10.0689
+      },
+      {
+        "item": "11",
+        "description": "Thimble Clevis",
+        "inv_code": "111560",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 5.8315,
+        "total": 11.663
+      },
+      {
+        "item": "10",
+        "description": "Link Plate Double 200kN GALV (150mm Centres - \u00d822mm Holes)",
+        "inv_code": "272364",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 83.4404,
+        "total": 166.8809
+      },
+      {
+        "item": "9",
+        "description": "Compression Lug M12 Hole (Hydrogen Conductor)",
+        "inv_code": "231728",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 4.1972,
+        "total": 8.3944
+      },
+      {
+        "item": "8",
+        "description": "Hydrogen Conductor (7/4.50 AAAC)",
+        "inv_code": "443970",
+        "uom": "m",
+        "qty": 2.0,
+        "unit_price": 2.4854,
+        "total": 4.9709
+      },
+      {
+        "item": "7",
+        "description": "M12 Washer Spring SS",
+        "inv_code": "110450",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.0587,
+        "total": 0.1174
+      },
+      {
+        "item": "6",
+        "description": "M12 Washer Flat Round SS",
+        "inv_code": "109580",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.0786,
+        "total": 0.3144
+      },
+      {
+        "item": "5",
+        "description": "M12 Set Screw SS (50mm)",
+        "inv_code": "100370",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.929,
+        "total": 1.858
+      },
+      {
+        "item": "4",
+        "description": "Bow Shackle 70kN",
+        "inv_code": "603450",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 3.6451,
+        "total": 7.2902
+      },
+      {
+        "item": "3",
+        "description": "Twisted Eye Tongue 120kN",
+        "inv_code": "111230",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 8.09,
+        "total": 16.1799
+      },
+      {
+        "item": "2",
+        "description": "Connection Clamp - Parallel Groove",
+        "inv_code": "291971",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 26.2592,
+        "total": 105.0369
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 18.8491,
+        "total": 18.8491
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.43",
+    "description": "Dual OHEW Bracket Assembly Intermediate",
+    "reference": "CEOM7406.18,\nCEOM7406.19",
+    "total_cost": 893.9,
+    "components": [
+      {
+        "item": "15",
+        "description": "OHEW Riser Bracket Type D2",
+        "inv_code": "115773",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 611.2943,
+        "total": 611.2943
+      },
+      {
+        "item": "14",
+        "description": "M20 Bolt & Nut - GALV (550mm)",
+        "inv_code": "106211",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 16.4382,
+        "total": 32.8765
+      },
+      {
+        "item": "13",
+        "description": "M20 Washer Spring SS",
+        "inv_code": "110455",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.2641,
+        "total": 0.5281
+      },
+      {
+        "item": "12",
+        "description": "M20 Washer Square GALV (75 x 75 x 6mm)",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.5363,
+        "total": 2.1452
+      },
+      {
+        "item": "11",
+        "description": "AGS Suspension Unit C/W Armour Rod (Suit Hydrogen conductor)",
+        "inv_code": "272241",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 30.6807,
+        "total": 61.3614
+      },
+      {
+        "item": "10",
+        "description": "Spiral Vibration Damper (Suit Hydrogen conductor)",
+        "inv_code": "283590",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 3.9024,
+        "total": 15.6097
+      },
+      {
+        "item": "9",
+        "description": "Compression Lug M12 Hole (Hydrogen Conductor)",
+        "inv_code": "231728",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 4.1972,
+        "total": 16.7888
+      },
+      {
+        "item": "8",
+        "description": "Hydrogen Conductor (7/4.50 AAAC)",
+        "inv_code": "443970",
+        "uom": "m",
+        "qty": 2.0,
+        "unit_price": 2.4854,
+        "total": 4.9709
+      },
+      {
+        "item": "7",
+        "description": "M12 Washer Spring SS",
+        "inv_code": "110450",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.0587,
+        "total": 0.1174
+      },
+      {
+        "item": "6",
+        "description": "M12 Washer Flat Round SS",
+        "inv_code": "109580",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 0.0786,
+        "total": 0.3144
+      },
+      {
+        "item": "5",
+        "description": "M12 Set Screw SS (50mm)",
+        "inv_code": "100370",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 0.929,
+        "total": 1.858
+      },
+      {
+        "item": "4",
+        "description": "Bow Shackle 70kN",
+        "inv_code": "603450",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 3.6451,
+        "total": 7.2902
+      },
+      {
+        "item": "3",
+        "description": "Twisted Eye Tongue 120kN",
+        "inv_code": "111230",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 8.09,
+        "total": 16.1799
+      },
+      {
+        "item": "2",
+        "description": "Connection Clamp - Parallel Groove",
+        "inv_code": "291971",
+        "uom": "each",
+        "qty": 4.0,
+        "unit_price": 26.2592,
+        "total": 105.0369
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 17.5274,
+        "total": 17.5274
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.44",
+    "description": "132kV UGOH Cable Termination & Surge Arrestor Bracket Assembly",
+    "reference": "CEOM7504.17",
+    "total_cost": 17432.39,
+    "components": [
+      {
+        "item": "32",
+        "description": "Conductor Clamp - Line Post Insulator",
+        "inv_code": "271920",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 17.6869,
+        "total": 53.0606
+      },
+      {
+        "item": "31",
+        "description": "Insulator - 132kV Station Post",
+        "inv_code": "261254",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 613.4218,
+        "total": 1840.2654
+      },
+      {
+        "item": "30",
+        "description": "Insulator Support Bracket  - 132kV Line Post",
+        "inv_code": "115298",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 148.4703,
+        "total": 445.411
+      },
+      {
+        "item": "29",
+        "description": "Conductor Clamp - Palmless",
+        "inv_code": "223352",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 89.4406,
+        "total": 268.3218
+      },
+      {
+        "item": "28",
+        "description": "Compression Terminal Pin 15o Bend",
+        "inv_code": "286332",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 200.4375,
+        "total": 601.3126
+      },
+      {
+        "item": "27",
+        "description": "M12 Bolt & Nut - GALV (60mm)",
+        "inv_code": "104153",
+        "uom": "each",
+        "qty": 9.0,
+        "unit_price": 0.4579,
+        "total": 4.1207
+      },
+      {
+        "item": "26",
+        "description": "M20 Washer Spring GALV",
+        "inv_code": "110330",
+        "uom": "each",
+        "qty": 12.0,
+        "unit_price": 0.0782,
+        "total": 0.9388
+      },
+      {
+        "item": "25",
+        "description": "M20 Washer Flat Round GALV",
+        "inv_code": "110145",
+        "uom": "each",
+        "qty": 24.0,
+        "unit_price": 0.0884,
+        "total": 2.1224
+      },
+      {
+        "item": "24",
+        "description": "M16 Set Screw GALV (50mm)",
+        "inv_code": "104900",
+        "uom": "each",
+        "qty": 12.0,
+        "unit_price": 0.6758,
+        "total": 8.1099
+      },
+      {
+        "item": "23",
+        "description": "M12 Washer Spring SS",
+        "inv_code": "110450",
+        "uom": "each",
+        "qty": 13.0,
+        "unit_price": 0.0587,
+        "total": 0.7629
+      },
+      {
+        "item": "22",
+        "description": "M12 Washer Flat Round SS",
+        "inv_code": "109580",
+        "uom": "each",
+        "qty": 19.0,
+        "unit_price": 0.0786,
+        "total": 1.4935
+      },
+      {
+        "item": "21",
+        "description": "M12 Set Screw SS (30mm)",
+        "inv_code": "100330",
+        "uom": "each",
+        "qty": 13.0,
+        "unit_price": 0.7745,
+        "total": 10.0687
+      },
+      {
+        "item": "20",
+        "description": "95mm2 Cu Crimp Lug",
+        "inv_code": "232360",
+        "uom": "each",
+        "qty": 13.0,
+        "unit_price": 2.6612,
+        "total": 34.595
+      },
+      {
+        "item": "19",
+        "description": "95mm2 Cu Conductor (Black XLPE/PVC)",
+        "inv_code": "442890",
+        "uom": "m",
+        "qty": 10.0,
+        "unit_price": 20.928,
+        "total": 209.2805
+      },
+      {
+        "item": "18",
+        "description": "Screen Voltage Limiter (SVL)",
+        "inv_code": "269814",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 112.1683,
+        "total": 336.5049
+      },
+      {
+        "item": "17",
+        "description": "Surge Arrester Stand Off Bracket",
+        "inv_code": "115282",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 199.2163,
+        "total": 597.6489
+      },
+      {
+        "item": "16",
+        "description": "132kV Surge Arrester",
+        "inv_code": "207199",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 1399.3399,
+        "total": 4198.0198
+      },
+      {
+        "item": "15",
+        "description": "Cable Bracket Extender",
+        "inv_code": "115296",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 389.03,
+        "total": 389.03
+      },
+      {
+        "item": "14",
+        "description": "M20 Bolt & Nut - GALV (130mm)",
+        "inv_code": "5140",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 1.7048,
+        "total": 10.2287
+      },
+      {
+        "item": "13",
+        "description": "Threaded Rod M20 GALV (800mm)",
+        "inv_code": "101973",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 7.7254,
+        "total": 23.1762
+      },
+      {
+        "item": "12",
+        "description": "Threaded Rod M20 GALV (700mm)",
+        "inv_code": "101962",
+        "uom": "each",
+        "qty": 5.0,
+        "unit_price": 12.5855,
+        "total": 62.9277
+      },
+      {
+        "item": "11",
+        "description": "Threaded Rod M20 GALV (625mm)",
+        "inv_code": "101962",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 12.5855,
+        "total": 25.1711
+      },
+      {
+        "item": "10",
+        "description": "Threaded Rod M20 GALV (650mm)",
+        "inv_code": "101962",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 12.5855,
+        "total": 25.1711
+      },
+      {
+        "item": "9",
+        "description": "Threaded Rod M20 GALV (550mm)",
+        "inv_code": "101962",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 12.5855,
+        "total": 25.1711
+      },
+      {
+        "item": "8",
+        "description": "M20 Washer Spring GALV",
+        "inv_code": "110360",
+        "uom": "each",
+        "qty": 63.0,
+        "unit_price": 0.1176,
+        "total": 7.4118
+      },
+      {
+        "item": "7",
+        "description": "M20 Nut GALV",
+        "inv_code": "108950",
+        "uom": "each",
+        "qty": 57.0,
+        "unit_price": 0.4694,
+        "total": 26.7553
+      },
+      {
+        "item": "6",
+        "description": "M20 Washer Square GALV (75 x 75 x 6mm)",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 63.0,
+        "unit_price": 0.5363,
+        "total": 33.7869
+      },
+      {
+        "item": "5",
+        "description": "M20 Eye Bolt & Nut - GALV (450mm)",
+        "inv_code": "103070",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 11.9127,
+        "total": 11.9127
+      },
+      {
+        "item": "4",
+        "description": "Cable Termination Bracket",
+        "inv_code": "115293",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 2306.8853,
+        "total": 6920.6559
+      },
+      {
+        "item": "3",
+        "description": "Cable Cleat Trefoil - Emperor",
+        "inv_code": "211196",
+        "uom": "each",
+        "qty": 15.0,
+        "unit_price": 45.7952,
+        "total": 686.928
+      },
+      {
+        "item": "2",
+        "description": "Cable Cleat Single - Emperor",
+        "inv_code": "211208",
+        "uom": "each",
+        "qty": 7.0,
+        "unit_price": 32.8876,
+        "total": 230.2132
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 341.8115,
+        "total": 341.8115
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.45",
+    "description": "66kV UGOH Cable Termination & Surge Arrestor Bracket Assembly",
+    "reference": "CEOM7504.08",
+    "total_cost": 15612.15,
+    "components": [
+      {
+        "item": "32",
+        "description": "Conductor Clamp - Line Post Insulator",
+        "inv_code": "271920",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 17.6869,
+        "total": 53.0606
+      },
+      {
+        "item": "31",
+        "description": "Insulator - 66kV Station Post",
+        "inv_code": "261236",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 846.9175,
+        "total": 2540.7525
+      },
+      {
+        "item": "30",
+        "description": "Insulator Support Bracket - 66kV Line Post",
+        "inv_code": "115298",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 148.4703,
+        "total": 445.411
+      },
+      {
+        "item": "29",
+        "description": "Conductor Clamp - Palmless",
+        "inv_code": "223352",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 89.4406,
+        "total": 268.3218
+      },
+      {
+        "item": "28",
+        "description": "Compression Terminal Pin 15o Bend",
+        "inv_code": "286332",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 200.4375,
+        "total": 601.3126
+      },
+      {
+        "item": "27",
+        "description": "M12 Bolt & Nut - GALV (60mm)",
+        "inv_code": "104153",
+        "uom": "each",
+        "qty": 9.0,
+        "unit_price": 0.4579,
+        "total": 4.1207
+      },
+      {
+        "item": "26",
+        "description": "M20 Washer Spring GALV",
+        "inv_code": "110330",
+        "uom": "each",
+        "qty": 12.0,
+        "unit_price": 0.0782,
+        "total": 0.9388
+      },
+      {
+        "item": "25",
+        "description": "M20 Washer Flat Round GALV",
+        "inv_code": "110145",
+        "uom": "each",
+        "qty": 24.0,
+        "unit_price": 0.0884,
+        "total": 2.1224
+      },
+      {
+        "item": "24",
+        "description": "M16 Set Screw GALV (50mm)",
+        "inv_code": "104900",
+        "uom": "each",
+        "qty": 12.0,
+        "unit_price": 0.6758,
+        "total": 8.1099
+      },
+      {
+        "item": "23",
+        "description": "M12 Washer Spring SS",
+        "inv_code": "110450",
+        "uom": "each",
+        "qty": 13.0,
+        "unit_price": 0.0587,
+        "total": 0.7629
+      },
+      {
+        "item": "22",
+        "description": "M12 Washer Flat Round SS",
+        "inv_code": "109580",
+        "uom": "each",
+        "qty": 19.0,
+        "unit_price": 0.0786,
+        "total": 1.4935
+      },
+      {
+        "item": "21",
+        "description": "M12 Set Screw SS (30mm)",
+        "inv_code": "100330",
+        "uom": "each",
+        "qty": 13.0,
+        "unit_price": 0.7745,
+        "total": 10.0687
+      },
+      {
+        "item": "20",
+        "description": "95mm2 Cu Crimp Lug",
+        "inv_code": "232360",
+        "uom": "each",
+        "qty": 13.0,
+        "unit_price": 2.6612,
+        "total": 34.595
+      },
+      {
+        "item": "19",
+        "description": "95mm2 Cu Conductor (Black XLPE/PVC)",
+        "inv_code": "442890",
+        "uom": "m",
+        "qty": 10.0,
+        "unit_price": 20.928,
+        "total": 209.2805
+      },
+      {
+        "item": "18",
+        "description": "Screen Voltage Limiter (SVL)",
+        "inv_code": "269814",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 112.1683,
+        "total": 336.5049
+      },
+      {
+        "item": "17",
+        "description": "Surge Arrester Stand Off Bracket",
+        "inv_code": "115282",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 199.2163,
+        "total": 597.6489
+      },
+      {
+        "item": "16",
+        "description": "66kV Surge Arrester",
+        "inv_code": "207191",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 592.9217,
+        "total": 1778.765
+      },
+      {
+        "item": "15",
+        "description": "Cable Bracket Extender",
+        "inv_code": "115296",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 389.03,
+        "total": 389.03
+      },
+      {
+        "item": "14",
+        "description": "M20 Bolt & Nut - GALV (130mm)",
+        "inv_code": "5140",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 1.7048,
+        "total": 10.2287
+      },
+      {
+        "item": "13",
+        "description": "Threaded Rod M20 GALV (800mm)",
+        "inv_code": "101973",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 7.7254,
+        "total": 23.1762
+      },
+      {
+        "item": "12",
+        "description": "Threaded Rod M20 GALV (700mm)",
+        "inv_code": "101962",
+        "uom": "each",
+        "qty": 5.0,
+        "unit_price": 12.5855,
+        "total": 62.9277
+      },
+      {
+        "item": "11",
+        "description": "Threaded Rod M20 GALV (625mm)",
+        "inv_code": "101962",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 12.5855,
+        "total": 25.1711
+      },
+      {
+        "item": "10",
+        "description": "Threaded Rod M20 GALV (650mm)",
+        "inv_code": "101962",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 12.5855,
+        "total": 25.1711
+      },
+      {
+        "item": "9",
+        "description": "Threaded Rod M20 GALV (550mm)",
+        "inv_code": "101962",
+        "uom": "each",
+        "qty": 2.0,
+        "unit_price": 12.5855,
+        "total": 25.1711
+      },
+      {
+        "item": "8",
+        "description": "M20 Washer Spring GALV",
+        "inv_code": "110360",
+        "uom": "each",
+        "qty": 63.0,
+        "unit_price": 0.1176,
+        "total": 7.4118
+      },
+      {
+        "item": "7",
+        "description": "M20 Nut GALV",
+        "inv_code": "108950",
+        "uom": "each",
+        "qty": 57.0,
+        "unit_price": 0.4694,
+        "total": 26.7553
+      },
+      {
+        "item": "6",
+        "description": "M20 Washer Square GALV (75 x 75 x 6mm)",
+        "inv_code": "109470",
+        "uom": "each",
+        "qty": 63.0,
+        "unit_price": 0.5363,
+        "total": 33.7869
+      },
+      {
+        "item": "5",
+        "description": "M20 Eye Bolt & Nut - GALV (450mm)",
+        "inv_code": "103070",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 11.9127,
+        "total": 11.9127
+      },
+      {
+        "item": "4",
+        "description": "Cable Termination Bracket",
+        "inv_code": "115293",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 2306.8853,
+        "total": 6920.6559
+      },
+      {
+        "item": "3",
+        "description": "Cable Cleat Trefoil - Emperor",
+        "inv_code": "211196",
+        "uom": "each",
+        "qty": 15.0,
+        "unit_price": 45.7952,
+        "total": 686.928
+      },
+      {
+        "item": "2",
+        "description": "Cable Cleat Single - Emperor",
+        "inv_code": "211208",
+        "uom": "each",
+        "qty": 5.0,
+        "unit_price": 32.8876,
+        "total": 164.438
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 306.1207,
+        "total": 306.1207
+      }
+    ]
+  },
+  {
+    "wbs_code": "3.3.1.13.1.46",
+    "description": "33kV UGOH Cable Termination & Surge Arrestor Bracket Assembly",
+    "reference": "CEOM7504.09",
+    "total_cost": 6596.81,
+    "components": [
+      {
+        "item": "14",
+        "description": "Tag Acrylic",
+        "inv_code": "851595",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 4.779,
+        "total": 4.779
+      },
+      {
+        "item": "13",
+        "description": "Cable Tie (290mm x 4.8mm)",
+        "inv_code": "282960",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 3.7788,
+        "total": 3.7788
+      },
+      {
+        "item": "12",
+        "description": "Tape No.35 PVC Grey",
+        "inv_code": "264650",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 2.2835,
+        "total": 2.2835
+      },
+      {
+        "item": "11",
+        "description": "Tape No.2228 Rubber Mastic (50mm x 3m)",
+        "inv_code": "264800",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 65.2258,
+        "total": 65.2258
+      },
+      {
+        "item": "10",
+        "description": "Cable Bracket",
+        "inv_code": "115291",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 3839.9031,
+        "total": 3839.9031
+      },
+      {
+        "item": "9",
+        "description": "M12 Set Screw SS (50mm)",
+        "inv_code": "100370",
+        "uom": "each",
+        "qty": 20.0,
+        "unit_price": 0.929,
+        "total": 18.5801
+      },
+      {
+        "item": "8",
+        "description": "33kV Surge Arrester Stand Off Bracket",
+        "inv_code": "115283",
+        "uom": "each",
+        "qty": 6.0,
+        "unit_price": 72.3419,
+        "total": 434.0515
+      },
+      {
+        "item": "7",
+        "description": "Termination Connection Bracket",
+        "inv_code": "115974",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 183.2473,
+        "total": 549.7419
+      },
+      {
+        "item": "6",
+        "description": "33kV Surge Arrester",
+        "inv_code": "207180",
+        "uom": "each",
+        "qty": 3.0,
+        "unit_price": 176.3354,
+        "total": 529.0061
+      },
+      {
+        "item": "5",
+        "description": "19mm Band Lock SS",
+        "inv_code": "605501",
+        "uom": "each",
+        "qty": 20.0,
+        "unit_price": 6.8225,
+        "total": 136.4496
+      },
+      {
+        "item": "4",
+        "description": "19mm Strap SS",
+        "inv_code": "605502",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 32.296,
+        "total": 32.296
+      },
+      {
+        "item": "3",
+        "description": "Cable Cleat Trefoil - Emperor",
+        "inv_code": "211196",
+        "uom": "each",
+        "qty": 15.0,
+        "unit_price": 45.7952,
+        "total": 686.928
+      },
+      {
+        "item": "2",
+        "description": "Cable Cleat Single - Emperor",
+        "inv_code": "211208",
+        "uom": "each",
+        "qty": 5.0,
+        "unit_price": 32.8876,
+        "total": 164.438
+      },
+      {
+        "item": "1",
+        "description": "Miscellaneous items",
+        "inv_code": "",
+        "uom": "each",
+        "qty": 1.0,
+        "unit_price": 129.3492,
+        "total": 129.3492
+      }
+    ]
+  }
+]
