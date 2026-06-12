@@ -4535,23 +4535,32 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
       if (qtyCol===-1) qtyCol = 43; // col AR fallback (v2.x layout)
       let facCol = deFindCol(t=>t.startsWith("factor multiplier"));
       if (facCol===-1) facCol = 20; // col U fallback
+      let comCol = deFindCol(t=>t.startsWith("estimator's comments") || t.startsWith("estimators comments"));
+      if (comCol===-1) comCol = 61; // col BJ fallback (v2.x layout)
 
       const known = new Set((snapSupply||[]).map(s=>s.wbs_code));
       const lines = {};
-      let matched=0, unmatched=0;
+      let matched=0, unmatched=0, commentCount=0;
       for (let r=5; r<=deRange.e.r; r++){
         const wbsc = de[EC({r, c:wbsCol})]?.v;
         if (wbsc==null) continue;
         const code = String(wbsc).trim();
         if (!/^\d+(\.\w+)+$/.test(code)) continue;          // header/group noise guard
-        const qty  = de[EC({r, c:qtyCol})]?.v;
-        if (typeof qty!=="number" || qty<=1e-6) continue;     // skip blanks & float residue
-        if (!known.has(code)) { unmatched++; continue; }
-        const factor = de[EC({r, c:facCol})]?.v;
-        const q = Math.round(qty*10000)/10000;
-        lines[code] = { qty:String(q) };
-        if (typeof factor==="number" && factor!==1 && factor>0) lines[code].factor = String(factor);
-        matched++;
+        const qty     = de[EC({r, c:qtyCol})]?.v;
+        const rawCom  = de[EC({r, c:comCol})]?.v;
+        const comment = typeof rawCom==="string" ? rawCom.trim() : "";
+        const hasQty  = typeof qty==="number" && qty>1e-6;     // float-residue guard
+        if (!hasQty && !comment) continue;
+        if (!known.has(code)) { if(hasQty) unmatched++; continue; }
+        const entry = lines[code] || {};
+        if (hasQty){
+          entry.qty = String(Math.round(qty*10000)/10000);
+          const factor = de[EC({r, c:facCol})]?.v;
+          if (typeof factor==="number" && factor!==1 && factor>0) entry.factor = String(factor);
+          matched++;
+        }
+        if (comment){ entry.comments = comment; commentCount++; }  // methodology notes — incl. rows without qty
+        lines[code] = entry;
       }
 
       // Totals for the hub list display
@@ -4567,6 +4576,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
       setImportPreview({
         inv, lines,
         linesCount: matched,
+        commentCount,
         totalSupplyLines: (snapSupply||[]).length,
         totalEE, totalComm,
         status:"Draft",
@@ -5349,6 +5359,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
                     ["Type",             importPreview.inv?.type||"—"],
                     ["Estimator",        importPreview.inv?.estimatedBy||"—"],
                     ["Lines",            importPreview.linesCount!=null ? `${importPreview.linesCount} entered` : "—"],
+                    ["Estimator Comments",importPreview.commentCount!=null ? `${importPreview.commentCount} imported` : "—"],
                     ["EE Internal",      importPreview.totalEE!=null ? fmt(importPreview.totalEE) : "—"],
                     ["Commercial",       importPreview.totalComm!=null ? fmt(importPreview.totalComm) : "—"],
                   ].map(([label,val])=>(
