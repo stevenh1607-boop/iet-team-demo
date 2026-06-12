@@ -1668,6 +1668,12 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                     <div className="bg-[var(--primary-700)] text-white text-xs font-semibold px-3 py-1.5 flex items-center justify-between">
                       <span className="flex items-center gap-2">
                         Cost Detail — {item.description?.split(" - ")[0]}
+                        {item.drawing_ref && (
+                          <span className="inline-flex items-center gap-1 bg-[var(--primary-500)] text-white text-xs font-mono px-1.5 py-0.5 rounded"
+                            title="Standard drawing / reference from the estimation database">
+                            📐 {item.drawing_ref}
+                          </span>
+                        )}
                         {item.comments && (
                           <span className="relative group">
                             <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[var(--primary-400)] text-white text-xs cursor-help hover:bg-white hover:text-[var(--primary-700)] font-bold">i</span>
