@@ -10230,8 +10230,8 @@ const CART_HELP = [
   ]},
   { id:"negative", title:"9. Why P10 can be negative — and what to do", body:[
     "A negative P10 contingency means that at 10% confidence the project comes in under the Base Estimate. Mathematically valid — the systemic P10 multiplier is negative for every class — but it reads poorly in funding submissions.",
-    "The Kings Plains 132kV CART workbook reported P10 = -$346,600 (-1.97% of base). Investigation of that workbook shows part of the negativity is an artifact: XLSTAT's distribution fitting set the systemic lower bound at -$3.41M when the P10 target was only -$0.21M, overstating the downside tail (its own simulated systemic P10 lands near -$0.86M, four times the target).",
-    "This tool's exact percentile fit removes that artifact. Re-running Kings Plains with identical inputs under exact fit yields a P10 of approximately +$0.33M — positive without any flooring.",
+    "Validation against six completed CART workbooks (Kings Plains 132kV and 66kV in both Internal and Commercial rate streams, and Honeymoon Mine Internal and Commercial — bases from $0.25M to $17.6M) found every workbook reported a negative P10, and in every case XLSTAT's distribution fitting delivered a systemic P10 roughly 4× the target: e.g. Kings Plains 132kV Commercial targeted -$0.21M but XLSTAT's solved bounds deliver -$0.86M. The overshoot ratio was systematic — 4.0× in all six workbooks — not random noise.",
+    "This tool's exact percentile fit removes that artifact. Re-running all six workbooks with identical inputs under exact fit yields a positive P10 in every case without any flooring (from +$5k on Honeymoon Internal to +$385k on Kings Plains 66kV Internal). P50 lands 12–15% above the workbook value and P90 6–8% above — a consistent, slightly conservative shift caused by correcting the over-wide left tail.",
     "If a configuration still produces a negative P10 (very low class, low complexity, few risks), the nominal 'Floor reported P-values at $0' setting reports $0 while preserving the raw value as a footnote for transparency.",
   ]},
   { id:"industry", title:"10. How this compares to industry tools", body:[
