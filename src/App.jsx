@@ -10196,6 +10196,8 @@ const CART_HELP = [
     "Only High and Very High residual risks belong in CART. The register enforces this with the rating field.",
     "A High or Very High residual risk cannot plausibly carry a Rare or Unlikely likelihood — the tool will warn if this combination is selected, mirroring the validation note in the CART workbook.",
     "The cost impact range should represent the cost if the risk occurs, not the expected (probability-weighted) cost — the simulation applies the likelihood itself.",
+    "Incomplete risks are excluded from the run, not blocked: a risk needs a Worst case greater than zero and Best ≤ Most Likely ≤ Worst to be simulated. The run bar shows how many risks were excluded — check it before accepting results.",
+    "Rate streams: the Base Estimate follows the investment's rate stream (EE Internal or Commercial with ANS), and the systemic component scales with it automatically. Risk cost impacts, however, are entered as plain dollars and are NOT converted between streams — when estimating a commercially funded investment, enter risk impacts at the rates the risk would actually be incurred at. This matches the CART workbook convention, where the same risk register was reused across the Internal and Commercial versions of an estimate.",
   ]},
   { id:"likelihood", title:"4. Residual likelihood matrix", body:[
     "Likelihood categories map to probability ranges sampled in the simulation (low / most likely / high): Rare 0.01 / 0.025 / 0.04 · Unlikely 0.05 / 0.19 / 0.33 · Possible 0.34 / 0.50 / 0.66 · Likely 0.67 / 0.81 / 0.95 · Almost Certain 0.96 / 0.975 / 0.99.",
@@ -10227,6 +10229,7 @@ const CART_HELP = [
     "Base + Contingency at each P-value gives the probabilistic project cost. These values exclude escalation and forex, which are applied separately downstream.",
     "The histogram shows the shape of simulated contingency; the S-curve shows cumulative probability — read across from any confidence level to the contingency it requires.",
     "The contribution chart ranks the systemic component and each risk by expected-value share of total contingency, the same measure as the workbook's Contribution chart. Use it to target further mitigation.",
+    "Results do not auto-refresh. If the estimate, the risk register, the systemic inputs or any setting changes after a run, an amber 'Inputs changed since last run — re-run' flag appears next to the Run button and the displayed results should be treated as superseded until the simulation is re-run.",
   ]},
   { id:"negative", title:"9. Why P10 can be negative — and what to do", body:[
     "A negative P10 contingency means that at 10% confidence the project comes in under the Base Estimate. Mathematically valid — the systemic P10 multiplier is negative for every class — but it reads poorly in funding submissions.",
