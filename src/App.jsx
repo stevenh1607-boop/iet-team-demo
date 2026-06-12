@@ -10021,6 +10021,712 @@ const defaultInv = {
   constrStart:"6", constrDur:"15", contInt:"10", contComm:"10",
 };
 
+// ── CART — CONTINGENCY & ACCURACY RANGE TOOL (Monte Carlo) ──────
+// Replaces the XLSTAT-driven CART workbook. Systemic risk tables are
+// AACE-derived (Class × Complexity × New Technology) — values lifted
+// verbatim from the CART workbook 'Systemic Risk Tables' sheet.
+// Order of axes: [estClass][newTech][complexity]
+const CART_SYS = {
+  // P50 portion — relative to Base Estimate
+  p50: {
+    "Class 1": { Limited:{Medium:.003, High:.012, "Very High":.0195}, Moderate:{Medium:.003, High:.012, "Very High":.0195}, Substantial:{Medium:.009, High:.0165,"Very High":.0285} },
+    "Class 2": { Limited:{Medium:.009, High:.0165,"Very High":.0285}, Moderate:{Medium:.007, High:.028, "Very High":.0455}, Substantial:{Medium:.021, High:.0385,"Very High":.0665} },
+    "Class 3": { Limited:{Medium:.005, High:.02,  "Very High":.03  }, Moderate:{Medium:.01,  High:.04,  "Very High":.065 }, Substantial:{Medium:.03,  High:.055, "Very High":.095 } },
+    "Class 4": { Limited:{Medium:.03,  High:.055, "Very High":.095 }, Moderate:{Medium:.05,  High:.08,  "Very High":.11  }, Substantial:{Medium:.07,  High:.10,  "Very High":.135 } },
+    "Class 5": { Limited:{Medium:.05,  High:.08,  "Very High":.11  }, Moderate:{Medium:.07,  High:.10,  "Very High":.135 }, Substantial:{Medium:.125, High:.15,  "Very High":.21  } },
+  },
+  // P10 portion — relative to (Base + P50 portion)
+  p10: {
+    "Class 1": { Limited:{Medium:-.0045,High:-.0135,"Very High":-.021 }, Moderate:{Medium:-.0045,High:-.0135,"Very High":-.021 }, Substantial:{Medium:-.0105,High:-.018, "Very High":-.0285} },
+    "Class 2": { Limited:{Medium:-.0105,High:-.018, "Very High":-.0285}, Moderate:{Medium:-.0105,High:-.0315,"Very High":-.049 }, Substantial:{Medium:-.0245,High:-.042, "Very High":-.0665} },
+    "Class 3": { Limited:{Medium:-.005, High:-.015, "Very High":-.035 }, Moderate:{Medium:-.015, High:-.045, "Very High":-.07  }, Substantial:{Medium:-.035, High:-.06,  "Very High":-.095 } },
+    "Class 4": { Limited:{Medium:-.035, High:-.06,  "Very High":-.095 }, Moderate:{Medium:-.06,  High:-.085, "Very High":-.11  }, Substantial:{Medium:-.075, High:-.105, "Very High":-.13  } },
+    "Class 5": { Limited:{Medium:-.06,  High:-.085, "Very High":-.11  }, Moderate:{Medium:-.075, High:-.105, "Very High":-.13  }, Substantial:{Medium:-.125, High:-.14,  "Very High":-.175 } },
+  },
+  // P90 portion — relative to (Base + P50 portion)
+  p90: {
+    "Class 1": { Limited:{Medium:.0045,High:.0165,"Very High":.03  }, Moderate:{Medium:.0045,High:.0165,"Very High":.03  }, Substantial:{Medium:.012, High:.024, "Very High":.0465} },
+    "Class 2": { Limited:{Medium:.012, High:.024, "Very High":.0465}, Moderate:{Medium:.0105,High:.0385,"Very High":.07  }, Substantial:{Medium:.028, High:.056, "Very High":.1085} },
+    "Class 3": { Limited:{Medium:.01,  High:.04,  "Very High":.06  }, Moderate:{Medium:.015, High:.055, "Very High":.1   }, Substantial:{Medium:.04,  High:.08,  "Very High":.155 } },
+    "Class 4": { Limited:{Medium:.04,  High:.08,  "Very High":.155 }, Moderate:{Medium:.075, High:.13,  "Very High":.2   }, Substantial:{Medium:.11,  High:.175, "Very High":.265 } },
+    "Class 5": { Limited:{Medium:.075, High:.13,  "Very High":.2   }, Moderate:{Medium:.11,  High:.175, "Very High":.265 }, Substantial:{Medium:.16,  High:.24,  "Very High":.37  } },
+  },
+};
+
+// Residual likelihood matrix — verbatim from CART 'Project Specific' sheet
+const CART_LIKELIHOOD = [
+  { cat:"Rare (< 5%)",           low:0.01, ml:0.025, high:0.04 },
+  { cat:"Unlikely (5 - 33%)",    low:0.05, ml:0.19,  high:0.33 },
+  { cat:"Possible (34 - 66%)",   low:0.34, ml:0.50,  high:0.66 },
+  { cat:"Likely (67 - 95%)",     low:0.67, ml:0.81,  high:0.95 },
+  { cat:"Almost Certain (> 95%)",low:0.96, ml:0.975, high:0.99 },
+];
+
+const CART_DEFAULT_SETTINGS = {
+  iterations: 10000,        // @RISK / CART workbook default
+  seed: 1607,               // locked seed — reproducible runs
+  sampling: "lhs",          // Latin Hypercube (CART workbook / @RISK / PRA convention)
+  boundsMode: "percentile", // best/worst treated as P10/P90 (exact fit) vs absolute min/max
+  occurrence: "expected",   // likelihood × impact each iteration (CART) vs Bernoulli event sim
+  modeConvention: "pertMean", // distribution mode = (best+4×ML+worst)/6 (CART) vs Most Likely
+  floorAtZero: true,        // EE Nominal — reported P-values floored at $0
+  truncateSystemic: false,  // clamp systemic under-run (negative draws) at $0
+  bins: 50,                 // histogram intervals (CART workbook: 50)
+};
+const CART_SETTINGS_KEY = "iet_cart_settings";
+function loadCartSettings(){
+  try {
+    const raw = localStorage.getItem(CART_SETTINGS_KEY);
+    if (raw) return { ...CART_DEFAULT_SETTINGS, ...JSON.parse(raw) };
+  } catch { /* defaults */ }
+  return { ...CART_DEFAULT_SETTINGS };
+}
+
+// ── CART numerical engine ────────────────────────────────────────
+function cartRng(seed){ let a=seed>>>0; return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function cartLogGamma(x){ const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5]; let y=x,tmp=x+5.5; tmp-=(x+0.5)*Math.log(tmp); let ser=1.000000000190015; for(let j=0;j<6;j++) ser+=c[j]/++y; return -tmp+Math.log(2.5066282746310005*ser/x); }
+function cartBetacf(a,b,x){ const MAXIT=200,EPS=3e-12,FPMIN=1e-300; const qab=a+b,qap=a+1,qam=a-1; let c=1,d=1-qab*x/qap; if(Math.abs(d)<FPMIN)d=FPMIN; d=1/d; let h=d; for(let m=1;m<=MAXIT;m++){ const m2=2*m; let aa=m*(b-m)*x/((qam+m2)*(a+m2)); d=1+aa*d; if(Math.abs(d)<FPMIN)d=FPMIN; c=1+aa/c; if(Math.abs(c)<FPMIN)c=FPMIN; d=1/d; h*=d*c; aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2)); d=1+aa*d; if(Math.abs(d)<FPMIN)d=FPMIN; c=1+aa/c; if(Math.abs(c)<FPMIN)c=FPMIN; d=1/d; const del=d*c; h*=del; if(Math.abs(del-1)<EPS)break; } return h; }
+function cartBetaCDF(x,a,b){ if(x<=0)return 0; if(x>=1)return 1; const bt=Math.exp(cartLogGamma(a+b)-cartLogGamma(a)-cartLogGamma(b)+a*Math.log(x)+b*Math.log(1-x)); return x<(a+1)/(a+b+2) ? bt*cartBetacf(a,b,x)/a : 1-bt*cartBetacf(b,a,1-x)/b; }
+function cartBetaInv(p,a,b){ let lo=0,hi=1; for(let i=0;i<80;i++){ const mid=(lo+hi)/2; if(cartBetaCDF(mid,a,b)<p) lo=mid; else hi=mid; } return (lo+hi)/2; }
+function cartPertAB(a,m,b){ return [1+4*(m-a)/(b-a), 1+4*(b-m)/(b-a)]; }
+function cartPertQuantile(p,a,m,b){ const [al,be]=cartPertAB(a,m,b); return a+(b-a)*cartBetaInv(p,al,be); }
+// Solve PERT bounds so the 10th/90th percentiles land exactly on q10/q90
+// (the CART workbook's XLSTAT fit attempts this but lands wide — see Help)
+function cartSolveBounds(q10,mode,q90){
+  if(!(q10<mode && mode<q90)){
+    const span=Math.max(Math.abs(q90-q10),Math.abs(mode)||1,1);
+    return [Math.min(q10,mode)-span*1e-6, Math.max(q90,mode)+span*1e-6];
+  }
+  let a=mode-2*(mode-q10), b=mode+2*(q90-mode);
+  for(let i=0;i<60;i++){
+    const c10=cartPertQuantile(0.10,a,mode,b), c90=cartPertQuantile(0.90,a,mode,b);
+    const da=q10-c10, db=q90-c90;
+    a+=da*1.2; b+=db*1.2;
+    if(a>=mode) a=mode-(q90-q10)*1e-4;
+    if(b<=mode) b=mode+(q90-q10)*1e-4;
+    if(Math.abs(da)<(q90-q10)*1e-7 && Math.abs(db)<(q90-q10)*1e-7) break;
+  }
+  return [a,b];
+}
+function cartInvGrid(a,m,b,pts=1025){
+  if(!(a<m && m<b)){ const v=(a+b)/2; return ()=>v; }
+  const [al,be]=cartPertAB(a,m,b);
+  const cdf=new Float64Array(pts), xs=new Float64Array(pts);
+  for(let i=0;i<pts;i++){ const x=i/(pts-1); xs[i]=a+(b-a)*x; cdf[i]=cartBetaCDF(x,al,be); }
+  return u=>{ let lo=0,hi=pts-1; while(hi-lo>1){ const mid=(lo+hi)>>1; if(cdf[mid]<u) lo=mid; else hi=mid; } const c0=cdf[lo],c1=cdf[hi]; const t=c1>c0?(u-c0)/(c1-c0):0; return xs[lo]+(xs[hi]-xs[lo])*t; };
+}
+function cartLhsU(n,rng){ const u=new Float64Array(n); for(let i=0;i<n;i++) u[i]=(i+rng())/n; for(let i=n-1;i>0;i--){ const j=Math.floor(rng()*(i+1)); const t=u[i]; u[i]=u[j]; u[j]=t; } return u; }
+
+function cartSystemicParams(base, estClass, complexity, newTech){
+  const get=(tbl)=>((CART_SYS[tbl][estClass]||CART_SYS[tbl]["Class 5"])[newTech]||{})[complexity];
+  const t50=get("p50")??0.10, t10=get("p10")??-0.10, t90=get("p90")??0.18;
+  const p50c=base*t50;
+  const p10c=(base+p50c)*(1+t10)-base;
+  const p90c=(base+p50c)*(1+t90)-base;
+  return { t10,t50,t90, p10c,p50c,p90c };
+}
+
+function cartRun(base, systemic, risks, S){
+  const rng=cartRng(S.seed||1);
+  const N=Math.max(100,Math.min(100000,S.iterations||10000));
+  const draw=(inv)=>{ const u=S.sampling==="lhs"?cartLhsU(N,rng):Float64Array.from({length:N},()=>rng()); const out=new Float64Array(N); for(let i=0;i<N;i++) out[i]=inv(Math.min(Math.max(u[i],1e-9),1-1e-9)); return out; };
+  // Systemic — assumed to occur (likelihood = 1)
+  const [sa,sb]=S.boundsMode==="percentile"?cartSolveBounds(systemic.p10c,systemic.p50c,systemic.p90c):[Math.min(systemic.p10c,systemic.p50c),Math.max(systemic.p90c,systemic.p50c)];
+  const sysDraws=draw(cartInvGrid(sa,systemic.p50c,sb));
+  if(S.truncateSystemic) for(let i=0;i<N;i++) if(sysDraws[i]<0) sysDraws[i]=0;
+  const riskDraws=risks.map(r=>{
+    const mode=S.modeConvention==="pertMean"?(r.best+4*r.ml+r.worst)/6:r.ml;
+    const [a,b]=S.boundsMode==="percentile"?cartSolveBounds(r.best,mode,r.worst):[r.best,r.worst];
+    const lk=CART_LIKELIHOOD.find(l=>l.cat===r.likCat)||CART_LIKELIHOOD[3];
+    return {
+      imp: draw(cartInvGrid(a,mode,b)),
+      lik: draw(cartInvGrid(lk.low,lk.ml,lk.high)),       // absolute bounds, per workbook
+      occ: S.occurrence==="bernoulli"?draw(u=>u):null,    // uniform occurrence draws
+    };
+  });
+  const totals=new Float64Array(N);
+  for(let i=0;i<N;i++){
+    let t=sysDraws[i];
+    for(const rd of riskDraws){
+      if(S.occurrence==="bernoulli"){ if(rd.occ[i]<rd.lik[i]) t+=rd.imp[i]; }
+      else t+=rd.lik[i]*rd.imp[i];
+    }
+    totals[i]=t;
+  }
+  const sorted=Array.from(totals).sort((x,y)=>x-y);
+  const q=p=>sorted[Math.min(N-1,Math.max(0,Math.round(p*(N-1))))];
+  const mean=sorted.reduce((a,x)=>a+x,0)/N;
+  const sd=Math.sqrt(sorted.reduce((a,x)=>a+(x-mean)*(x-mean),0)/(N-1));
+  // Histogram
+  const bins=Math.max(10,Math.min(100,S.bins||50));
+  const lo=sorted[0], hi=sorted[N-1], w=(hi-lo)/bins||1;
+  const hist=new Array(bins).fill(0);
+  for(const x of sorted){ let k=Math.floor((x-lo)/w); if(k>=bins)k=bins-1; if(k<0)k=0; hist[k]++; }
+  // Contribution shares (deterministic expected value per risk, like the workbook)
+  const contrib=[{name:"Systemic",val:systemic.p50c}];
+  risks.forEach(r=>{ const lk=CART_LIKELIHOOD.find(l=>l.cat===r.likCat)||CART_LIKELIHOOD[3]; contrib.push({name:(r.id?r.id+" — ":"")+(r.desc||"Risk"), val:lk.ml*((r.best+4*r.ml+r.worst)/6)}); });
+  const contribTotal=contrib.reduce((a,c)=>a+c.val,0)||1;
+  contrib.forEach(c=>{ c.pct=c.val/contribTotal; });
+  const raw={p10:q(0.10),p50:q(0.50),p80:q(0.80),p90:q(0.90)};
+  const flo=v=>S.floorAtZero?Math.max(0,v):v;
+  return {
+    N, seed:S.seed, raw, mean, sd,
+    p10:flo(raw.p10), p50:flo(raw.p50), p80:flo(raw.p80), p90:flo(raw.p90),
+    floored:S.floorAtZero&&(raw.p10<0||raw.p50<0),
+    hist:{counts:hist,lo,hi,w}, sorted, contrib,
+    deterministic: systemic.p50c + risks.reduce((a,r)=>{ const lk=CART_LIKELIHOOD.find(l=>l.cat===r.likCat)||CART_LIKELIHOOD[3]; return a+lk.ml*r.ml; },0),
+    sysBounds:[sa,sb],
+  };
+}
+
+// ── CART help content (searchable) ───────────────────────────────
+const CART_HELP = [
+  { id:"overview", title:"1. What is CART?", body:[
+    "CART (Contingency and Accuracy Range Tool) sizes the contingency allowance for an estimate's Base Cost using Monte Carlo simulation. It replaces the Excel CART workbook that required an XLSTAT licence — the simulation now runs directly in the browser in under a second, with no add-in, no macro reset procedure and no manual histogram steps.",
+    "The Base Estimate is the cost estimate excluding contingency and escalation. CART combines two sources of uncertainty on top of it: systemic risk (estimate-wide uncertainty driven by estimate class, complexity and use of new technology) and project-specific risks (discrete events from the Project Risk Register).",
+    "The output is a probability distribution of total contingency, reported as P-values: P10, P50, P80 and P90.",
+  ]},
+  { id:"when", title:"2. When to run CART", body:[
+    "Run CART after the estimate is complete: all quantities entered, reviewed, and the Base Estimate stable. Contingency is sized against the finished base — running it against a half-built estimate produces meaningless P-values.",
+    "Only include project-specific risks that remain rated High or Very High AFTER mitigating controls have been applied (residual risk). Risks mitigated down to Medium or below are considered absorbed by systemic uncertainty and must not be double-counted in the register.",
+    "When an estimate is cloned or promoted (Class 5 → 4 → 3), the risk register travels with it. Re-run the simulation on the new revision — the systemic ranges automatically tighten as the estimate class improves.",
+  ]},
+  { id:"register", title:"3. The risk register", body:[
+    "Each risk needs: an ID and description (taken from the Project Risk Register), the residual likelihood category, and a three-point cost impact — Realistic Best Case, Most Likely Case and Realistic Worst Case.",
+    "Only High and Very High residual risks belong in CART. The register enforces this with the rating field.",
+    "A High or Very High residual risk cannot plausibly carry a Rare or Unlikely likelihood — the tool will warn if this combination is selected, mirroring the validation note in the CART workbook.",
+    "The cost impact range should represent the cost if the risk occurs, not the expected (probability-weighted) cost — the simulation applies the likelihood itself.",
+  ]},
+  { id:"likelihood", title:"4. Residual likelihood matrix", body:[
+    "Likelihood categories map to probability ranges sampled in the simulation (low / most likely / high): Rare 0.01 / 0.025 / 0.04 · Unlikely 0.05 / 0.19 / 0.33 · Possible 0.34 / 0.50 / 0.66 · Likely 0.67 / 0.81 / 0.95 · Almost Certain 0.96 / 0.975 / 0.99.",
+    "The probability itself is uncertain, so each iteration samples a likelihood from a PERT distribution across the category's range, then multiplies it by the sampled cost impact (in the default Expected Value model).",
+  ]},
+  { id:"systemic", title:"5. Systemic risk", body:[
+    "Systemic risk represents estimate-wide uncertainty that exists regardless of any specific risk event — it is assumed to occur (probability 1.0). Its range comes from an AACE-derived lookup keyed on three Investment Setup fields: Estimate Class, Complexity, and Use of New Technology.",
+    "The table produces three multipliers: a P50 portion relative to the Base Estimate, and P10/P90 portions relative to (Base + P50 portion). For example, Class 4 / Very High complexity / Moderate new technology yields multipliers of -0.11 / +0.11 / +0.20 — meaning a project that is on the P50 systemic track could still come in up to 11% under or 20% over.",
+    "Note the P10 portion is usually negative: at 10% confidence the estimate may underrun the base. This is the source of negative P10 contingency values — see section 9.",
+  ]},
+  { id:"engine", title:"6. The simulation engine", body:[
+    "Sampling: Latin Hypercube by default (matching the CART workbook, @RISK and Primavera Risk Analysis), which stratifies each distribution so the tails are properly covered without needing extreme iteration counts. Plain Monte Carlo random sampling is available in Settings.",
+    "Iterations: 10,000 by default — the CART workbook setting and the @RISK default; industry guidance for cost risk is 5,000–10,000 for stable tails. The seed is locked (default 1607) so every run with the same inputs reproduces the same result, which matters for review and audit.",
+    "Distributions: every cost impact and likelihood is a PERT (Beta-PERT) distribution. Cost impacts treat Best/Worst as the P10/P90 of the distribution by default, with bounds solved numerically so those percentiles land exactly. Likelihoods use the category range as absolute bounds, matching the workbook.",
+    "Each iteration computes: Total Contingency = Systemic draw + Σ (likelihood draw × impact draw) across all risks. P-values are read directly off the sorted simulation results.",
+  ]},
+  { id:"settings", title:"7. Settings reference", body:[
+    "Iterations — number of simulated outcomes. More iterations = smoother tails, slightly slower. 10,000 is the nominal setting.",
+    "Random seed — locks the random number stream. Identical inputs + identical seed = identical results. Change it only to test stability.",
+    "Sampling — Latin Hypercube (recommended) or plain random Monte Carlo.",
+    "Best/Worst interpretation — 'P10/P90 percentiles (exact fit)' solves the distribution so 10% of outcomes fall below Best and 10% above Worst. 'Absolute Min/Max' treats them as hard limits, producing a narrower distribution.",
+    "Risk occurrence model — 'Expected value (CART)' multiplies sampled likelihood by sampled impact every iteration, matching the workbook. 'Bernoulli event simulation' rolls the dice: the risk either fully occurs or doesn't in each iteration (the @RISK risk-register convention). Bernoulli produces wider, lumpier distributions.",
+    "Distribution mode — 'PERT mean (CART)' centres each impact distribution on (Best + 4×Most Likely + Worst) / 6, matching the workbook. 'Most Likely' centres it on the Most Likely value directly.",
+    "Floor reported P-values at $0 — the EE Nominal setting. The raw simulated value is always shown alongside; flooring only affects the reported figure.",
+    "Truncate systemic underrun — clamps negative systemic draws at $0 inside the simulation. This shifts the whole distribution up and is OFF by default; prefer the reporting floor.",
+  ]},
+  { id:"results", title:"8. Interpreting results", body:[
+    "P50 is the median: a 50% chance contingency will be sufficient. P80 is more conservative and is a common funding benchmark; P90 is often used to inform management reserve on top of contingency.",
+    "Base + Contingency at each P-value gives the probabilistic project cost. These values exclude escalation and forex, which are applied separately downstream.",
+    "The histogram shows the shape of simulated contingency; the S-curve shows cumulative probability — read across from any confidence level to the contingency it requires.",
+    "The contribution chart ranks the systemic component and each risk by expected-value share of total contingency, the same measure as the workbook's Contribution chart. Use it to target further mitigation.",
+  ]},
+  { id:"negative", title:"9. Why P10 can be negative — and what to do", body:[
+    "A negative P10 contingency means that at 10% confidence the project comes in under the Base Estimate. Mathematically valid — the systemic P10 multiplier is negative for every class — but it reads poorly in funding submissions.",
+    "The Kings Plains 132kV CART workbook reported P10 = -$346,600 (-1.97% of base). Investigation of that workbook shows part of the negativity is an artifact: XLSTAT's distribution fitting set the systemic lower bound at -$3.41M when the P10 target was only -$0.21M, overstating the downside tail (its own simulated systemic P10 lands near -$0.86M, four times the target).",
+    "This tool's exact percentile fit removes that artifact. Re-running Kings Plains with identical inputs under exact fit yields a P10 of approximately +$0.33M — positive without any flooring.",
+    "If a configuration still produces a negative P10 (very low class, low complexity, few risks), the nominal 'Floor reported P-values at $0' setting reports $0 while preserving the raw value as a footnote for transparency.",
+  ]},
+  { id:"industry", title:"10. How this compares to industry tools", body:[
+    "@RISK (Lumivero) — Excel add-in, 10,000-iteration default, Latin Hypercube sampling, PERT among 35+ distributions, tornado sensitivity charts. CART in this tool mirrors those defaults.",
+    "Oracle Primavera Risk Analysis (Pertmaster) — schedule + cost risk; practitioner guidance is 5,000–10,000 iterations with a locked seed for reproducibility, and optional convergence-based stopping.",
+    "Safran Risk / RiskyProject — integrated cost-schedule risk with risk-driver correlation modelling. Correlation matrices are not modelled here (risks are independent, as in the CART workbook); if two register risks are strongly coupled, consider merging them into one entry with a combined impact range.",
+    "XLSTAT (the workbook's engine) — general statistics add-in. Functional but requires a paid licence, manual histogram generation, fragile sheet-naming conventions and a multi-step reset procedure, all of which this page eliminates.",
+  ]},
+  { id:"workflow", title:"11. Quick workflow", body:[
+    "1. Complete and review the estimate. 2. Open CART — confirm the Base Estimate and the systemic inputs (class / complexity / new technology) shown in the Systemic panel. 3. Add each High / Very High residual risk with its three-point cost impact. 4. Check Settings (nominal defaults are pre-applied). 5. Run Simulation. 6. Read P-values, review contribution ranking, export or record the chosen contingency. 7. Save the estimate — risks and the last run travel with the investment record, including through Clone / Promote.",
+  ]},
+  { id:"glossary", title:"12. Glossary", body:[
+    "Base Estimate — cost estimate excluding contingency and escalation. · Residual risk — risk remaining after mitigating controls. · P-value (Pxx) — value with xx% probability that the outcome is at or below it. · PERT distribution — Beta distribution parameterised by minimum, mode and maximum; standard for three-point estimates. · Latin Hypercube — stratified sampling giving even coverage of each distribution. · Systemic risk — estimate-wide uncertainty assumed to occur. · Deterministic contingency — single-point check value: systemic P50 + Σ (most-likely likelihood × most-likely impact).",
+  ]},
+];
+
+function cartHighlight(text, q){
+  if(!q) return text;
+  const i = text.toLowerCase().indexOf(q.toLowerCase());
+  if(i===-1) return text;
+  const parts=[]; let rest=text, key=0;
+  let idx=rest.toLowerCase().indexOf(q.toLowerCase());
+  while(idx!==-1){
+    parts.push(<span key={key++}>{rest.slice(0,idx)}</span>);
+    parts.push(<mark key={key++} className="bg-yellow-200 rounded px-0.5">{rest.slice(idx,idx+q.length)}</mark>);
+    rest=rest.slice(idx+q.length);
+    idx=rest.toLowerCase().indexOf(q.toLowerCase());
+  }
+  parts.push(<span key={key++}>{rest}</span>);
+  return parts;
+}
+
+// ── CART SCREEN ──────────────────────────────────────────────────
+function CARTScreen({ inv, lines, isCommercial, onChange }) {
+  const { supply, commLookup, commProfiles } = useData();
+  const [view, setView]         = useState("sim");     // sim | settings | help
+  const [settings, setSettings] = useState(loadCartSettings);
+  const [result, setResult]     = useState(null);
+  const [runKey, setRunKey]     = useState("");
+  const [helpQ, setHelpQ]       = useState("");
+  const [helpSec, setHelpSec]   = useState("overview");
+  const helpRefs = useRef({});
+
+  const risks = inv.cartRisks || [];
+  const setRisks = next => onChange(prev=>({ ...prev, cartRisks: next }));
+
+  // Base Estimate — same engine as Review Lines / SME Reports (excl. contingency & escalation)
+  const baseEstimate = useMemo(()=>{
+    let eeInt=0, comm=0;
+    supply.forEach(item=>{
+      const ln=lines[item.wbs_code];
+      if(!ln||parseFloat(ln.qty||"0")<=0) return;
+      const c=calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, null, 0);
+      eeInt+=c.eeInt; comm+=c.comm;
+    });
+    const commTotals={};
+    supply.forEach(item=>{
+      const cw=item.commission_wbs;
+      if(!cw||!commLookup[cw]||commLookup[cw].direct_entry) return;
+      const ln=lines[item.wbs_code];
+      const qty=parseFloat(ln?.qty||"0")*parseFloat(ln?.factor||"1");
+      if(qty<=0) return;
+      commTotals[cw]=(commTotals[cw]||0)+qty;
+    });
+    Object.entries(commLookup).forEach(([commWbs,data])=>{
+      const isDirect=!!data.direct_entry;
+      const dq=isDirect?(parseFloat(lines[`comm_direct_${commWbs}`]?.qty||"0")||0):(commTotals[commWbs]||0);
+      if(dq<=0) return;
+      const scale=getScaleFactor(commProfiles,data.profile_id,dq);
+      const ovrd=lines[`comm_ovrd_${commWbs}`]?.qty;
+      const hrs=(ovrd!==undefined&&ovrd!=="")?(parseFloat(ovrd)||0):dq*(data.hrs_per_unit||0)*scale;
+      const e=hrs*(data.ee_labour_rate||139.26);
+      eeInt+=e; comm+=e*(1+ANS_LAB);
+    });
+    return isCommercial?comm:eeInt;
+  },[supply,lines,isCommercial,commLookup,commProfiles]);
+
+  const systemic = useMemo(()=>cartSystemicParams(baseEstimate, inv.estClass||"Class 5", inv.complexity||"High", inv.newTech||"Moderate"),
+    [baseEstimate, inv.estClass, inv.complexity, inv.newTech]);
+
+  const inputKey = useMemo(()=>JSON.stringify({b:Math.round(baseEstimate),s:systemic,r:risks,t:settings}),[baseEstimate,systemic,risks,settings]);
+  const stale = result && runKey!==inputKey;
+
+  const updSetting=(k,v)=>{
+    setSettings(s=>{ const next={...s,[k]:v}; try{localStorage.setItem(CART_SETTINGS_KEY,JSON.stringify(next));}catch{} return next; });
+  };
+  const applyPreset=(p)=>{
+    const base={...CART_DEFAULT_SETTINGS};
+    const next=p==="workbook"?{...base,floorAtZero:false}:base;
+    setSettings(next);
+    try{localStorage.setItem(CART_SETTINGS_KEY,JSON.stringify(next));}catch{}
+  };
+
+  const run=()=>{
+    const res=cartRun(baseEstimate, systemic, risks, settings);
+    setResult(res);
+    setRunKey(inputKey);
+  };
+
+  const updRisk=(i,k,v)=>setRisks(risks.map((r,j)=>j===i?{...r,[k]:v}:r));
+  const addRisk=()=>setRisks([...risks,{ id:"R"+String(risks.length+1).padStart(3,"0"), desc:"", rating:"High", likCat:"Likely (67 - 95%)", best:"", ml:"", worst:"" }]);
+  const delRisk=i=>setRisks(risks.filter((_,j)=>j!==i));
+
+  const riskWarnings = risks.map(r=>{
+    const w=[];
+    const b=parseFloat(r.best)||0, m=parseFloat(r.ml)||0, wo=parseFloat(r.worst)||0;
+    if(/Rare|Unlikely/.test(r.likCat)) w.push("A High/Very High residual risk cannot have Rare/Unlikely likelihood");
+    if(b&&m&&wo&&!(b<=m&&m<=wo)) w.push("Best ≤ Most Likely ≤ Worst expected");
+    if(!(wo>0)) w.push("Worst case cost required");
+    return w;
+  });
+  const readyRisks = risks
+    .map(r=>({ ...r, best:parseFloat(r.best)||0, ml:parseFloat(r.ml)||0, worst:parseFloat(r.worst)||0 }))
+    .filter(r=>r.worst>0 && r.best<=r.ml && r.ml<=r.worst);
+
+  const filteredHelp = CART_HELP.filter(s=>!helpQ || (s.title+" "+s.body.join(" ")).toLowerCase().includes(helpQ.toLowerCase()));
+  const jumpHelp = id => { setHelpSec(id); helpRefs.current[id]?.scrollIntoView({behavior:"smooth",block:"start"}); };
+
+  const pctOfBase = v => baseEstimate>0 ? (v/baseEstimate*100).toFixed(2)+"%" : "—";
+
+  const VIEW_TABS=[{id:"sim",label:"🎲 Simulation"},{id:"settings",label:"⚙️ Settings"},{id:"help",label:"📖 Help Guide"}];
+
+  // ── Charts (pure SVG) ──
+  const Histogram = ()=>{
+    if(!result) return null;
+    const {counts,lo,w}=result.hist;
+    const max=Math.max(...counts);
+    const W=620,H=170,pad=6;
+    const bw=(W-2*pad)/counts.length;
+    const x=v=>pad+((v-lo)/(result.hist.hi-lo||1))*(W-2*pad);
+    return (
+      <svg viewBox={`0 0 ${W} ${H+22}`} className="w-full">
+        {counts.map((c,i)=>(
+          <rect key={i} x={pad+i*bw+0.5} y={H-(c/max)*(H-10)} width={Math.max(bw-1,1)} height={(c/max)*(H-10)}
+            className="fill-[var(--primary-400)]" opacity="0.85"/>
+        ))}
+        {[["P10",result.raw.p10,"#dc2626"],["P50",result.raw.p50,"#1d4ed8"],["P90",result.raw.p90,"#047857"]].map(([lab,v,col])=>(
+          <g key={lab}>
+            <line x1={x(v)} x2={x(v)} y1={6} y2={H} stroke={col} strokeWidth="1.5" strokeDasharray="4 3"/>
+            <text x={x(v)+3} y={16} fontSize="10" fill={col} fontWeight="bold">{lab}</text>
+          </g>
+        ))}
+        <text x={pad} y={H+16} fontSize="9" fill="#6b7280">{fmt(lo)}</text>
+        <text x={W-pad} y={H+16} fontSize="9" fill="#6b7280" textAnchor="end">{fmt(result.hist.hi)}</text>
+      </svg>
+    );
+  };
+  const SCurve = ()=>{
+    if(!result) return null;
+    const W=620,H=170,pad=6;
+    const s=result.sorted, n=s.length;
+    const lo=s[0], hi=s[n-1];
+    const pts=[];
+    for(let i=0;i<=100;i++){
+      const v=s[Math.min(n-1,Math.round(i/100*(n-1)))];
+      pts.push(`${pad+((v-lo)/(hi-lo||1))*(W-2*pad)},${H-(i/100)*(H-10)}`);
+    }
+    const x=v=>pad+((v-lo)/(hi-lo||1))*(W-2*pad);
+    return (
+      <svg viewBox={`0 0 ${W} ${H+22}`} className="w-full">
+        {[0.1,0.5,0.8,0.9].map(p=>(
+          <line key={p} x1={pad} x2={W-pad} y1={H-p*(H-10)} y2={H-p*(H-10)} stroke="#e5e7eb" strokeWidth="1"/>
+        ))}
+        <polyline points={pts.join(" ")} fill="none" stroke="var(--primary-700)" strokeWidth="2"/>
+        {[["P10",result.raw.p10,0.1,"#dc2626"],["P50",result.raw.p50,0.5,"#1d4ed8"],["P80",result.raw.p80,0.8,"#9333ea"],["P90",result.raw.p90,0.9,"#047857"]].map(([lab,v,p,col])=>(
+          <g key={lab}>
+            <circle cx={x(v)} cy={H-p*(H-10)} r="3.5" fill={col}/>
+            <text x={x(v)+6} y={H-p*(H-10)+3} fontSize="10" fill={col} fontWeight="bold">{lab}</text>
+          </g>
+        ))}
+        <text x={pad} y={H+16} fontSize="9" fill="#6b7280">{fmt(lo)}</text>
+        <text x={W-pad} y={H+16} fontSize="9" fill="#6b7280" textAnchor="end">{fmt(hi)}</text>
+      </svg>
+    );
+  };
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden bg-gray-100">
+      {/* Internal nav */}
+      <div className="bg-white border-b px-4 flex items-center gap-1 flex-shrink-0">
+        <span className="text-xs font-bold text-gray-700 mr-3 py-2.5">🎲 CART — Contingency &amp; Accuracy Range Tool</span>
+        {VIEW_TABS.map(t=>(
+          <button key={t.id} onClick={()=>setView(t.id)}
+            className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${view===t.id?"border-[var(--primary-600)] text-[var(--primary-700)] bg-[var(--primary-50)]":"border-transparent text-gray-500 hover:text-gray-700"}`}>
+            {t.label}
+          </button>
+        ))}
+        <div className="flex-1"/>
+        <span className="text-xs text-gray-400 py-2.5">{inv.estClass||"Class 5"} · {inv.complexity||"High"} complexity · {inv.newTech||"Moderate"} new tech</span>
+      </div>
+
+      {/* ════ SIMULATION VIEW ════ */}
+      {view==="sim" && (
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="max-w-6xl mx-auto space-y-4">
+
+            {baseEstimate<=0 && (
+              <div className="bg-amber-50 border border-amber-300 rounded-lg px-4 py-3 text-xs text-amber-800">
+                ⚠️ <strong>No Base Estimate yet.</strong> CART is run after the estimate is completed — enter quantities in the Estimation tab first.
+              </div>
+            )}
+
+            {/* Base + systemic */}
+            <div className="grid grid-cols-2 gap-4">
+              <Card className="bg-white">
+                <SectionHeader color="blue" title="Base Estimate" subtitle="Excl. contingency & escalation — live from estimate"/>
+                <div className="p-4">
+                  <div className="text-2xl font-bold text-[var(--primary-900)] font-mono">{fmt(baseEstimate)}</div>
+                  <div className="text-xs text-gray-500 mt-1">{isCommercial?"Commercial (ANS applied)":"EE Internal"} rate stream · {inv.name||"Untitled"} · Rev {inv.revision||"A"}</div>
+                </div>
+              </Card>
+              <Card className="bg-white">
+                <SectionHeader color="purple" title="Systemic Risk" subtitle="Assumed to occur — AACE table from Investment Setup"/>
+                <div className="p-4 grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <div className="text-xs text-gray-500">P10 portion ({(systemic.t10*100).toFixed(1)}%)</div>
+                    <div className={`text-sm font-mono font-bold ${systemic.p10c<0?"text-red-600":"text-gray-800"}`}>{fmt(systemic.p10c)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">P50 portion ({(systemic.t50*100).toFixed(1)}%)</div>
+                    <div className="text-sm font-mono font-bold text-gray-800">{fmt(systemic.p50c)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">P90 portion ({(systemic.t90*100).toFixed(1)}%)</div>
+                    <div className="text-sm font-mono font-bold text-gray-800">{fmt(systemic.p90c)}</div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Risk register */}
+            <Card className="bg-white">
+              <SectionHeader color="orange" title="Project-Specific Risk Register"
+                subtitle="High / Very High residual risks only — after mitigating controls. Costs = impact if the risk occurs."/>
+              <div className="p-3">
+                {risks.length===0 && (
+                  <div className="text-center text-xs text-gray-400 py-4">No risks added yet. Add the High / Very High residual risks from the Project Risk Register.</div>
+                )}
+                {risks.length>0 && (
+                  <div className="grid text-xs font-semibold text-gray-500 px-2 pb-1"
+                    style={{gridTemplateColumns:"70px 1fr 95px 165px 95px 95px 95px 30px"}}>
+                    <div>ID</div><div>Risk Description</div><div>Residual Rating</div><div>Residual Likelihood</div>
+                    <div className="text-right">Best $</div><div className="text-right">Most Likely $</div><div className="text-right">Worst $</div><div/>
+                  </div>
+                )}
+                {risks.map((r,i)=>(
+                  <div key={i} className="border-t border-gray-100 py-1.5 px-2">
+                    <div className="grid gap-1.5 items-center" style={{gridTemplateColumns:"70px 1fr 95px 165px 95px 95px 95px 30px"}}>
+                      <input value={r.id} onChange={e=>updRisk(i,"id",e.target.value)}
+                        className="border border-gray-200 rounded px-1.5 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary-400)]"/>
+                      <input value={r.desc} onChange={e=>updRisk(i,"desc",e.target.value)} placeholder="Risk description from Project Risk Register"
+                        className="border border-gray-200 rounded px-1.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--primary-400)]"/>
+                      <select value={r.rating} onChange={e=>updRisk(i,"rating",e.target.value)}
+                        className={`border rounded px-1 py-1 text-xs font-semibold focus:outline-none ${r.rating==="Very High"?"border-red-300 bg-red-50 text-red-700":"border-orange-300 bg-orange-50 text-orange-700"}`}>
+                        <option>High</option><option>Very High</option>
+                      </select>
+                      <select value={r.likCat} onChange={e=>updRisk(i,"likCat",e.target.value)}
+                        className="border border-gray-200 rounded px-1 py-1 text-xs focus:outline-none">
+                        {CART_LIKELIHOOD.map(l=><option key={l.cat}>{l.cat}</option>)}
+                      </select>
+                      <input value={r.best} onChange={e=>updRisk(i,"best",e.target.value)} placeholder="0" inputMode="decimal"
+                        className="border border-gray-200 rounded px-1.5 py-1 text-xs text-right font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary-400)]"/>
+                      <input value={r.ml} onChange={e=>updRisk(i,"ml",e.target.value)} placeholder="0" inputMode="decimal"
+                        className="border border-gray-200 rounded px-1.5 py-1 text-xs text-right font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary-400)]"/>
+                      <input value={r.worst} onChange={e=>updRisk(i,"worst",e.target.value)} placeholder="0" inputMode="decimal"
+                        className="border border-gray-200 rounded px-1.5 py-1 text-xs text-right font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary-400)]"/>
+                      <button onClick={()=>delRisk(i)} className="text-gray-300 hover:text-red-600 text-sm">✕</button>
+                    </div>
+                    {riskWarnings[i].length>0 && (
+                      <div className="text-xs text-amber-700 mt-1 pl-1">⚠ {riskWarnings[i].join(" · ")}</div>
+                    )}
+                  </div>
+                ))}
+                <button onClick={addRisk}
+                  className="mt-2 text-xs border-2 border-dashed border-gray-300 hover:border-[var(--primary-400)] hover:text-[var(--primary-700)] text-gray-400 px-4 py-1.5 rounded-lg font-semibold w-full">
+                  ＋ Add Residual Risk
+                </button>
+              </div>
+            </Card>
+
+            {/* Run bar */}
+            <div className="flex items-center gap-3">
+              <button onClick={run} disabled={baseEstimate<=0}
+                className="bg-green-700 hover:bg-green-600 disabled:bg-gray-300 text-white text-sm px-6 py-2.5 rounded-lg font-bold shadow-sm">
+                ▶ Run Simulation
+              </button>
+              <span className="text-xs text-gray-500">
+                {settings.iterations.toLocaleString()} iterations · {settings.sampling==="lhs"?"Latin Hypercube":"Random MC"} · seed {settings.seed}
+                {readyRisks.length<risks.length && <span className="text-amber-700"> · {risks.length-readyRisks.length} risk(s) incomplete — excluded</span>}
+              </span>
+              {stale && <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded font-semibold">Inputs changed since last run — re-run</span>}
+            </div>
+
+            {/* Results */}
+            {result && (
+              <>
+                <div className={`grid gap-3 ${result.floored?"grid-cols-5":"grid-cols-5"}`}>
+                  {[["P10",result.p10,result.raw.p10,"text-red-700","bg-red-50 border-red-200"],
+                    ["P50",result.p50,result.raw.p50,"text-[var(--primary-800)]","bg-[var(--primary-50)] border-[var(--primary-200)]"],
+                    ["P80",result.p80,result.raw.p80,"text-purple-700","bg-purple-50 border-purple-200"],
+                    ["P90",result.p90,result.raw.p90,"text-green-800","bg-green-50 border-green-200"],
+                  ].map(([lab,v,raw,col,box])=>(
+                    <div key={lab} className={`rounded-lg border p-3 ${box}`}>
+                      <div className="text-xs font-bold text-gray-500">{lab} Contingency</div>
+                      <div className={`text-lg font-mono font-bold ${col}`}>{fmt(v)}</div>
+                      <div className="text-xs text-gray-500">{pctOfBase(v)} of base{settings.floorAtZero&&raw<0&&<span className="text-amber-700"> · raw {fmt(raw)}</span>}</div>
+                      <div className="text-xs text-gray-600 mt-1 font-mono">Base+: {fmt(baseEstimate+v)}</div>
+                    </div>
+                  ))}
+                  <div className="rounded-lg border border-gray-200 bg-white p-3">
+                    <div className="text-xs font-bold text-gray-500">Deterministic Check</div>
+                    <div className="text-lg font-mono font-bold text-gray-700">{fmt(result.deterministic)}</div>
+                    <div className="text-xs text-gray-500">{pctOfBase(result.deterministic)} of base</div>
+                    <div className="text-xs text-gray-400 mt-1">Mean {fmt(result.mean)} · SD {fmt(result.sd)}</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Card className="bg-white">
+                    <SectionHeader color="blue" title="Contingency Distribution" subtitle={`Histogram — ${settings.bins} intervals · ${result.N.toLocaleString()} iterations`}/>
+                    <div className="p-3"><Histogram/></div>
+                  </Card>
+                  <Card className="bg-white">
+                    <SectionHeader color="teal" title="Confidence S-Curve" subtitle="Cumulative probability vs contingency"/>
+                    <div className="p-3"><SCurve/></div>
+                  </Card>
+                </div>
+
+                <Card className="bg-white">
+                  <SectionHeader color="gray" title="Contribution to Contingency" subtitle="Expected-value share — target further mitigation at the top of this list"/>
+                  <div className="p-4 space-y-2">
+                    {[...result.contrib].sort((a,b)=>b.val-a.val).map(c=>(
+                      <div key={c.name} className="flex items-center gap-3">
+                        <div className="w-72 text-xs text-gray-700 truncate" title={c.name}>{c.name}</div>
+                        <div className="flex-1 bg-gray-100 rounded-full h-3">
+                          <div className={`h-3 rounded-full ${c.name==="Systemic"?"bg-purple-500":"bg-orange-500"}`} style={{width:`${Math.max(c.pct*100,1)}%`}}/>
+                        </div>
+                        <div className="w-14 text-right text-xs font-mono text-gray-600">{(c.pct*100).toFixed(1)}%</div>
+                        <div className="w-24 text-right text-xs font-mono text-gray-800">{fmt(c.val)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ════ SETTINGS VIEW ════ */}
+      {view==="settings" && (
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="max-w-3xl mx-auto space-y-4">
+            <div className="flex items-center gap-2">
+              <button onClick={()=>applyPreset("nominal")}
+                className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded font-semibold">✓ EE Nominal (recommended)</button>
+              <button onClick={()=>applyPreset("workbook")}
+                className="text-xs border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-1.5 rounded font-semibold">CART Workbook (unfloored)</button>
+              <span className="text-xs text-gray-400 ml-2">Settings persist on this browser and apply to all estimates</span>
+            </div>
+
+            <Card className="bg-white">
+              <SectionHeader color="blue" title="Simulation Engine"/>
+              <div className="p-4 grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">Iterations</label>
+                  <select value={settings.iterations} onChange={e=>updSetting("iterations",parseInt(e.target.value))}
+                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white">
+                    {[1000,5000,10000,20000,50000].map(n=><option key={n} value={n}>{n.toLocaleString()}{n===10000?" (nominal — CART / @RISK default)":""}</option>)}
+                  </select>
+                  <div className="text-xs text-gray-400 mt-1">Industry guidance: 5,000–10,000 for stable cost tails</div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">Random Seed</label>
+                  <input value={settings.seed} inputMode="numeric"
+                    onChange={e=>updSetting("seed",parseInt(e.target.value)||1)}
+                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs font-mono"/>
+                  <div className="text-xs text-gray-400 mt-1">Locked seed = reproducible runs for review &amp; audit</div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">Sampling Method</label>
+                  <select value={settings.sampling} onChange={e=>updSetting("sampling",e.target.value)}
+                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white">
+                    <option value="lhs">Latin Hypercube (nominal — even tail coverage)</option>
+                    <option value="random">Random Monte Carlo</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">Histogram Intervals</label>
+                  <select value={settings.bins} onChange={e=>updSetting("bins",parseInt(e.target.value))}
+                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white">
+                    {[25,50,75,100].map(n=><option key={n} value={n}>{n}{n===50?" (CART workbook)":""}</option>)}
+                  </select>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="bg-white">
+              <SectionHeader color="purple" title="Distribution Model"/>
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">Best / Worst Interpretation</label>
+                  <select value={settings.boundsMode} onChange={e=>updSetting("boundsMode",e.target.value)}
+                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white">
+                    <option value="percentile">P10 / P90 percentiles — exact fit (nominal; corrects the workbook's wide XLSTAT fit)</option>
+                    <option value="absolute">Absolute minimum / maximum (narrower distribution)</option>
+                  </select>
+                  <div className="text-xs text-gray-400 mt-1">Exact fit is the main reason this tool's P10 is materially less negative than the XLSTAT workbook — see Help §9</div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">Risk Occurrence Model</label>
+                  <select value={settings.occurrence} onChange={e=>updSetting("occurrence",e.target.value)}
+                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white">
+                    <option value="expected">Expected value — likelihood × impact each iteration (CART workbook)</option>
+                    <option value="bernoulli">Bernoulli event simulation — risk fully occurs or not (@RISK register convention)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">Impact Distribution Mode</label>
+                  <select value={settings.modeConvention} onChange={e=>updSetting("modeConvention",e.target.value)}
+                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white">
+                    <option value="pertMean">PERT mean — (Best + 4×ML + Worst) / 6 (CART workbook)</option>
+                    <option value="mostLikely">Most Likely value</option>
+                  </select>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="bg-white">
+              <SectionHeader color="green" title="Reporting — keeping P10 non-negative"/>
+              <div className="p-4 space-y-3">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="checkbox" checked={settings.floorAtZero} onChange={e=>updSetting("floorAtZero",e.target.checked)} className="mt-0.5 accent-green-700"/>
+                  <span className="text-xs text-gray-700">
+                    <strong>Floor reported P-values at $0</strong> (nominal). The simulation is untouched — only the reported figure is floored, with the raw value shown alongside for transparency. Recommended for funding submissions.
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="checkbox" checked={settings.truncateSystemic} onChange={e=>updSetting("truncateSystemic",e.target.checked)} className="mt-0.5 accent-green-700"/>
+                  <span className="text-xs text-gray-700">
+                    <strong>Truncate systemic underrun at $0</strong>. Clamps negative systemic draws inside the simulation. Shifts the whole distribution up — off by default; prefer the reporting floor above.
+                  </span>
+                </label>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* ════ HELP VIEW ════ */}
+      {view==="help" && (
+        <div className="flex-1 flex overflow-hidden">
+          {/* Contents panel */}
+          <div className="w-64 bg-white border-r flex flex-col flex-shrink-0">
+            <div className="p-3 border-b">
+              <input value={helpQ} onChange={e=>setHelpQ(e.target.value)} placeholder="🔍 Search help…"
+                className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--primary-400)]"/>
+              {helpQ && <div className="text-xs text-gray-400 mt-1">{filteredHelp.length} of {CART_HELP.length} sections match</div>}
+            </div>
+            <div className="flex-1 overflow-y-auto py-2">
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wide px-3 pb-1">Contents</div>
+              {(helpQ?filteredHelp:CART_HELP).map(s=>(
+                <button key={s.id} onClick={()=>jumpHelp(s.id)}
+                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--primary-50)] ${helpSec===s.id?"text-[var(--primary-700)] font-semibold bg-[var(--primary-50)] border-l-2 border-[var(--primary-600)]":"text-gray-600"}`}>
+                  {s.title}
+                </button>
+              ))}
+              {helpQ && filteredHelp.length===0 && (
+                <div className="px-3 py-4 text-xs text-gray-400">No sections match "{helpQ}"</div>
+              )}
+            </div>
+          </div>
+          {/* Help body */}
+          <div className="flex-1 overflow-y-auto p-6 bg-white">
+            <div className="max-w-3xl space-y-6">
+              <div>
+                <div className="text-lg font-bold text-gray-900">CART Help Guide</div>
+                <div className="text-xs text-gray-500 mt-1">Contingency &amp; Accuracy Range Tool — Monte Carlo contingency for completed estimates. Replaces the XLSTAT CART workbook.</div>
+              </div>
+              {(helpQ?filteredHelp:CART_HELP).map(s=>(
+                <div key={s.id} ref={el=>{helpRefs.current[s.id]=el;}} className="scroll-mt-4">
+                  <div className="text-sm font-bold text-[var(--primary-800)] border-b border-gray-100 pb-1 mb-2">{cartHighlight(s.title,helpQ)}</div>
+                  {s.body.map((p,i)=>(
+                    <p key={i} className="text-xs text-gray-700 leading-relaxed mb-2">{cartHighlight(p,helpQ)}</p>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── SME REPORT SCREEN (S8) ───────────────────────────────────────
 // Replicates the SME summary macros from the master workbook —
 // filters the live estimate to each discipline's WBS scope and rolls
@@ -10994,6 +11700,7 @@ const EST_TABS = [
   {id:"summary",  label:"📊 Summary"},
   {id:"financial", label:"💰 Financial Report"},
   {id:"sme",       label:"📡 SME Reports"},
+  {id:"cart",      label:"🎲 CART"},
 ];
 
 // ── ERROR BOUNDARY ───────────────────────────────────────────────
@@ -11711,6 +12418,7 @@ export default function App() {
                 {estTab==="summary"   && <SummaryScreen inv={inv} lines={lines} isCommercial={isCommercial} equipSel={equipSel} onSave={effectiveLocked ? null : saveInvestment} lastSaved={lastSaved} estimateLocked={estimateLocked}/>}
                 {estTab==="financial" && <FinancialScreen inv={inv} lines={lines} isCommercial={isCommercial}/>}
                 {estTab==="sme"       && <SMEReportScreen inv={inv} lines={lines} isCommercial={isCommercial}/>}
+                {estTab==="cart"      && <CARTScreen inv={inv} lines={lines} isCommercial={isCommercial} onChange={effectiveLocked ? ()=>{} : trackedSetInv}/>}
               </div>
             </>
           )}
