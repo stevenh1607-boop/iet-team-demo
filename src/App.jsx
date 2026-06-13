@@ -10723,7 +10723,7 @@ function cartHighlight(text, q){
 }
 
 // ── CART SCREEN ──────────────────────────────────────────────────
-function CARTScreen({ inv, lines, isCommercial, onChange }) {
+function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, estimateLocked }) {
   const { supply, commLookup, commProfiles } = useData();
   const [view, setView]         = useState("sim");     // sim | settings | help
   const [settings, setSettings] = useState(loadCartSettings);
@@ -10783,17 +10783,35 @@ function CARTScreen({ inv, lines, isCommercial, onChange }) {
     try{localStorage.setItem(CART_SETTINGS_KEY,JSON.stringify(next));}catch{}
   };
 
+  const [justSaved, setJustSaved] = useState(false);
+  const [pendingSaveRunAt, setPendingSaveRunAt] = useState(null);
+
   const run=()=>{
     const res=cartRun(baseEstimate, systemic, readyRisks, settings);
     setResult(res);
     setRunKey(inputKey);
-    // Populate Investment Setup / Estimate Summary contingency — only after a run
-    onChange(prev=>({ ...prev, cartResult: {
+    const cartResult = {
       p10:res.p10, p50:res.p50, p80:res.p80, p90:res.p90,
       base: baseEstimate, isCommercial, riskCount: readyRisks.length,
       runAt: new Date().toISOString(),
-    }}));
+    };
+    // Populate Investment Setup / Estimate Summary contingency — only after a run
+    onChange(prev=>({ ...prev, cartResult }));
+    // Auto-save: wait for `inv.cartResult` to reflect this run (next render,
+    // once the state update above has propagated) before calling onSave —
+    // onSave (saveInvestment) closes over `inv` from parent state, so it
+    // must see the update first or it would persist the pre-CART record.
+    if (onSave) setPendingSaveRunAt(cartResult.runAt);
   };
+
+  useEffect(()=>{
+    if (pendingSaveRunAt && inv.cartResult?.runAt===pendingSaveRunAt && onSave){
+      onSave();
+      setPendingSaveRunAt(null);
+      setJustSaved(true);
+      setTimeout(()=>setJustSaved(false),3000);
+    }
+  },[inv.cartResult, pendingSaveRunAt, onSave]);
 
   const updRisk=(i,k,v)=>setRisks(risks.map((r,j)=>j===i?{...r,[k]:v}:r));
   const addRisk=()=>setRisks([...risks,{ id:"R"+String(risks.length+1).padStart(3,"0"), desc:"", rating:"High", likCat:"Likely (67 - 95%)", best:"", ml:"", worst:"" }]);
@@ -10823,7 +10841,7 @@ function CARTScreen({ inv, lines, isCommercial, onChange }) {
     if(!result) return null;
     const {counts,lo,w}=result.hist;
     const max=Math.max(...counts);
-    const W=620,H=170,pad=6;
+    const W=1400,H=320,pad=10;
     const bw=(W-2*pad)/counts.length;
     const x=v=>pad+((v-lo)/(result.hist.hi-lo||1))*(W-2*pad);
     return (
@@ -10845,7 +10863,7 @@ function CARTScreen({ inv, lines, isCommercial, onChange }) {
   };
   const SCurve = ()=>{
     if(!result) return null;
-    const W=620,H=170,pad=6;
+    const W=1400,H=320,pad=10;
     const s=result.sorted, n=s.length;
     const lo=s[0], hi=s[n-1];
     const pts=[];
@@ -10884,6 +10902,12 @@ function CARTScreen({ inv, lines, isCommercial, onChange }) {
           </button>
         ))}
         <div className="flex-1"/>
+        {justSaved && <span className="text-xs text-green-600 mr-2">✓ Saved</span>}
+        {lastSaved && !justSaved && <span className="text-xs text-gray-400 mr-2">Last saved {lastSaved}</span>}
+        {estimateLocked
+          ? <span className="text-xs bg-green-100 text-green-700 border border-green-300 px-2.5 py-1 rounded font-semibold mr-3">🔒 Approved — read only</span>
+          : onSave && <button onClick={()=>{onSave(); setJustSaved(true); setTimeout(()=>setJustSaved(false),3000);}}
+              className="bg-green-700 hover:bg-green-600 text-white text-xs px-3 py-1.5 rounded font-semibold mr-3">💾 Save Investment</button>}
         <span className="text-xs text-gray-400 py-2.5">{inv.estClass||"Class 5"} · {inv.complexity||"High"} complexity · {inv.newTech||"Moderate"} new tech</span>
       </div>
 
@@ -11013,16 +11037,14 @@ function CARTScreen({ inv, lines, isCommercial, onChange }) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <Card className="bg-white">
-                    <SectionHeader color="blue" title="Contingency Distribution" subtitle={`Histogram — ${settings.bins} intervals · ${result.N.toLocaleString()} iterations`}/>
-                    <div className="p-3"><Histogram/></div>
-                  </Card>
-                  <Card className="bg-white">
-                    <SectionHeader color="teal" title="Confidence S-Curve" subtitle="Cumulative probability vs contingency"/>
-                    <div className="p-3"><SCurve/></div>
-                  </Card>
-                </div>
+                <Card className="bg-white">
+                  <SectionHeader color="blue" title="Contingency Distribution" subtitle={`Histogram — ${settings.bins} intervals · ${result.N.toLocaleString()} iterations`}/>
+                  <div className="p-3"><Histogram/></div>
+                </Card>
+                <Card className="bg-white">
+                  <SectionHeader color="teal" title="Confidence S-Curve" subtitle="Cumulative probability vs contingency"/>
+                  <div className="p-3"><SCurve/></div>
+                </Card>
 
                 <Card className="bg-white">
                   <SectionHeader color="gray" title="Contribution to Contingency" subtitle="Expected-value share — target further mitigation at the top of this list"/>
@@ -12901,7 +12923,7 @@ export default function App() {
                 {estTab==="summary"   && <SummaryScreen inv={inv} lines={lines} isCommercial={isCommercial} equipSel={equipSel} onSave={effectiveLocked ? null : saveInvestment} lastSaved={lastSaved} estimateLocked={estimateLocked}/>}
                 {estTab==="financial" && <FinancialScreen inv={inv} lines={lines} isCommercial={isCommercial}/>}
                 {estTab==="sme"       && <SMEReportScreen inv={inv} lines={lines} isCommercial={isCommercial}/>}
-                {estTab==="cart"      && <CARTScreen inv={inv} lines={lines} isCommercial={isCommercial} onChange={effectiveLocked ? ()=>{} : trackedSetInv}/>}
+                {estTab==="cart"      && <CARTScreen inv={inv} lines={lines} isCommercial={isCommercial} onChange={effectiveLocked ? ()=>{} : trackedSetInv} onSave={effectiveLocked ? null : saveInvestment} lastSaved={lastSaved} estimateLocked={estimateLocked}/>}
               </div>
             </>
           )}
