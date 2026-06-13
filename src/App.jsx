@@ -10813,6 +10813,22 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
     }
   },[inv.cartResult, pendingSaveRunAt, onSave]);
 
+  // Restore the simulation view when returning to this screen. `result`
+  // (histogram, S-curve, contribution breakdown) is local component state
+  // and is lost on navigation/remount, even though inv.cartResult — the
+  // saved summary — persists. The engine is deterministic for a fixed seed,
+  // so re-running with the current inputs reproduces an identical view as
+  // long as nothing has changed; if something HAS changed, `stale` (below)
+  // will correctly flag it against the saved cartResult.
+  useEffect(()=>{
+    if (!result && inv.cartResult && baseEstimate>0){
+      const res=cartRun(baseEstimate, systemic, readyRisks, settings);
+      setResult(res);
+      setRunKey(inputKey);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[inv.cartResult, baseEstimate>0]);
+
   const updRisk=(i,k,v)=>setRisks(risks.map((r,j)=>j===i?{...r,[k]:v}:r));
   const addRisk=()=>setRisks([...risks,{ id:"R"+String(risks.length+1).padStart(3,"0"), desc:"", rating:"High", likCat:"Likely (67 - 95%)", best:"", ml:"", worst:"" }]);
   const delRisk=i=>setRisks(risks.filter((_,j)=>j!==i));
