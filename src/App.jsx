@@ -4648,11 +4648,14 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
           if (typeof plant==="number" && plant>EPS){
             entry.plant = String(Math.round(plant*100)/100); overrideCount++;  // no database default — always project-specific
           }
-          const matsTotal = de[EC({r, c:matsCol})]?.v;
-          if (typeof matsTotal==="number" && matsTotal>EPS && q>EPS){
-            const matsPerUnit = matsTotal/q;
+          const matsUnit = de[EC({r, c:matsCol})]?.v;  // per-unit, same basis as pce_price (escalated)
+          if (typeof matsUnit==="number" && matsUnit>EPS){
             const dbPce = item.pce_price||0;
-            if (Math.abs(matsPerUnit-dbPce)>0.005){ entry.mats = String(Math.round(matsPerUnit*100)/100); overrideCount++; }
+            // Allow ±15% for routine price escalation between the database
+            // extract date and the estimate's start date — only flag as an
+            // override if the workbook price diverges beyond that band.
+            const tolerance = Math.max(dbPce*0.15, 0.50);
+            if (dbPce<=0 || Math.abs(matsUnit-dbPce)>tolerance){ entry.mats = String(Math.round(matsUnit*100)/100); overrideCount++; }
           }
         }
         if (comment){ entry.comments = comment; commentCount++; }  // methodology notes — incl. rows without qty
