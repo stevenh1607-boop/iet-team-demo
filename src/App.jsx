@@ -10724,7 +10724,7 @@ function cartHighlight(text, q){
 
 // ── CART SCREEN ──────────────────────────────────────────────────
 function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, estimateLocked }) {
-  const { supply, commLookup, commProfiles } = useData();
+  const { supply, commLookup, commProfiles, resourceCodes } = useData();
   const [view, setView]         = useState("sim");     // sim | settings | help
   const [settings, setSettings] = useState(loadCartSettings);
   const [result, setResult]     = useState(null);
@@ -10736,14 +10736,24 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
   const risks = inv.cartRisks || [];
   const setRisks = next => onChange(prev=>({ ...prev, cartRisks: next }));
 
-  // Base Estimate — same engine as Review Lines / SME Reports (excl. contingency & escalation)
+  // Base Estimate — same basis as the Financial Report / Estimate Summary
+  // contingency base (resolveContingency's `contBase`): EE Internal includes
+  // the 20% OT for Internal Resources uplift, Commercial does not. Without
+  // this, cartResult.base never matches those screens' base and the CART
+  // P50 is silently ignored (falls back to the pre-risk %) due to
+  // resolveContingency's staleness tolerance.
+  const otRatio = useMemo(()=>{
+    const awd = Object.values(resourceCodes||{}).find(r=>r.erp_code==="AWD" && r.ee_internal_rate_ot && r.ee_internal_rate);
+    return awd ? (awd.ee_internal_rate_ot/awd.ee_internal_rate - 1) : 0;
+  },[resourceCodes]);
+
   const baseEstimate = useMemo(()=>{
-    let eeInt=0, comm=0;
+    let eeInt=0, comm=0, eeLabCost=0;
     supply.forEach(item=>{
       const ln=lines[item.wbs_code];
       if(!ln||parseFloat(ln.qty||"0")<=0) return;
       const c=calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, null, 0);
-      eeInt+=c.eeInt; comm+=c.comm;
+      eeInt+=c.eeInt; comm+=c.comm; eeLabCost+=c.eeLabCost||0;
     });
     const commTotals={};
     supply.forEach(item=>{
@@ -10762,10 +10772,11 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
       const ovrd=lines[`comm_ovrd_${commWbs}`]?.qty;
       const hrs=(ovrd!==undefined&&ovrd!=="")?(parseFloat(ovrd)||0):dq*(data.hrs_per_unit||0)*scale;
       const e=hrs*(data.ee_labour_rate||139.26);
-      eeInt+=e; comm+=e*(1+ANS_LAB);
+      eeInt+=e; comm+=e*(1+ANS_LAB); eeLabCost+=e;
     });
-    return isCommercial?comm:eeInt;
-  },[supply,lines,isCommercial,commLookup,commProfiles]);
+    if (isCommercial) return comm;
+    return eeInt + eeLabCost*otRatio;  // + 20% OT for Internal Resources, matching contBase
+  },[supply,lines,isCommercial,commLookup,commProfiles,otRatio]);
 
   const systemic = useMemo(()=>cartSystemicParams(baseEstimate, inv.estClass||"Class 5", inv.complexity||"High", inv.newTech||"Moderate"),
     [baseEstimate, inv.estClass, inv.complexity, inv.newTech]);
