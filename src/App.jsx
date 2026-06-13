@@ -3227,7 +3227,9 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
                   ? <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-semibold" title={`CART P50 — run ${new Date(contRes.cr.runAt).toLocaleDateString("en-AU")}`}>🎲 CART P50</span>
                   : <span className="text-xs text-gray-400" title="Pre-risk estimator percentage — run CART to replace with a simulated P50">pre-risk</span>}
               </div>
-              <div className="py-2 text-right pr-4 text-[var(--primary-600)] font-medium">{fmt(contAmt * (grandEEwithOT/(grandComm||grandEEwithOT)))}</div>
+              <div className="py-2 text-right pr-4 text-[var(--primary-600)] font-medium">
+                {fmt(isCommercial ? contAmt * (grandEEwithOT/(grandComm||grandEEwithOT)) : contAmt)}
+              </div>
               {isCommercial && <div className="py-2 text-right pr-4 text-orange-600 font-medium">{fmt(contAmt)}</div>}
             </div>
 
@@ -3272,7 +3274,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
                   {inv.name||"Investment"} · {inv.estClass} · Rev {inv.revision}
                 </div>
               </div>
-              <div className="py-3.5 text-right pr-4 text-white text-base">{fmt(finalTotal * (grandEEwithOT/(grandComm||grandEEwithOT)))}</div>
+              <div className="py-3.5 text-right pr-4 text-white text-base">{fmt(isCommercial ? finalTotal * (grandEEwithOT/(grandComm||grandEEwithOT)) : finalTotal)}</div>
               {isCommercial && <div className="py-3.5 text-right pr-4 text-orange-300 text-base font-bold">{fmt(finalTotal)}</div>}
             </div>
           </div>
