@@ -1456,6 +1456,8 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                 {isCommercial && <div className="font-bold text-orange-300">{fmt(commGrandCost*(1+ANS_LAB))} comm</div>}
               </div>
             </div>
+            <div className="flex-1 flex flex-col overflow-x-auto min-h-0">
+            <div style={{minWidth:"680px"}} className="flex-1 flex flex-col min-h-0">
             <div className="bg-gray-50 border-b grid flex-shrink-0 text-xs font-semibold text-gray-500 px-3 py-1.5"
               style={{gridTemplateColumns:"1fr 52px 64px 52px 76px 76px 86px 64px"}}>
               <div>Description / WBS</div>
@@ -1572,6 +1574,8 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                 );
               })}
             </CommScrollList>
+            </div>
+            </div>
           </div>
 
 
@@ -10987,6 +10991,8 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
                 {risks.length===0 && (
                   <div className="text-center text-xs text-gray-400 py-4">No risks added yet. Add the High / Very High residual risks from the Project Risk Register.</div>
                 )}
+                <div className="overflow-x-auto">
+                <div style={{minWidth:"900px"}}>
                 {risks.length>0 && (
                   <div className="grid text-xs font-semibold text-gray-500 px-2 pb-1"
                     style={{gridTemplateColumns:"70px 1fr 95px 165px 95px 95px 95px 30px"}}>
@@ -11022,6 +11028,8 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
                     )}
                   </div>
                 ))}
+                </div>
+                </div>
                 <button onClick={addRisk}
                   className="mt-2 text-xs border-2 border-dashed border-gray-300 hover:border-[var(--primary-400)] hover:text-[var(--primary-700)] text-gray-400 px-4 py-1.5 rounded-lg font-semibold w-full">
                   ＋ Add Residual Risk
