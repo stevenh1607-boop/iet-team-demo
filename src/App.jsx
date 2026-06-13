@@ -10861,19 +10861,19 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
     const bw=(W-2*pad)/counts.length;
     const x=v=>pad+((v-lo)/(result.hist.hi-lo||1))*(W-2*pad);
     return (
-      <svg viewBox={`0 0 ${W} ${H+22}`} className="w-full">
+      <svg viewBox={`0 0 ${W} ${H+40}`} className="w-full">
         {counts.map((c,i)=>(
           <rect key={i} x={pad+i*bw+0.5} y={H-(c/max)*(H-10)} width={Math.max(bw-1,1)} height={(c/max)*(H-10)}
             className="fill-[var(--primary-400)]" opacity="0.85"/>
         ))}
         {[["P10",result.raw.p10,"#dc2626"],["P50",result.raw.p50,"#1d4ed8"],["P90",result.raw.p90,"#047857"]].map(([lab,v,col])=>(
           <g key={lab}>
-            <line x1={x(v)} x2={x(v)} y1={6} y2={H} stroke={col} strokeWidth="2" strokeDasharray="6 4"/>
-            <text x={x(v)+5} y={26} fontSize="22" fill={col} fontWeight="bold">{lab}</text>
+            <line x1={x(v)} x2={x(v)} y1={6} y2={H} stroke={col} strokeWidth="1.5" strokeDasharray="4 3"/>
+            <text x={x(v)+3} y={16} fontSize="10" fill={col} fontWeight="bold">{lab}</text>
           </g>
         ))}
-        <text x={pad} y={H+16} fontSize="9" fill="#6b7280">{fmt(lo)}</text>
-        <text x={W-pad} y={H+16} fontSize="9" fill="#6b7280" textAnchor="end">{fmt(result.hist.hi)}</text>
+        <text x={pad} y={H+30} fontSize="22" fill="#6b7280">{fmt(lo)}</text>
+        <text x={W-pad} y={H+30} fontSize="22" fill="#6b7280" textAnchor="end">{fmt(result.hist.hi)}</text>
       </svg>
     );
   };
