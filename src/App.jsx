@@ -4593,26 +4593,67 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
       let comCol = deFindCol(t=>t.startsWith("estimator's comments") || t.startsWith("estimators comments"));
       if (comCol===-1) comCol = 61; // col BJ fallback (v2.x layout)
 
-      const known = new Set((snapSupply||[]).map(s=>s.wbs_code));
+      // Per-row override sources — present in completed estimate workbooks
+      // even where the database has no default (e.g. Zone Substation design
+      // rows under 2.x.x.xx.1.xx have no 'EE Unit Labour Hours' database
+      // default, so any value the estimator typed here is 100% an override).
+      let eeHrsCol = deFindCol(t=>t.startsWith("ee unit labour hours"));
+      if (eeHrsCol===-1) eeHrsCol = 25; // col Z fallback
+      let cRateCol = deFindCol(t=>t.startsWith("contractor unit rate"));
+      if (cRateCol===-1) cRateCol = 23; // col X fallback
+      let plantCol = deFindCol(t=>t.startsWith("plant/machinery cost") && !t.includes("factor"));
+      if (plantCol===-1) plantCol = 30; // col AE fallback
+      let matsCol  = deFindCol(t=>t.startsWith("materials cost") && !t.includes("of ee delivered"));
+      if (matsCol===-1) matsCol = 32; // col AG fallback
+
+      const itemByCode = new Map((snapSupply||[]).map(s=>[s.wbs_code,s]));
+      const known = itemByCode;
       const lines = {};
-      let matched=0, unmatched=0, commentCount=0;
+      let matched=0, unmatched=0, commentCount=0, overrideCount=0;
       for (let r=5; r<=deRange.e.r; r++){
         const wbsc = de[EC({r, c:wbsCol})]?.v;
         if (wbsc==null) continue;
         const code = String(wbsc).trim();
         if (!/^\d+(\.\w+)+$/.test(code)) continue;          // header/group noise guard
         const qty     = de[EC({r, c:qtyCol})]?.v;
+        const q       = typeof qty==="number" ? qty : 0;
         const rawCom  = de[EC({r, c:comCol})]?.v;
         const comment = typeof rawCom==="string" ? rawCom.trim() : "";
         const hasQty  = typeof qty==="number" && qty>1e-6;     // float-residue guard
         if (!hasQty && !comment) continue;
         if (!known.has(code)) { if(hasQty) unmatched++; continue; }
+        const item = itemByCode.get(code);
         const entry = lines[code] || {};
         if (hasQty){
           entry.qty = String(Math.round(qty*10000)/10000);
           const factor = de[EC({r, c:facCol})]?.v;
           if (typeof factor==="number" && factor!==1 && factor>0) entry.factor = String(factor);
           matched++;
+
+          // ── Per-row overrides — only set when the workbook value
+          // genuinely differs from the database default, so unedited
+          // rows don't pick up redundant overrides equal to placeholders.
+          const EPS = 1e-6;
+          const eeHrs = de[EC({r, c:eeHrsCol})]?.v;
+          if (typeof eeHrs==="number" && eeHrs>EPS){
+            const dbHrs = item.install_hrs_per!=null ? item.install_hrs_per : (item.ee_unit_hrs||0);
+            if (Math.abs(eeHrs-dbHrs)>EPS){ entry.instHrsOvrd = String(Math.round(eeHrs*10000)/10000); overrideCount++; }
+          }
+          const cRate = de[EC({r, c:cRateCol})]?.v;
+          if (typeof cRate==="number" && cRate>EPS){
+            const dbRate = item.contractor_rate||0;
+            if (Math.abs(cRate-dbRate)>0.005){ entry.contrRate = String(Math.round(cRate*100)/100); overrideCount++; }
+          }
+          const plant = de[EC({r, c:plantCol})]?.v;
+          if (typeof plant==="number" && plant>EPS){
+            entry.plant = String(Math.round(plant*100)/100); overrideCount++;  // no database default — always project-specific
+          }
+          const matsTotal = de[EC({r, c:matsCol})]?.v;
+          if (typeof matsTotal==="number" && matsTotal>EPS && q>EPS){
+            const matsPerUnit = matsTotal/q;
+            const dbPce = item.pce_price||0;
+            if (Math.abs(matsPerUnit-dbPce)>0.005){ entry.mats = String(Math.round(matsPerUnit*100)/100); overrideCount++; }
+          }
         }
         if (comment){ entry.comments = comment; commentCount++; }  // methodology notes — incl. rows without qty
         lines[code] = entry;
@@ -4632,6 +4673,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
         inv, lines,
         linesCount: matched,
         commentCount,
+        overrideCount,
         totalSupplyLines: (snapSupply||[]).length,
         totalEE, totalComm,
         status:"Draft",
@@ -5415,6 +5457,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
                     ["Estimator",        importPreview.inv?.estimatedBy||"—"],
                     ["Lines",            importPreview.linesCount!=null ? `${importPreview.linesCount} entered` : "—"],
                     ["Estimator Comments",importPreview.commentCount!=null ? `${importPreview.commentCount} imported` : "—"],
+                    ["Hrs/Cost Overrides", importPreview.overrideCount!=null ? `${importPreview.overrideCount} imported` : "—"],
                     ["EE Internal",      importPreview.totalEE!=null ? fmt(importPreview.totalEE) : "—"],
                     ["Commercial",       importPreview.totalComm!=null ? fmt(importPreview.totalComm) : "—"],
                   ].map(([label,val])=>(
