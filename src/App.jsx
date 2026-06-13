@@ -624,6 +624,21 @@ function UnlockPinField({ onConfirm, onCancel }) {
   );
 }
 
+// Contingency resolution: before CART has been run, contingency is the
+// estimator's pre-risk percentage applied to the base. Once CART has been
+// run for THIS rate stream against a matching base, the $ figure switches
+// to the CART P50 and the displayed % becomes that P50 expressed as a
+// percentage of base. Re-running CART (or a base change) supersedes it —
+// callers compare cartResult.base to the live base to detect staleness.
+function resolveContingency(inv, base, isCommercial, tolerance=1){
+  const pct = parseFloat(isCommercial?inv.contComm:inv.contInt)||10;
+  const cr = inv.cartResult;
+  if (cr && cr.isCommercial===isCommercial && Math.abs(cr.base-base)<=tolerance && base>0){
+    return { amt:cr.p50, pct: cr.p50/base*100, source:"cart", cr };
+  }
+  return { amt: base*pct/100, pct, source:"manual" };
+}
+
 function InvestmentSetup({ inv, onChange }) {
   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const upd = (k,v) => onChange({...inv, [k]:v});
@@ -727,22 +742,52 @@ function InvestmentSetup({ inv, onChange }) {
                 {[2025,2026,2027,2028,2029,2030].map(y=><option key={y}>{y}</option>)}
               </select>
             </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-600 block mb-1">Contingency — Internal</label>
-              <div className="flex items-center gap-1">
-                <input type="number" min="0" max="100" step="1" value={inv.contInt}
-                  onChange={e=>upd("contInt",e.target.value)}
-                  className="w-20 border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400" />
-                <span className="text-xs text-gray-400">%</span>
+            <div className="col-span-2">
+              <label className="text-xs font-semibold text-gray-600 block mb-1">
+                Contingency — Internal
+                <span className="text-gray-400 font-normal ml-1">% is the estimator's pre-risk input · $ populates once CART has been run</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <input type="number" min="0" max="100" step="1" value={inv.contInt}
+                    onChange={e=>upd("contInt",e.target.value)}
+                    title="Pre-risk contingency percentage — your initial estimate before CART risk modelling"
+                    className="w-20 border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                  <span className="text-xs text-gray-400">% pre-risk</span>
+                </div>
+                {inv.cartResult && inv.cartResult.isCommercial===false ? (
+                  <div className="flex items-center gap-1.5 bg-purple-50 border border-purple-200 rounded px-2 py-1.5">
+                    <span className="text-xs">🎲</span>
+                    <span className="text-xs font-mono font-bold text-purple-800">{fmt(inv.cartResult.p50)}</span>
+                    <span className="text-xs text-purple-500">({(inv.cartResult.p50/(inv.cartResult.base||1)*100).toFixed(1)}% · CART P50)</span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-400 italic">$ — run CART to populate</span>
+                )}
               </div>
             </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-600 block mb-1">Contingency — Commercial</label>
-              <div className="flex items-center gap-1">
-                <input type="number" min="0" max="100" step="1" value={inv.contComm}
-                  onChange={e=>upd("contComm",e.target.value)}
-                  className="w-20 border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400" />
-                <span className="text-xs text-gray-400">%</span>
+            <div className="col-span-2">
+              <label className="text-xs font-semibold text-gray-600 block mb-1">
+                Contingency — Commercial
+                <span className="text-gray-400 font-normal ml-1">% is the estimator's pre-risk input · $ populates once CART has been run</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <input type="number" min="0" max="100" step="1" value={inv.contComm}
+                    onChange={e=>upd("contComm",e.target.value)}
+                    title="Pre-risk contingency percentage — your initial estimate before CART risk modelling"
+                    className="w-20 border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-orange-400" />
+                  <span className="text-xs text-gray-400">% pre-risk</span>
+                </div>
+                {inv.cartResult && inv.cartResult.isCommercial===true ? (
+                  <div className="flex items-center gap-1.5 bg-purple-50 border border-purple-200 rounded px-2 py-1.5">
+                    <span className="text-xs">🎲</span>
+                    <span className="text-xs font-mono font-bold text-purple-800">{fmt(inv.cartResult.p50)}</span>
+                    <span className="text-xs text-purple-500">({(inv.cartResult.p50/(inv.cartResult.base||1)*100).toFixed(1)}% · CART P50)</span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-400 italic">$ — run CART to populate</span>
+                )}
               </div>
             </div>
             {[
@@ -2920,15 +2965,19 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
   const otCost   = grandEELabCost * otRatio;
   const grandEEwithOT = grandEE + otCost;
 
-  const contPct   = parseFloat(isCommercial?inv.contComm:inv.contInt)||10;
-  const contAmt   = (isCommercial?grandComm:grandEEwithOT)*contPct/100;
-  const totalWithCont = (isCommercial?grandComm:grandEEwithOT)+contAmt;
+  const contBase  = isCommercial?grandComm:grandEEwithOT;
+  const contRes   = resolveContingency(inv, contBase, isCommercial);
+  const contPct   = contRes.pct;
+  const contAmt   = contRes.amt;
+  const totalWithCont = contBase+contAmt;
 
   // ── ESCALATION ──────────────────────────────────────────────────
   // Calculate weighted escalation per phase using project timeline
   const escResult = useMemo(()=>{
-    if (!escRates) return { escEE:0, escContr:0, escMat:0, escTotal:0, escComm:0, byCategory:{} };
-    const rEE    = Object.values(escRates.internal_ee.rates).map(r=>r/100);
+    // EE Internal labour is NOT escalated — EE labour rates are reviewed
+    // annually and already reflect current-year cost, so only Contractor
+    // and Materials costs carry a forward escalation allowance.
+    if (!escRates) return { escContr:0, escMat:0, escTotal:0, escComm:0, byCategory:{} };
     const rContr = Object.values(escRates.contractors.rates).map(r=>r/100);
     const rMat   = Object.values(escRates.materials.rates).map(r=>r/100);
 
@@ -2940,31 +2989,27 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
       "5": { start:parseInt(inv.constrStart||6)+parseInt(inv.constrDur||15)-1, dur:2   },
     };
 
-    let escEE=0, escContr=0, escMat=0;
+    let escContr=0, escMat=0;
     Object.entries(byPhase).forEach(([ph, costs])=>{
       const pd = phaseDefs[ph];
       if (!pd || pd.dur <= 0) return;
-      let avgEE=0, avgContr=0, avgMat=0;
+      let avgContr=0, avgMat=0;
       for (let m=pd.start; m<pd.start+pd.dur; m++) {
-        avgEE    += escalationIndex(m, rEE);
         avgContr += escalationIndex(m, rContr);
         avgMat   += escalationIndex(m, rMat);
       }
-      avgEE    /= pd.dur;
       avgContr /= pd.dur;
       avgMat   /= pd.dur;
-      escEE    += (costs.eeLabCost||0) * avgEE;
       escContr += (costs.contrCost||0) * avgContr;
       escMat   += (costs.matCost||0)   * avgMat;
     });
 
-    const escTotal = escEE + escContr + escMat;
+    const escTotal = escContr + escMat;
     const escComm  = escTotal * (1 + ANS_LAB); // ANS uplift on escalation for commercial
     return {
-      escEE, escContr, escMat, escTotal,
+      escContr, escMat, escTotal,
       escComm: isCommercial ? escComm : escTotal,
       byCategory: {
-        "EE Labour":   { val: escEE,    pct: grandEE>0   ? escEE/grandEE*100   : 0 },
         "Contractors": { val: escContr, pct: grandEE>0   ? escContr/grandEE*100 : 0 },
         "Materials":   { val: escMat,   pct: grandEE>0   ? escMat/grandEE*100   : 0 },
       }
@@ -3176,8 +3221,11 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
               {isCommercial && <div className="py-2 text-right pr-4 font-bold text-orange-800">{fmt(grandComm)}</div>}
             </div>
             <div className="grid text-xs border-b" style={{gridTemplateColumns: isCommercial?"1fr 100px 100px":"1fr 100px"}}>
-              <div className="px-4 py-2 text-gray-600">
-                Contingency ({contPct}%)
+              <div className="px-4 py-2 text-gray-600 flex items-center gap-1.5">
+                Contingency ({contPct.toFixed(1)}%)
+                {contRes.source==="cart"
+                  ? <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-semibold" title={`CART P50 — run ${new Date(contRes.cr.runAt).toLocaleDateString("en-AU")}`}>🎲 CART P50</span>
+                  : <span className="text-xs text-gray-400" title="Pre-risk estimator percentage — run CART to replace with a simulated P50">pre-risk</span>}
               </div>
               <div className="py-2 text-right pr-4 text-[var(--primary-600)] font-medium">{fmt(contAmt * (grandEEwithOT/(grandComm||grandEEwithOT)))}</div>
               {isCommercial && <div className="py-2 text-right pr-4 text-orange-600 font-medium">{fmt(contAmt)}</div>}
@@ -3297,13 +3345,14 @@ function FinancialScreen({ inv, lines, isCommercial }) {
       matANS  += (c.equipCost||0)*ANS_MAT;
     });
 
-    const contPct   = parseFloat(inv.contingency||"0")/100;
-
     // Cost* column = base cost (no ANS, no contingency)
     const base      = subCost + matCost + eeCost;
 
-    // Contingency applied to base
-    const cont      = base * contPct;
+    // Contingency: CART P50 once run for this stream against this base,
+    // else the estimator's pre-risk percentage (Investment Setup)
+    const contRes   = resolveContingency(inv, base, isCommercial);
+    const contPct   = contRes.pct/100;
+    const cont      = contRes.amt;
 
     // Total Estimated Cost (Cost* column) = base + contingency
     const totalCost = base + cont;
@@ -10568,9 +10617,15 @@ function CARTScreen({ inv, lines, isCommercial, onChange }) {
   };
 
   const run=()=>{
-    const res=cartRun(baseEstimate, systemic, risks, settings);
+    const res=cartRun(baseEstimate, systemic, readyRisks, settings);
     setResult(res);
     setRunKey(inputKey);
+    // Populate Investment Setup / Estimate Summary contingency — only after a run
+    onChange(prev=>({ ...prev, cartResult: {
+      p10:res.p10, p50:res.p50, p80:res.p80, p90:res.p90,
+      base: baseEstimate, isCommercial, riskCount: readyRisks.length,
+      runAt: new Date().toISOString(),
+    }}));
   };
 
   const updRisk=(i,k,v)=>setRisks(risks.map((r,j)=>j===i?{...r,[k]:v}:r));
