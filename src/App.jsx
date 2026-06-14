@@ -2917,7 +2917,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
   entered.forEach(item=>{
     const ph=item.wbs_code.split(".")[0];
     if(ph==="4") return;
-    if(!byPhase[ph]) byPhase[ph]={eeInt:0,comm:0,installHrs:0,commHrs:0,lines:0,eeLabCost:0,contrCost:0,matCost:0};
+    if(!byPhase[ph]) byPhase[ph]={eeInt:0,comm:0,installHrs:0,commHrs:0,lines:0,eeLabCost:0,eeLabCostExWAFHA:0,contrCost:0,matCost:0};
     const ln=lines[item.wbs_code]||{};
     const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
     byPhase[ph].eeInt+=c.eeInt; byPhase[ph].comm+=c.comm;
@@ -2926,6 +2926,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
     // they appear only in Phase 4 via the commissioning derivation below
     byPhase[ph].lines++;
     byPhase[ph].eeLabCost  += c.eeLabCost  || 0;
+    byPhase[ph].eeLabCostExWAFHA += c.isWAFHA ? 0 : (c.eeLabCost || 0);
     byPhase[ph].contrCost  += c.contrCost  || 0;
     byPhase[ph].matCost    += c.equipCost  || 0; // PCE/materials
   });
@@ -2970,7 +2971,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
     comm:    phase4.comm    + phase4Direct.comm,
     lines:   phase4.lines,
   };
-  if(phase4Combined.commHrs>0) byPhase["4"]={...phase4Combined,installHrs:0,eeLabCost:phase4Combined.eeInt,contrCost:0,matCost:0};
+  if(phase4Combined.commHrs>0) byPhase["4"]={...phase4Combined,installHrs:0,eeLabCost:phase4Combined.eeInt,eeLabCostExWAFHA:phase4Combined.eeInt,contrCost:0,matCost:0};
 
   // commGrandHrs available locally for WBS table column
   const commGrandHrs = phase4Combined.commHrs;
@@ -2988,7 +2989,9 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
     const awd = Object.values(resourceCodes||{}).find(r=>r.erp_code==="AWD" && r.ee_internal_rate_ot && r.ee_internal_rate);
     return awd ? (awd.ee_internal_rate_ot/awd.ee_internal_rate - 1) : 0;
   },[resourceCodes]);
-  const grandEELabCost = Object.values(byPhase).reduce((a,p)=>a+(p.eeLabCost||0),0);
+  // OT base excludes WAFHA (Work Away From Home) — in the master it sits in the
+  // Travel column and is not subject to the overtime uplift, only EE labour is.
+  const grandEELabCost = Object.values(byPhase).reduce((a,p)=>a+(p.eeLabCostExWAFHA||0),0);
   const otCost   = grandEELabCost * otRatio;
   const grandEEwithOT = grandEE + otCost;
 
