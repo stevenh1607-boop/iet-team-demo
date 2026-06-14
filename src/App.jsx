@@ -636,6 +636,13 @@ function resolveContingency(inv, base, isCommercial, tolerance=1){
   if (cr && cr.isCommercial===isCommercial && Math.abs(cr.base-base)<=tolerance && base>0){
     return { amt:cr.p50, pct: cr.p50/base*100, source:"cart", cr };
   }
+  // Fixed dollar contingency (e.g. CART P50 entered in the workbook's
+  // General Information D40/D41, imported as a hard $ figure). Added to the
+  // base regardless of base value, matching the MASTER Summary behaviour.
+  const fixed = parseFloat(isCommercial?inv.contCommDollar:inv.contIntDollar);
+  if (fixed && fixed>0){
+    return { amt: fixed, pct: base>0 ? fixed/base*100 : 0, source:"fixed" };
+  }
   return { amt: base*pct/100, pct, source:"manual" };
 }
 
@@ -762,7 +769,15 @@ function InvestmentSetup({ inv, onChange }) {
                     <span className="text-xs text-purple-500">({(inv.cartResult.p50/(inv.cartResult.base||1)*100).toFixed(1)}% · CART P50)</span>
                   </div>
                 ) : (
-                  <span className="text-xs text-gray-400 italic">$ — run CART to populate</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-gray-400">$</span>
+                    <input type="number" min="0" step="1000" value={inv.contIntDollar}
+                      onChange={e=>upd("contIntDollar",e.target.value)}
+                      placeholder="CART $ (overrides %)"
+                      title="Fixed contingency $ from CART P50 (workbook D40). Overrides the % when set."
+                      className="w-32 border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400" />
+                    {inv.contIntDollar ? <span className="text-xs text-purple-600 font-semibold">CART $ active</span> : null}
+                  </div>
                 )}
               </div>
             </div>
@@ -786,7 +801,15 @@ function InvestmentSetup({ inv, onChange }) {
                     <span className="text-xs text-purple-500">({(inv.cartResult.p50/(inv.cartResult.base||1)*100).toFixed(1)}% · CART P50)</span>
                   </div>
                 ) : (
-                  <span className="text-xs text-gray-400 italic">$ — run CART to populate</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-gray-400">$</span>
+                    <input type="number" min="0" step="1000" value={inv.contCommDollar}
+                      onChange={e=>upd("contCommDollar",e.target.value)}
+                      placeholder="CART $ (overrides %)"
+                      title="Fixed contingency $ from CART P50 (workbook D41). Overrides the % when set."
+                      className="w-32 border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400" />
+                    {inv.contCommDollar ? <span className="text-xs text-purple-600 font-semibold">CART $ active</span> : null}
+                  </div>
                 )}
               </div>
             </div>
@@ -4555,8 +4578,19 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
       inv.constrStart = giVal(starts("Construction"))     || "6"; inv.constrDur = giVal(starts("Construction"),2)     || "15";
       const ci = giNum(starts("Investment Contingency (Internally"));
       const cc = giNum(starts("Investment Contingency (Commercially"));
-      if (ci!==undefined) inv.contInt  = String(Math.round(ci*1000)/10);
-      if (cc!==undefined) inv.contComm = String(Math.round(cc*1000)/10);
+      // General Information D40/D41 hold the contingency. In the MASTER the
+      // Summary reads these as a $ amount (C2571='General Information'!D40),
+      // deriving the % as $/base. The blank template ships 0.001 as a
+      // placeholder. So: a value >=1 is a CART $ figure (store as $ override);
+      // a value <1 is a legacy fraction placeholder (read as a %).
+      if (ci!==undefined){
+        if (ci>=1) inv.contIntDollar = String(Math.round(ci*100)/100);
+        else       inv.contInt = String(Math.round(ci*1000)/10);
+      }
+      if (cc!==undefined){
+        if (cc>=1) inv.contCommDollar = String(Math.round(cc*100)/100);
+        else       inv.contComm = String(Math.round(cc*1000)/10);
+      }
       const ms=[];
       const inv1 = giFind(starts("Invoice 1"));
       if (inv1) for (let i=0;i<10;i++){
@@ -4633,8 +4667,8 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
       rpt.gi.push(["Planning Phase (start/dur)",     `${inv.planStart} / ${inv.planDur}`]);
       rpt.gi.push(["Design Phase (start/dur)",       `${inv.designStart} / ${inv.designDur}`]);
       rpt.gi.push(["Construction Phase (start/dur)", `${inv.constrStart} / ${inv.constrDur}`]);
-      rpt.gi.push(["Contingency — Internal",  inv.contInt+"%"]);
-      rpt.gi.push(["Contingency — Commercial",inv.contComm+"%"]);
+      rpt.gi.push(["Contingency — Internal",  inv.contIntDollar ? ("$"+Number(inv.contIntDollar).toLocaleString()+" (CART $ from D40)") : (inv.contInt+"%")]);
+      rpt.gi.push(["Contingency — Commercial",inv.contCommDollar ? ("$"+Number(inv.contCommDollar).toLocaleString()+" (CART $ from D41)") : (inv.contComm+"%")]);
       rpt.gi.push(["Milestones",              inv.milestones?.length ? `${inv.milestones.length} found` : "none found"]);
       (inv.milestones||[]).forEach(m=>rpt.gi.push(["  · "+m.stage.slice(0,60), `month ${m.month} · ${m.pct}%`]));
 
@@ -10480,6 +10514,7 @@ const defaultInv = {
   reviewedBy:"Daniel Lawrence", startMonth:"Jul", startYear:"2025",
   planStart:"1", planDur:"4", designStart:"1", designDur:"9",
   constrStart:"6", constrDur:"15", contInt:"10", contComm:"10",
+  contIntDollar:"", contCommDollar:"",
 };
 
 // ── CART — CONTINGENCY & ACCURACY RANGE TOOL (Monte Carlo) ──────
