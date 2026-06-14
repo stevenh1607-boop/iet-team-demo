@@ -4349,7 +4349,7 @@ function TemplateLibrary({ onLoad, saved, setSaved, currentInv, currentLines }) 
 
 function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
   // Resolved pricing context — used to freeze a rate snapshot at the moment of approval
-  const { supply: snapSupply, rates: snapRates } = useData();
+  const { supply: snapSupply, rates: snapRates, commLookup: snapCommLookup } = useData();
   const [hubTab,      setHubTab]      = useState("portfolio");
   const [saved,       setSaved]       = useState([]);
   const [search,      setSearch]      = useState("");
@@ -4653,8 +4653,8 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
           // Not a supply-item WBS code — check direct-entry commissioning
           // rows (e.g. SCADA RTU Cubicle, Misc Works), which have no
           // database hours and are entered as a quantity per investment.
-          const cd = (snapCommLookup||{})[code];
-          if (cd?.direct_entry && hasQty){
+          const cd = snapCommLookup?.[code];
+          if (cd && cd.direct_entry && hasQty){
             lines[`comm_direct_${code}`] = { qty: String(Math.round(qty*10000)/10000), _commOvrd:true };
             commDirectCount++;
             rpt.commDirect.push([code, cd.description||"", qty]);
