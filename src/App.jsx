@@ -4702,8 +4702,20 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
           const cd = snapCommLookup?.[code];
           if (cd && cd.direct_entry && hasQty){
             lines[`comm_direct_${code}`] = { qty: String(Math.round(qty*10000)/10000), _commOvrd:true };
+            // Capture the estimator's user-entered EE unit hours — the "golden"
+            // cells in column Z, supplied by the SCADA / design engineer (e.g.
+            // SCADA RTU Cubicle panels, Misc Works). These are estimator input,
+            // not derivable from the lookup's per-unit default (often 0 for
+            // these rows), so store the workbook hours (Z × qty) as an override.
+            const dz = de[EC({r, c:eeHrsCol})]?.v;
+            let commHrsNote = "";
+            if (typeof dz === "number" && dz > 0){
+              const totHrs = Math.round(dz*qty*100)/100;
+              lines[`comm_ovrd_${code}`] = { qty: String(totHrs), _commOvrd:true };
+              commHrsNote = `${totHrs} hrs (Z ${dz}×${qty})`;
+            }
             commDirectCount++;
-            rpt.commDirect.push([code, cd.description||"", qty]);
+            rpt.commDirect.push([code, cd.description||"", qty, commHrsNote]);
           } else if (hasQty) { unmatched++; rpt.unmatched.push([code, qty]); }
           continue;
         }
@@ -4811,9 +4823,9 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
         L.push(code.padEnd(18)+field.padEnd(32)+fmtN(oldV).toString().padStart(14)+("  "+fmtN(newV)).padStart(16)+"  "+desc.slice(0,50)));
 
       sec(`DIRECT-ENTRY COMMISSIONING — ${rpt.commDirect.length}`);
-      L.push("WBS Code".padEnd(18)+"Qty".padStart(6)+"  Description");
+      L.push("WBS Code".padEnd(18)+"Qty".padStart(6)+"  EE Hrs (from Z)".padEnd(22)+"Description");
       hr();
-      rpt.commDirect.forEach(([code,desc,qty])=>L.push(code.padEnd(18)+fmtN(qty).toString().padStart(6)+"  "+desc.slice(0,70)));
+      rpt.commDirect.forEach(([code,desc,qty,hrsNote])=>L.push(code.padEnd(18)+fmtN(qty).toString().padStart(6)+"  "+String(hrsNote||"(lookup default)").padEnd(22)+desc.slice(0,55)));
 
       sec(`ESTIMATOR COMMENTS — ${rpt.comments.length}`);
       rpt.comments.forEach(([code,desc,comment])=>{
