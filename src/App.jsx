@@ -4648,11 +4648,20 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
 
       const itemByCode = new Map((snapSupply||[]).map(s=>[s.wbs_code,s]));
       const known = itemByCode;
+      // Install rows whose labour is auto-derived from supply quantities (some
+      // supply item's install_wbs targets them). The workbook books install
+      // labour on the combined .4. install row AND carries the .1. supply rows;
+      // the app re-derives install labour from the supply rows via installAgg,
+      // so importing a quantity onto a derived install row double-counts the
+      // labour. Skip those — installAgg rebuilds them from supply. Standalone
+      // install rows (earthworks, fibre splicing, etc. with no supply feed) are
+      // NOT in this set and keep their imported quantity.
+      const derivedInstallSet = new Set((snapSupply||[]).map(s=>s.install_wbs).filter(Boolean));
       const lines = {};
-      let matched=0, unmatched=0, commentCount=0, overrideCount=0, commDirectCount=0;
+      let matched=0, unmatched=0, commentCount=0, overrideCount=0, commDirectCount=0, derivedSkipped=0;
 
       // ── Import report — plain-text log for comparing against the source ──
-      const rpt = { gi:[], qty:[], comments:[], overrides:[], commDirect:[], unmatched:[] };
+      const rpt = { gi:[], qty:[], comments:[], overrides:[], commDirect:[], unmatched:[], derivedSkip:[] };
       rpt.gi.push(["Investment Name",        inv.name]);
       rpt.gi.push(["Investment No.",         inv.number]);
       rpt.gi.push(["WACS No.",               inv.wacs]);
@@ -4697,7 +4706,15 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
         }
         const item = itemByCode.get(code);
         const entry = lines[code] || {};
-        if (hasQty){
+        const isDerivedInstall = derivedInstallSet.has(code);
+        if (hasQty && isDerivedInstall){
+          // Quantity intentionally NOT imported — install labour for this row
+          // is derived from the linked supply quantities (prevents the double
+          // count). Comments below are still captured.
+          derivedSkipped++;
+          rpt.derivedSkip.push([code, item.description||"", qty]);
+        }
+        if (hasQty && !isDerivedInstall){
           entry.qty = String(Math.round(qty*10000)/10000);
           const factor = de[EC({r, c:facCol})]?.v;
           if (typeof factor==="number" && factor!==1 && factor>0) entry.factor = String(factor);
@@ -4778,6 +4795,11 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
       L.push("WBS Code".padEnd(18)+"Qty".padStart(10)+"  Factor".padEnd(8)+"  Description");
       hr();
       rpt.qty.forEach(([code,desc,qty,fac])=>L.push(code.padEnd(18)+fmtN(qty).padStart(10)+"  "+String(fac).padEnd(8)+"  "+desc.slice(0,70)));
+
+      sec(`DERIVED INSTALL ROWS SKIPPED — ${rpt.derivedSkip.length} (labour auto-derived from supply; quantity not imported to avoid double-count)`);
+      L.push("WBS Code".padEnd(18)+"Wkbk Qty".padStart(10)+"  Description");
+      hr();
+      rpt.derivedSkip.forEach(([code,desc,qty])=>L.push(code.padEnd(18)+fmtN(qty).padStart(10)+"  "+String(desc).slice(0,70)));
 
       sec(`HOURS / COST OVERRIDES — ${rpt.overrides.length} (workbook value differs from database default)`);
       L.push("WBS Code".padEnd(18)+"Field".padEnd(32)+"DB Default".padStart(14)+"  Workbook Value".padStart(16)+"  Description");
