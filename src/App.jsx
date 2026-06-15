@@ -266,7 +266,7 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
     items.forEach(item => {
       const ln = lines[item.wbs_code] || {};
       const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd,
-                         ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, null, 0);
+                         ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, resourceCodes, 0);
       const isContr = (ln.delivery||item.delivery_method||"") === "Contractor Delivered";
       const res = isContr ? "Contractor" : (item.resource_main || "ZS Electrical Technician");
       if (!costByRes[res]) costByRes[res] = {hours:0, dollars:0};
@@ -495,9 +495,22 @@ const isWAFHAItem = (item) =>
   (item?.uom === "day" && (item?.description||"").toLowerCase().includes("accommodation"));
 
 // ANS margins
-const ANS_LAB  = 0.20;
+// Materials and Contractor margins are flat across all resources (per ANS).
+// Labour margin VARIES BY RESOURCE TYPE (from -0.59% to 103.51% — see Rates
+// sheet in MASTER.xlsm / resource_codes.json `ans_margin_pct`). There is no
+// single "labour ANS margin" — ANS_LAB_DEFAULT below is a fallback only, used
+// if a resource genuinely has no entry in resource_codes.json.
+const ANS_LAB_DEFAULT = 0.20;
 const ANS_MAT  = 0.2686;
 const ANS_CON  = 0.20;
+
+// Per-resource labour ANS margin lookup. `ratesLookup` is expected to be
+// resource_codes.json (keyed by resource_name, field `ans_margin_pct`).
+// Falls back to ANS_LAB_DEFAULT only if the resource isn't found.
+function labMargin(resourceName, ratesLookup) {
+  const r = ratesLookup?.[resourceName];
+  return (r && r.ans_margin_pct != null) ? r.ans_margin_pct : ANS_LAB_DEFAULT;
+}
 
 const RESOURCE_TYPES = [
   "ZS Electrical Technician","ZS Specialist Technician","Metering Technician - Zone Substation",
@@ -531,7 +544,7 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
   // WAFHA rate: use manager-edited rate from ratesLookup if available, else item rate, else workbook default
   const wafhaRate  = ratesLookup?.["Work Away From Home"]
     ? (isCommercial
-        ? (ratesLookup["Work Away From Home"].ee_commercial_rate || 345.83)
+        ? (ratesLookup["Work Away From Home"].ee_commercial_rate || 359.50)
         : (ratesLookup["Work Away From Home"].ee_internal_rate   || 359.50))
     : (item.ee_labour_rate || 359.50);
   const eeRate     = isWAFHA ? wafhaRate : (item.ee_labour_rate || 246.95);
@@ -554,7 +567,7 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
   const plantFact  = plant * f;
   const matBurden  = isCommercial ? 0 : equipCost * MAT_BURDEN;
   const eeInt  = eeLabCost + contrCost + plantFact + equipCost + matBurden;
-  const comm   = eeLabCost*(1+ANS_LAB) + contrCost*(1+ANS_CON) + plantFact + equipCost*(1+ANS_MAT);
+  const comm   = eeLabCost*(1+labMargin(effectiveResource, ratesLookup)) + contrCost*(1+ANS_CON) + plantFact + equipCost*(1+ANS_MAT);
   // WAFHA items: installHrs must always be 0 — they are day-rated, not hour-rated
   const finalInstallHrs = isWAFHA ? 0 : installHrs;
   return { q, f, isContr, isWAFHA, installHrs: finalInstallHrs, commHrs, eeLabHrs, eeLabCost,
@@ -1148,12 +1161,12 @@ function CommScrollList({ selectedCommGroup, children }) {
 }
 
 function EstimationScreen({ isCommercial, lines, setLines }) {
-  const { wbs, supply, rates, loading, commLookup, commProfiles } = useData();
-  const ratesLookup = useMemo(() => {
-    const map = {};
-    (rates||[]).forEach(r => { map[r.resource_type] = r; });
-    return map;
-  }, [rates]);
+  const { wbs, supply, resourceCodes, loading, commLookup, commProfiles } = useData();
+  // ratesLookup sources from resource_codes.json (51 entries, keyed by
+  // resource_name, includes ans_margin_pct per resource) — NOT the legacy
+  // resource_rates.json (24 entries, no per-resource margin field). See
+  // ANS_LAB_FIX_SCOPE.md.
+  const ratesLookup = resourceCodes;
 
   // Pre-compute L3 group base totals for percentage-of-total prelim items.
   // For each L3 group, sum contractor costs of all non-prelim items.
@@ -1265,15 +1278,18 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
       // Resource override
       const resName   = resourceOvrd[inst.wbs_code]?.install || inst.resource_main || "ZS Electrical Technician";
       const resData   = ratesLookup[resName];
-      const eeRate    = isCommercial
-        ? (resData?.ee_commercial_rate || inst.ee_labour_rate || 246.95)
-        : (resData?.ee_internal_rate   || inst.ee_labour_rate || 246.95);
+      // eeRate/eeLabCost/eeInt always use the EE INTERNAL rate (same convention
+      // as calcLine) — the commercial uplift is applied separately via
+      // labMargin() below, using this resource's own ANS margin. Previously
+      // this used the COMMERCIAL rate directly when isCommercial, then applied
+      // a flat +20% on top of it again — double-counting the margin.
+      const eeRate    = resData?.ee_internal_rate || inst.ee_labour_rate || 246.95;
       const contrRate = parseFloat(instLn.contrRate || "") || inst.contractor_rate || 0;
       // Cost calc
       const eeLabCost   = isContr ? 0 : activeHrs * eeRate;
       const contrCost   = isContr ? derivedQty * contrRate : 0;
       const eeInt       = eeLabCost + contrCost;
-      const comm        = isContr ? contrCost * (1+ANS_CON) : eeLabCost * (1+ANS_LAB);
+      const comm        = isContr ? contrCost * (1+ANS_CON) : eeLabCost * (1+labMargin(resName, ratesLookup));
       agg[inst.wbs_code] = {
         item: inst, linked, derivedHrs, derivedQty,
         ovrdHrs, activeHrs, delivery, isContr,
@@ -1342,19 +1358,21 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
       if (data.qty <= 0) return;
       if (commLookup[commWbs]?.direct_entry) return; // handled by direct-entry section below
       const l4 = commWbs.split('.').slice(0,4).join('.');
-      if (!g[l4]) g[l4] = { items:[], totalHrs:0, totalCost:0 };
+      if (!g[l4]) g[l4] = { items:[], totalHrs:0, totalCost:0, totalComm:0 };
       const scale     = getScaleFactor(commProfiles, data.profile_id, data.qty);
       const baseHrs   = data.qty * (data.hrs_per_unit || 0);
       const ovrdKey   = `comm_ovrd_${commWbs}`;
       const ovrd      = lines[ovrdKey]?.qty;
       const scaledHrs = (ovrd !== undefined && ovrd !== "") ? (parseFloat(ovrd)||0) : baseHrs * scale;
       const rate      = data.ee_labour_rate || 139.26;
+      const cost      = scaledHrs * rate;
       g[l4].items.push({ commWbs, ...data, scale, baseHrs, scaledHrs, rate, isOverridden: ovrd !== undefined && ovrd !== "" });
       g[l4].totalHrs  += scaledHrs;
-      g[l4].totalCost += scaledHrs * rate;
+      g[l4].totalCost += cost;
+      g[l4].totalComm += cost * (1 + labMargin(data.resource_type, ratesLookup));
     });
     return g;
-  },[commTotals, commProfiles, lines]);
+  },[commTotals, commProfiles, lines, ratesLookup]);
 
   const commGrandHrs  = Object.values(commGroups).reduce((a,g)=>a+g.totalHrs, 0)
     + Object.entries(commLookup).filter(([,d])=>d.direct_entry).reduce((a,[wbs,data])=>{
@@ -1370,13 +1388,25 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
         const hrs = (ovrd!==undefined&&ovrd!=="") ? (parseFloat(ovrd)||0) : dq*(data.hrs_per_unit||0);
         return a + hrs*(data.ee_labour_rate||139.26);
       }, 0);
+  // Commercial total for Phase 4 — per-resource ANS labour margin (NOT a flat
+  // 20%). Mirrors commGrandCost but applies labMargin(resource_type) per item
+  // / per direct-entry row before summing, since margins range -0.59%..103.51%
+  // across resource types and Phase 4 mixes many of them.
+  const commGrandComm = Object.values(commGroups).reduce((a,g)=>a+g.totalComm, 0)
+    + Object.entries(commLookup).filter(([,d])=>d.direct_entry).reduce((a,[wbs,data])=>{
+        const dq = parseFloat(lines[`comm_direct_${wbs}`]?.qty||"0")||0;
+        const ovrd = lines[`comm_ovrd_${wbs}`]?.qty;
+        const hrs = (ovrd!==undefined&&ovrd!=="") ? (parseFloat(ovrd)||0) : dq*(data.hrs_per_unit||0);
+        const cost = hrs*(data.ee_labour_rate||139.26);
+        return a + cost*(1+labMargin(data.resource_type, ratesLookup));
+      }, 0);
 
   // ALL 144 commission rows — always visible even when qty=0
   const commAllGroups = useMemo(()=>{
     const g = {};
     Object.entries(commLookup).forEach(([commWbs, data])=>{
       const l4 = commWbs.split('.').slice(0,4).join('.');
-      if (!g[l4]) g[l4] = { label: data.description?.split(' - ')[0] || l4, items:[], totalHrs:0, totalCost:0 };
+      if (!g[l4]) g[l4] = { label: data.description?.split(' - ')[0] || l4, items:[], totalHrs:0, totalCost:0, totalComm:0 };
       const directKey  = `comm_direct_${commWbs}`;
       const directQty  = data.direct_entry ? (parseFloat(lines[directKey]?.qty||"0")||0) : 0;
       const derivedQty = commTotals[commWbs]?.qty || 0;
@@ -1390,12 +1420,14 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
       const item       = { wbs:commWbs, ...data, derivedQty, directQty, effectiveQty, scale, baseHrs, scaledHrs, rate, isOverridden: ovrd !== undefined && ovrd !== "" };
       g[l4].items.push(item);
       if (effectiveQty > 0) {
+        const cost = scaledHrs * rate;
         g[l4].totalHrs  += scaledHrs;
-        g[l4].totalCost += scaledHrs * rate;
+        g[l4].totalCost += cost;
+        g[l4].totalComm += cost * (1 + labMargin(data.resource_type, ratesLookup));
       }
     });
     return g;
-  },[commLookup, commTotals, commProfiles, lines]);
+  },[commLookup, commTotals, commProfiles, lines, ratesLookup]);
 
   // When navigating to Phase 4 — select the first active commissioning group
   useEffect(()=>{
@@ -1476,7 +1508,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
               <div className="text-right text-xs">
                 <div className="font-bold">{fmtHrs(commGrandHrs)} total hrs</div>
                 <div className="font-bold">{fmt(commGrandCost)} EE internal</div>
-                {isCommercial && <div className="font-bold text-orange-300">{fmt(commGrandCost*(1+ANS_LAB))} comm</div>}
+                {isCommercial && <div className="font-bold text-orange-300">{fmt(commGrandComm)} comm</div>}
               </div>
             </div>
             <div className="flex-1 flex flex-col overflow-x-auto min-h-0">
@@ -1630,7 +1662,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
               </div>
               {isCommercial && <div className="py-1.5 px-2 bg-orange-600 rounded text-white flex justify-between">
                 <span className="text-xs font-semibold">Commercial</span>
-                <span className="text-xs font-bold">{fmt(commGrandCost*(1+ANS_LAB))}</span>
+                <span className="text-xs font-bold">{fmt(commGrandComm)}</span>
               </div>}
             </div>
           </div>
@@ -2181,12 +2213,12 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
   );
 }
 function ReviewLines({ lines, isCommercial }) {
-  const { supply, commLookup, commProfiles } = useData();
+  const { supply, commLookup, commProfiles, resourceCodes } = useData();
   const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
 
   const totals = entered.reduce((a,item)=>{
     const ln=lines[item.wbs_code]||{};
-    const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
+    const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
     return {installHrs:a.installHrs+c.installHrs,eeInt:a.eeInt+c.eeInt,comm:a.comm+c.comm};
   },{installHrs:0,eeInt:0,comm:0});
 
@@ -2216,7 +2248,7 @@ function ReviewLines({ lines, isCommercial }) {
     const commHrs    = (ovrd!==undefined&&ovrd!=="")?parseFloat(ovrd)||0:baseHrs*scale;
     const rate       = data.ee_labour_rate||139.26;
     const eeInt      = commHrs*rate;
-    const comm       = eeInt*(1+ANS_LAB);
+    const comm       = eeInt*(1+labMargin(data.resource_type, resourceCodes));
     phase4Rows.push({ commWbs, data, derivedQty, isDirect, scale, baseHrs, commHrs, rate, eeInt, comm,
                       isHrsOvrd: ovrd!==undefined&&ovrd!=="" });
   });
@@ -2303,7 +2335,7 @@ function ReviewLines({ lines, isCommercial }) {
               <tbody>
                 {items.map((item,i)=>{
                   const ln=lines[item.wbs_code]||{};
-                  const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
+                  const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
                   return (
                     <tr key={item.wbs_code} className={`border-b ${i%2===0?"bg-white":"bg-gray-50"} hover:bg-[var(--primary-50)]`}>
                       <td className="px-3 py-1.5 font-mono text-[var(--primary-600)] whitespace-nowrap text-[11px]">{item.wbs_code}</td>
@@ -2325,21 +2357,21 @@ function ReviewLines({ lines, isCommercial }) {
                   <td className="px-3 py-1.5 text-right font-bold text-purple-700">
                     {fmtHrs(items.reduce((a,item)=>{
                       const ln=lines[item.wbs_code]||{};
-                      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
+                      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
                       return a+c.installHrs;
                     },0))||"—"}
                   </td>
                   <td className="px-3 py-1.5 text-right font-bold text-[var(--primary-900)]">
                     {fmt(items.reduce((a,item)=>{
                       const ln=lines[item.wbs_code]||{};
-                      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
+                      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
                       return a+c.eeInt;
                     },0))}
                   </td>
                   {isCommercial && <td className="px-3 py-1.5 text-right font-bold text-orange-800">
                     {fmt(items.reduce((a,item)=>{
                       const ln=lines[item.wbs_code]||{};
-                      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
+                      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
                       return a+c.comm;
                     },0))}
                   </td>}
@@ -2426,7 +2458,7 @@ function exportSummaryPDF(ctx) {
     inv, lines, isCommercial, byPhase, grandEE, grandComm,
     contPct, contAmt, escResult, finalTotal, commGrandHrs,
     nodeRollup, phaseNodes, openNodes, phaseNames, descMap, entered,
-    supply, commTotals, commProfiles, ANS_LAB, ANS_MAT, ANS_CON,
+    supply, commTotals, commProfiles, resourceCodes, ANS_MAT, ANS_CON,
     otCost, grandEEwithOT,
   } = ctx;
 
@@ -2501,7 +2533,7 @@ function exportSummaryPDF(ctx) {
     doGeneratePDF({ inv, lines, isCommercial, byPhase, grandEE, grandComm,
       contPct, contAmt, escResult, finalTotal, commGrandHrs, nodeRollup,
       phaseNodes, openNodes, phaseNames, descMap, entered, supply, commTotals,
-      commProfiles, ANS_LAB, ANS_MAT, ANS_CON, otCost, grandEEwithOT,
+      commProfiles, resourceCodes, ANS_MAT, ANS_CON, otCost, grandEEwithOT,
       useCurrentExpand, includeLines, includeFinancial, commercialOnly });
   };
 }
@@ -2511,7 +2543,7 @@ function doGeneratePDF(ctx) {
     inv, lines, isCommercial, byPhase, grandEE, grandComm,
     contPct, contAmt, escResult, finalTotal, commGrandHrs, nodeRollup,
     phaseNodes, openNodes, phaseNames, descMap, entered, supply, commTotals,
-    commProfiles, ANS_LAB, ANS_MAT, ANS_CON,
+    commProfiles, resourceCodes, ANS_MAT, ANS_CON,
     useCurrentExpand, includeLines, includeFinancial,
   } = ctx;
   const otCostVal      = ctx.otCost || 0;
@@ -2656,10 +2688,10 @@ function doGeneratePDF(ctx) {
     supply.forEach(item => {
       const ln = lines[item.wbs_code]||{};
       if(!parseFloat(ln.qty||'0')) return;
-      const c = calcLine(item,ln.qty||'',ln.factor||'1',ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
+      const c = calcLine(item,ln.qty||'',ln.factor||'1',ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
       const isContr=(ln.delivery||item.delivery_method||'')==='Contractor Delivered';
       if(isContr){subCost+=(c.contrCost||0)+(c.plantFact||0);subANS+=(c.contrCost||0)*ANS_CON;}
-      else{eeCost+=(c.eeLabCost||0)+(c.plantFact||0);eeANS+=(c.eeLabCost||0)*ANS_LAB;}
+      else{eeCost+=(c.eeLabCost||0)+(c.plantFact||0);eeANS+=(c.eeLabCost||0)*labMargin(c.effectiveResource, resourceCodes);}
       matCost+=c.equipCost||0; matANS+=(c.equipCost||0)*ANS_MAT;
     });
     const contPctF=parseFloat(inv.contingency||'0')/100;
@@ -2880,7 +2912,7 @@ function doGeneratePDF(ctx) {
 
   ${(isCommercial&&grandComm>0&&!commercialOnly)?`
   <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:8px 12px;font-size:10px;color:#92400e;margin-bottom:12px;">
-    <strong>ANS Margins:</strong> Labour ×${((ANS_LAB)*100).toFixed(0)}% &nbsp;·&nbsp;
+    <strong>ANS Margins:</strong> Labour — varies by resource (see Resource Rates) &nbsp;·&nbsp;
     Materials ×${((ANS_MAT)*100).toFixed(0)}% &nbsp;·&nbsp;
     Contractor ×${((ANS_CON)*100).toFixed(0)}% &nbsp;·&nbsp;
     EE Internal base: ${fmt(grandEEwithOTV)} &nbsp;·&nbsp; Commercial uplift: ${fmt(grandComm-grandEEwithOTV)}
@@ -2919,7 +2951,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
     if(ph==="4") return;
     if(!byPhase[ph]) byPhase[ph]={eeInt:0,comm:0,installHrs:0,commHrs:0,lines:0,eeLabCost:0,eeLabCostExWAFHA:0,contrCost:0,matCost:0};
     const ln=lines[item.wbs_code]||{};
-    const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
+    const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
     byPhase[ph].eeInt+=c.eeInt; byPhase[ph].comm+=c.comm;
     byPhase[ph].installHrs+=c.installHrs;
     // commHrs from supply items excluded from construction phase —
@@ -2952,7 +2984,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
     const hrs=ovrd!==undefined&&ovrd!==""?(parseFloat(ovrd)||0):baseHrs*scale;
     const rate=ct.ee_labour_rate||eeRate;
     const cost=hrs*rate;
-    return {commHrs:a.commHrs+hrs,eeInt:a.eeInt+cost,comm:a.comm+cost*(1+ANS_LAB),lines:a.lines+1};
+    return {commHrs:a.commHrs+hrs,eeInt:a.eeInt+cost,comm:a.comm+cost*(1+labMargin(ct.resource_type, resourceCodes)),lines:a.lines+1};
   },{commHrs:0,eeInt:0,comm:0,lines:0});
 
   // Add direct-entry commission rows (earthing, PSN/CSN, misc) to phase4 totals
@@ -2963,7 +2995,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
     const hrs  = (ovrd!==undefined&&ovrd!=="")?(parseFloat(ovrd)||0):dq*(data.hrs_per_unit||0);
     const rate = data.ee_labour_rate||139.26;
     const cost = hrs*rate;
-    return {commHrs:a.commHrs+hrs,eeInt:a.eeInt+cost,comm:a.comm+cost*(1+ANS_LAB)};
+    return {commHrs:a.commHrs+hrs,eeInt:a.eeInt+cost,comm:a.comm+cost*(1+labMargin(data.resource_type, resourceCodes))};
   },{commHrs:0,eeInt:0,comm:0});
   const phase4Combined = {
     commHrs: phase4.commHrs + phase4Direct.commHrs,
@@ -3035,7 +3067,12 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
     });
 
     const escTotal = escContr + escMat;
-    const escComm  = escTotal * (1 + ANS_LAB); // ANS uplift on escalation for commercial
+    // Commercial uplift on escalation: Contractor-escalation uses the
+    // Contractor ANS margin, Materials-escalation uses the Materials ANS
+    // margin. (Previously both were uplifted by the flat labour margin
+    // ANS_LAB — a pre-existing bug unrelated to, but adjacent to, the
+    // per-resource labour margin fix.)
+    const escComm  = escContr * (1 + ANS_CON) + escMat * (1 + ANS_MAT);
     return {
       escContr, escMat, escTotal,
       escComm: isCommercial ? escComm : escTotal,
@@ -3065,7 +3102,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
     };
     entered.forEach(item=>{
       const ln=lines[item.wbs_code]||{};
-      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
+      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
       accum(item.wbs_code, c);
     });
     // Phase 4 commission nodes — derived from commission links with scaling
@@ -3077,10 +3114,10 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
       const hrs     = (ovrd!==undefined&&ovrd!=="")?(parseFloat(ovrd)||0):baseHrs*scale;
       const rate    = ct.ee_labour_rate || 139.26;
       const cost    = hrs * rate;
-      accum(commWbs, { eeInt:cost, comm:cost*(1+ANS_LAB), installHrs:0, commHrs:hrs });
+      accum(commWbs, { eeInt:cost, comm:cost*(1+labMargin(ct.resource_type, resourceCodes)), installHrs:0, commHrs:hrs });
     });
     return m;
-  },[entered, lines, isCommercial, commTotals, commProfiles]);
+  },[entered, lines, isCommercial, commTotals, commProfiles, resourceCodes]);
 
   // WBS description lookup (supply WBS + commission WBS)
   const descMap = useMemo(()=>{
@@ -3159,7 +3196,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
                 ? <span className="text-xs bg-green-100 text-green-700 border border-green-300 px-3 py-2 rounded font-semibold flex items-center gap-1.5">🔒 Approved — read only</span>
                 : <button onClick={onSave} className="bg-green-700 hover:bg-green-600 text-white text-xs px-4 py-2 rounded font-semibold shadow">💾 Save Investment</button>
               }
-              <button onClick={()=>exportSummaryPDF({inv,lines,isCommercial,byPhase,grandEE,grandComm,contPct,contAmt,escResult,finalTotal,commGrandHrs,nodeRollup,phaseNodes,openNodes,phaseNames,descMap,entered,supply,commTotals,commProfiles,ANS_LAB,ANS_MAT,ANS_CON,otCost,grandEEwithOT})}
+              <button onClick={()=>exportSummaryPDF({inv,lines,isCommercial,byPhase,grandEE,grandComm,contPct,contAmt,escResult,finalTotal,commGrandHrs,nodeRollup,phaseNodes,openNodes,phaseNames,descMap,entered,supply,commTotals,commProfiles,resourceCodes,ANS_MAT,ANS_CON,otCost,grandEEwithOT})}
                 className="bg-indigo-700 hover:bg-indigo-600 text-white text-xs px-4 py-2 rounded font-semibold shadow">
                 📄 Export Summary PDF
               </button>
@@ -3284,7 +3321,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
                       ↳ {label} <span className="text-teal-400">({v.pct.toFixed(2)}% of base)</span>
                     </div>
                     <div className="py-1 text-right pr-4 text-teal-600 font-medium">{fmt(v.val)}</div>
-                    {isCommercial && <div className="py-1 text-right pr-4 text-teal-500">{fmt(v.val*(1+ANS_LAB))}</div>}
+                    {isCommercial && <div className="py-1 text-right pr-4 text-teal-500">{fmt(v.val*(1+(label==="Materials"?ANS_MAT:ANS_CON)))}</div>}
                   </div>
                 ))}
               </div>
@@ -3313,7 +3350,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
         {/* ANS note */}
         {inv.type==="Commercially Funded" && grandComm>0 && (
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-xs text-orange-800">
-            <span className="font-bold">ANS Margins applied:</span> Labour ×{fmtPct(ANS_LAB)} · Materials ×{fmtPct(ANS_MAT)} · Contractor ×{fmtPct(ANS_CON)}
+            <span className="font-bold">ANS Margins applied:</span> Labour — varies by resource (see Resource Rates) · Materials ×{fmtPct(ANS_MAT)} · Contractor ×{fmtPct(ANS_CON)}
             · EE Internal base: {fmt(grandEE)} · Commercial uplift: {fmt(grandComm-grandEE)}
           </div>
         )}
@@ -3342,7 +3379,7 @@ const CLASS_COLOR = {
 // Mirrors the Financial Report sheet: cost summary table, Commercial
 // Project Agreement breakdown, and cash flow chart.
 function FinancialScreen({ inv, lines, isCommercial }) {
-  const { supply } = useData();
+  const { supply, resourceCodes } = useData();
 
   const totals = useMemo(() => {
     // Mirrors Financial Report sheet exactly:
@@ -3357,7 +3394,7 @@ function FinancialScreen({ inv, lines, isCommercial }) {
       if (!parseFloat(ln.qty||"0")) return;
       const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery,
                          ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial,
-                         ln.resourceOvrd);
+                         ln.resourceOvrd, resourceCodes, 0);
       const isContr = (ln.delivery||item.delivery_method||"") === "Contractor Delivered";
 
       if (isContr) {
@@ -3369,7 +3406,7 @@ function FinancialScreen({ inv, lines, isCommercial }) {
         // EE Internal Works: EE labour + plant on EE items
         const ee = (c.eeLabCost||0) + (c.plantFact||0);
         eeCost += ee;
-        eeANS  += (c.eeLabCost||0)*ANS_LAB;   // ANS only on labour portion
+        eeANS  += (c.eeLabCost||0)*labMargin(c.effectiveResource, resourceCodes);   // ANS only on labour portion, per-resource margin
       }
 
       // Materials: equipment/PCE cost on all items
@@ -3415,7 +3452,7 @@ function FinancialScreen({ inv, lines, isCommercial }) {
       totalCost, totalANS, cv, gst, gstInc, eeOH,
       paDesign, paConstruction, paCommission, paMatContr,
     };
-  }, [supply, lines, isCommercial, inv]);
+  }, [supply, lines, isCommercial, inv, resourceCodes]);
 
   // Cash flow — cumulative S-curve over project months
   const cashFlow = useMemo(() => {
@@ -4375,7 +4412,7 @@ function TemplateLibrary({ onLoad, saved, setSaved, currentInv, currentLines }) 
 
 function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
   // Resolved pricing context — used to freeze a rate snapshot at the moment of approval
-  const { supply: snapSupply, rates: snapRates, commLookup: snapCommLookup } = useData();
+  const { supply: snapSupply, rates: snapRates, commLookup: snapCommLookup, resourceCodes } = useData();
   const [hubTab,      setHubTab]      = useState("portfolio");
   const [saved,       setSaved]       = useState([]);
   const [search,      setSearch]      = useState("");
@@ -4787,7 +4824,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
       (snapSupply||[]).forEach(item=>{
         const ln=lines[item.wbs_code];
         if(!ln) return;
-        const c=calcLine(item, ln.qty, ln.factor||"1", undefined, undefined, undefined, undefined, undefined, isComm, undefined, null, 0);
+        const c=calcLine(item, ln.qty, ln.factor||"1", undefined, undefined, undefined, undefined, undefined, isComm, undefined, resourceCodes, 0);
         totalEE+=c.eeInt; totalComm+=c.comm;
       });
 
@@ -10830,7 +10867,7 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
     supply.forEach(item=>{
       const ln=lines[item.wbs_code];
       if(!ln||parseFloat(ln.qty||"0")<=0) return;
-      const c=calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, null, 0);
+      const c=calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, resourceCodes, 0);
       eeInt+=c.eeInt; comm+=c.comm; eeLabCost+=c.eeLabCost||0;
     });
     const commTotals={};
@@ -10850,11 +10887,11 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
       const ovrd=lines[`comm_ovrd_${commWbs}`]?.qty;
       const hrs=(ovrd!==undefined&&ovrd!=="")?(parseFloat(ovrd)||0):dq*(data.hrs_per_unit||0)*scale;
       const e=hrs*(data.ee_labour_rate||139.26);
-      eeInt+=e; comm+=e*(1+ANS_LAB); eeLabCost+=e;
+      eeInt+=e; comm+=e*(1+labMargin(data.resource_type, resourceCodes)); eeLabCost+=e;
     });
     if (isCommercial) return comm;
     return eeInt + eeLabCost*otRatio;  // + 20% OT for Internal Resources, matching contBase
-  },[supply,lines,isCommercial,commLookup,commProfiles,otRatio]);
+  },[supply,lines,isCommercial,commLookup,commProfiles,otRatio,resourceCodes]);
 
   const systemic = useMemo(()=>cartSystemicParams(baseEstimate, inv.estClass||"Class 5", inv.complexity||"High", inv.newTech||"Moderate"),
     [baseEstimate, inv.estClass, inv.complexity, inv.newTech]);
@@ -11597,7 +11634,7 @@ function SMEStructureEditor({ discs, allCodes, onSave, onClose }) {
 }
 
 function SMEReportScreen({ inv, lines, isCommercial }) {
-  const { supply, commLookup, commProfiles } = useData();
+  const { supply, commLookup, commProfiles, resourceCodes } = useData();
   const [discs, setDiscs]                   = useState(loadSmeDisciplines);
   const [showEditor, setShowEditor]         = useState(false);
   const [selected, setSelected]             = useState("HV");
@@ -11612,7 +11649,7 @@ function SMEReportScreen({ inv, lines, isCommercial }) {
     supply.forEach(item=>{
       const ln = lines[item.wbs_code];
       if (!ln || parseFloat(ln.qty||"0")<=0) return;
-      const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, null, 0);
+      const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, resourceCodes, 0);
       out.push({ wbs:item.wbs_code, desc:item.description, qty:c.q,
         phase:smePhase(item.wbs_code), disc:smeClassify(item.wbs_code, discs),
         supplyCost:c.equipCost, installHrs:c.installHrs, commHrs:0, eeInt:c.eeInt, comm:c.comm });
@@ -11641,10 +11678,10 @@ function SMEReportScreen({ inv, lines, isCommercial }) {
       const eeInt   = commHrs*rate;
       out.push({ wbs:commWbs, desc:data.description, qty:derivedQty,
         phase:"Commissioning", disc:smeClassify(commWbs, discs),
-        supplyCost:0, installHrs:0, commHrs, eeInt, comm:eeInt*(1+ANS_LAB) });
+        supplyCost:0, installHrs:0, commHrs, eeInt, comm:eeInt*(1+labMargin(data.resource_type, resourceCodes)) });
     });
     return out;
-  },[supply, lines, isCommercial, commLookup, commProfiles, discs]);
+  },[supply, lines, isCommercial, commLookup, commProfiles, discs, resourceCodes]);
 
   const investEETotal = useMemo(()=>allRows.reduce((a,r)=>a+r.eeInt,0),[allRows]);
 
@@ -12530,7 +12567,7 @@ export default function App() {
     const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
     const totals = entered.reduce((a,item)=>{
       const ln=lines[item.wbs_code]||{};
-      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,null,0);
+      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
       const ph=item.wbs_code.split(".")[0];
       const bp={...a.byPhase};
       if(!bp[ph]) bp[ph]={eeInt:0,comm:0};
