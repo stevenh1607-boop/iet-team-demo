@@ -5346,9 +5346,10 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
     return ms && ss && cs && ts;
   }).sort((a,b)=>{
     let av,bv;
-    if (sortBy==="name")      { av=a.inv.name;      bv=b.inv.name; }
-    else if (sortBy==="comm") { av=a.totalComm;     bv=b.totalComm; }
-    else if (sortBy==="ee")   { av=a.totalEE;       bv=b.totalEE; }
+    if (sortBy==="name")           { av=a.inv.name||"";           bv=b.inv.name||""; }
+    else if (sortBy==="estimator") { av=a.inv.estimatedBy||"";    bv=b.inv.estimatedBy||""; }
+    else if (sortBy==="comm")      { av=a.totalComm;              bv=b.totalComm; }
+    else if (sortBy==="ee")        { av=a.totalEE;                bv=b.totalEE; }
     else { av=a.savedAtISO||a.savedAt; bv=b.savedAtISO||b.savedAt; }
     return sortDir==="asc" ? (av>bv?1:-1) : (av<bv?1:-1);
   });
@@ -5465,7 +5466,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
                   <th className="px-3 py-2 font-semibold text-gray-500 text-center">Status</th>
                   <th className="px-3 py-2 font-semibold text-gray-500 text-center">Class</th>
                   <th className="px-3 py-2 font-semibold text-gray-500 text-center">Rev</th>
-                  <th className="px-3 py-2 font-semibold text-gray-500 text-left">Estimator</th>
+                  <th className="px-3 py-2 font-semibold text-left"><SortBtn col="estimator" label="Estimator"/></th>
                   <th className="px-3 py-2 font-semibold text-gray-500 text-left">Reviewer</th>
                   <th className="px-3 py-2 font-semibold text-right"><SortBtn col="ee" label="EE Internal"/></th>
                   <th className="px-3 py-2 font-semibold text-right"><SortBtn col="comm" label="Commercial"/></th>
