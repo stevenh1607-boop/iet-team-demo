@@ -632,6 +632,8 @@ function accumulateInstallRows(supply, lines, resourceCodes, isCommercial) {
     const plantFact = parseFloat(instLn.plant||"") > 0
       ? parseFloat(instLn.plant)        // manual $ override
       : plantPerUnit * derivedQty;      // auto: scale with qty
+    const eeLabCost= isContr?0:activeHrs*eeRate;
+    const contrCost= isContr?derivedQty*contrRate:0;
     const eeInt    = eeLabCost+contrCost+plantFact;
     const comm     = isContr
       ?(contrCost*(1+ANS_CON)+plantFact)
