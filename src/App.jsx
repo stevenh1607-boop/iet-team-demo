@@ -1352,15 +1352,20 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
       // a flat +20% on top of it again — double-counting the margin.
       const eeRate    = resData?.ee_internal_rate || inst.ee_labour_rate || 246.95;
       const contrRate = parseFloat(instLn.contrRate || "") || inst.contractor_rate || 0;
+      // Plant cost: from line override first, then supply data plant_cost field
+      const plant     = parseFloat(instLn.plant || "") || parseFloat(inst.plant_cost || 0) || 0;
+      const plantFact = plant; // factor already baked into hrs/qty derivation; plant is a flat $/item rate
       // Cost calc
       const eeLabCost   = isContr ? 0 : activeHrs * eeRate;
       const contrCost   = isContr ? derivedQty * contrRate : 0;
-      const eeInt       = eeLabCost + contrCost;
-      const comm        = isContr ? contrCost * (1+ANS_CON) : eeLabCost * (1+labMargin(resName, ratesLookup));
+      const eeInt       = eeLabCost + contrCost + plantFact;
+      const comm        = isContr
+        ? contrCost*(1+ANS_CON) + plantFact
+        : eeLabCost*(1+labMargin(resName, ratesLookup)) + plantFact;
       agg[inst.wbs_code] = {
         item: inst, linked, derivedHrs, derivedQty,
         ovrdHrs, activeHrs, delivery, isContr,
-        resName, eeRate, contrRate, eeLabCost, contrCost, eeInt, comm,
+        resName, eeRate, contrRate, plantFact, eeLabCost, contrCost, eeInt, comm,
         isOverridden: ovrdHrs !== null,
       };
     });
@@ -2032,6 +2037,12 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                                       <span className="font-medium">{fmt(iagg.contrCost)}</span>
                                     </div>
                                   )}
+                                  {iagg.plantFact > 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-gray-500">Plant & Machinery</span>
+                                      <span className="font-medium">{fmt(iagg.plantFact)}</span>
+                                    </div>
+                                  )}
                                 </>;
                               })() : (
                                 !isContr
@@ -2197,9 +2208,21 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                             </div>
                             <div className="bg-gray-50 rounded border border-gray-200 px-2 py-1.5">
                               <div className="text-[9px] text-gray-400 uppercase tracking-wide mb-0.5">{agg.isContr?"Contractor rate":"EE rate"}</div>
-                              <div className="font-medium text-gray-700">{agg.isContr?fmt(agg.contrRate)+" /unit":fmt(agg.eeRate)+" /hr · "+fmt(agg.eeLabCost)+" total"}</div>
+                              <div className="font-medium text-gray-700">{agg.isContr?fmt(agg.contrRate)+" /unit":fmt(agg.eeRate)+" /hr · "+fmt(agg.eeLabCost)+" labour"}</div>
                             </div>
                           </div>
+                          {agg.plantFact > 0 && (
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="bg-amber-50 rounded border border-amber-200 px-2 py-1.5 col-span-2">
+                                <div className="text-[9px] text-amber-600 uppercase tracking-wide mb-0.5">Plant & Machinery</div>
+                                <div className="font-medium text-amber-800">{fmt(agg.plantFact)} <span className="text-[9px] text-amber-500">(from WBS plant_cost field)</span></div>
+                              </div>
+                              <div className="bg-[var(--primary-50)] rounded border border-[var(--primary-200)] px-2 py-1.5">
+                                <div className="text-[9px] text-[var(--primary-600)] uppercase tracking-wide mb-0.5">Total EE Internal</div>
+                                <div className="font-bold text-[var(--primary-800)]">{fmt(agg.eeInt)}</div>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Commission link summary — shows Phase 4 hrs that will be derived */}
                           {(()=>{
