@@ -594,7 +594,11 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
 // Returns an array of {ph, eeInt, comm, installHrs, eeLabCost, contrCost}
 // one entry per install row that has active hours.
 function accumulateInstallRows(supply, lines, resourceCodes, isCommercial) {
-  const installItems = supply.filter(s=>s.scope==="Install"&&!!s.install_wbs);
+  // Install rows have install_wbs="" on themselves — identify derived install rows
+  // by building a set of WBS codes referenced by supply rows' install_wbs field.
+  const derivedInstallWbs = new Set();
+  supply.forEach(s=>{ if(s.install_wbs) derivedInstallWbs.add(s.install_wbs); });
+  const installItems = supply.filter(s=>s.scope==="Install" && derivedInstallWbs.has(s.wbs_code));
   const result = [];
   installItems.forEach(inst=>{
     const linked = supply.filter(s=>s.scope!=="Install"&&s.install_wbs===inst.wbs_code);
@@ -1281,6 +1285,14 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
   const [navSearch, setNavSearch]       = useState("");
 
   // Filter supply items for selected L4 group — keep Supply and Install separate
+  // Build a set of install row WBS codes that are referenced by supply rows.
+  // Install rows themselves have install_wbs="" — the link is SUPPLY → INSTALL.
+  const derivedInstallWbsCodes = useMemo(()=>{
+    const s = new Set();
+    supply.forEach(item=>{ if(item.install_wbs) s.add(item.install_wbs); });
+    return s;
+  },[supply]);
+
   const allL4Items = useMemo(()=>{
     if (!selectedL4) return [];
     if (navSearch) {
@@ -1293,17 +1305,17 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
   },[supply, selectedL4, navSearch]);
 
   // Separate Supply rows from Install rows:
-  // "Direct-entry" Install rows (no install_wbs parent link) are shown as regular estimatable
-  // items — civil earthworks, cable trenching, conductor stringing etc. are priced this way.
-  // "Derived" Install rows (have supply items that propagate qty to them) sit in the install
-  // section at the bottom and are shown auto-derived, not directly enterable.
-  const isDerivedInstall = (s) => s.scope === "Install" && !!s.install_wbs;
+  // "Derived" install rows = scope=Install AND their WBS code is referenced by at
+  // least one supply row's install_wbs field. Previously used !!s.install_wbs on
+  // the install row itself — but install rows always have install_wbs="" (the link
+  // is one-directional: supply → install). This is the correct test.
+  const isDerivedInstall = (s) => s.scope === "Install" && derivedInstallWbsCodes.has(s.wbs_code);
   const items = useMemo(()=>
-    allL4Items.filter(s => s.scope !== "Install" || !s.install_wbs),
-  [allL4Items]);
+    allL4Items.filter(s => !isDerivedInstall(s)),
+  [allL4Items, derivedInstallWbsCodes]);
   const installItems = useMemo(()=>
-    allL4Items.filter(s => s.scope === "Install" && !!s.install_wbs),
-  [allL4Items]);
+    allL4Items.filter(s => isDerivedInstall(s)),
+  [allL4Items, derivedInstallWbsCodes]);
 
   // Build install aggregation: installWbsCode → { item, derivedHrs, derivedQty, linkedSupply[] }
   // derivedHrs = sum of (enteredQty × factor × install_hrs_per) for each supply item → this install
@@ -1378,17 +1390,35 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
     return calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, ratesLookup, pctBaseLookup[item.wbs_code] || 0);
   },[lines, isCommercial]);
 
-  const groupTotals = useMemo(()=>items.reduce((a,it)=>{
-    const c=calcItem(it);
-    // commHrs from supply items must NOT appear in construction totals —
-    // commissioning hours are accounted for separately via Phase 4 commTotals
-    return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs,eeTotal:a.eeTotal+c.eeInt,commTotal:a.commTotal+c.comm};
-  },{installHrs:0,commHrs:0,eeTotal:0,commTotal:0}),[items,calcItem]);
+  const groupTotals = useMemo(()=>{
+    // Supply row costs for current L4 group
+    const base = items.reduce((a,it)=>{
+      const c=calcItem(it);
+      return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs,eeTotal:a.eeTotal+c.eeInt,commTotal:a.commTotal+c.comm};
+    },{installHrs:0,commHrs:0,eeTotal:0,commTotal:0});
+    // Add install row labour for items in this L4 group
+    Object.values(installAgg).forEach(agg=>{
+      base.eeTotal     += agg.eeInt;
+      base.commTotal   += agg.comm;
+      base.installHrs  += agg.activeHrs;
+    });
+    return base;
+  },[items, calcItem, installAgg]);
 
-  const investTotals = useMemo(()=>supply.reduce((a,it)=>{
-    const c=calcItem(it);
-    return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs,eeTotal:a.eeTotal+c.eeInt,commTotal:a.commTotal+c.comm};
-  },{installHrs:0,commHrs:0,eeTotal:0,commTotal:0}),[supply,calcItem]);
+  const investTotals = useMemo(()=>{
+    // Supply row costs across entire investment
+    const base = supply.reduce((a,it)=>{
+      const c=calcItem(it);
+      return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs,eeTotal:a.eeTotal+c.eeInt,commTotal:a.commTotal+c.comm};
+    },{installHrs:0,commHrs:0,eeTotal:0,commTotal:0});
+    // Add install row labour across all install rows in the full supply list
+    accumulateInstallRows(supply, lines, ratesLookup, isCommercial).forEach(r=>{
+      base.eeTotal    += r.eeInt;
+      base.commTotal  += r.comm;
+      base.installHrs += r.installHrs;
+    });
+    return base;
+  },[supply, calcItem, lines, ratesLookup, isCommercial]);
 
   const linesEntered = Object.values(lines).filter(l=>parseFloat(l.qty)>0 && !l._commOvrd).length;
 
@@ -3210,7 +3240,9 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
     accumulateInstallRows(supply, lines, resourceCodes, isCommercial).forEach(({ph,eeInt,comm,installHrs,plantFact})=>{
       if(ph==="4") return;
       // Accumulate under the install row's WBS code ancestors
-      const installItems2 = supply.filter(s=>s.scope==="Install"&&!!s.install_wbs&&s.wbs_code.split(".")[0]===ph);
+      const derivedInstallWbs2 = new Set();
+      supply.forEach(s=>{ if(s.install_wbs) derivedInstallWbs2.add(s.install_wbs); });
+      const installItems2 = supply.filter(s=>s.scope==="Install"&&derivedInstallWbs2.has(s.wbs_code)&&s.wbs_code.split(".")[0]===ph);
       installItems2.forEach(inst=>{
         const linked=supply.filter(s=>s.scope!=="Install"&&s.install_wbs===inst.wbs_code);
         const hasQty=linked.some(sup=>parseFloat(lines[sup.wbs_code]?.qty||"0")>0);
