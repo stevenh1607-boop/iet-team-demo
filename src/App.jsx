@@ -1938,16 +1938,44 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                           <div className="col-span-2 bg-gray-50 rounded border border-gray-200 p-2 text-xs">
                             <div className="font-semibold text-gray-600 mb-1.5">Line Cost Breakdown</div>
                             <div className="space-y-0.5">
-                              {!isContr&&<div className="flex justify-between"><span className="text-gray-500">EE Labour</span><span className="font-medium">{fmt(c.eeLabCost)}</span></div>}
-                              {isContr&&<div className="flex justify-between"><span className="text-gray-500">Contractor</span><span className="font-medium">{fmt(c.contrCost)}</span></div>}
+                              {/* For supply items with a linked install row, show install labour
+                                  from installAgg so that changing Install Resource Code updates
+                                  costs immediately in this panel (not just in the install section) */}
+                              {item.install_wbs && installAgg[item.install_wbs] ? (()=>{
+                                const iagg = installAgg[item.install_wbs];
+                                return <>
+                                  {!iagg.isContr && iagg.eeLabCost > 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-gray-500">EE Labour <span className="text-indigo-400 text-[10px]">({iagg.resName.split(" ").slice(-2).join(" ")} · {iagg.eeRate?.toFixed(2)}/hr)</span></span>
+                                      <span className="font-medium">{fmt(iagg.eeLabCost)}</span>
+                                    </div>
+                                  )}
+                                  {iagg.isContr && iagg.contrCost > 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-gray-500">Contractor <span className="text-teal-400 text-[10px]">({iagg.resName})</span></span>
+                                      <span className="font-medium">{fmt(iagg.contrCost)}</span>
+                                    </div>
+                                  )}
+                                </>;
+                              })() : (
+                                !isContr
+                                  ? <div className="flex justify-between"><span className="text-gray-500">EE Labour</span><span className="font-medium">{fmt(c.eeLabCost)}</span></div>
+                                  : <div className="flex justify-between"><span className="text-gray-500">Contractor</span><span className="font-medium">{fmt(c.contrCost)}</span></div>
+                              )}
                               {c.equipCost>0&&<div className="flex justify-between"><span className="text-gray-500">Equipment</span><span className="font-medium">{fmt(c.equipCost)}</span></div>}
                               {c.plantFact>0&&<div className="flex justify-between"><span className="text-gray-500">Plant (×factor)</span><span className="font-medium">{fmt(c.plantFact)}</span></div>}
                               {c.matBurden>0&&<div className="flex justify-between"><span className="text-gray-500">Mat. Burden</span><span className="font-medium">{fmt(c.matBurden)}</span></div>}
                               <div className="border-t border-gray-200 mt-1 pt-1 flex justify-between font-bold">
-                                <span className="text-[var(--primary-800)]">EE Internal</span><span className="text-[var(--primary-800)]">{fmt(c.eeInt)}</span>
+                                <span className="text-[var(--primary-800)]">EE Internal</span>
+                                <span className="text-[var(--primary-800)]">
+                                  {fmt(c.eeInt + (item.install_wbs && installAgg[item.install_wbs] ? installAgg[item.install_wbs].eeInt : 0))}
+                                </span>
                               </div>
                               <div className="flex justify-between font-bold">
-                                <span className="text-orange-700">Commercial</span><span className="text-orange-700">{fmt(c.comm)}</span>
+                                <span className="text-orange-700">Commercial</span>
+                                <span className="text-orange-700">
+                                  {fmt(c.comm + (item.install_wbs && installAgg[item.install_wbs] ? installAgg[item.install_wbs].comm : 0))}
+                                </span>
                               </div>
                             </div>
                           </div>
