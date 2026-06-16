@@ -577,9 +577,16 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
   const matBurden  = isCommercial ? 0 : equipCost * MAT_BURDEN;
   const eeInt  = eeLabCost + contrCost + plantFact + equipCost + matBurden;
   const comm   = eeLabCost*(1+labMargin(effectiveResource, ratesLookup)) + contrCost*(1+ANS_CON) + plantFact + equipCost*(1+ANS_MAT);
-  // WAFHA items: installHrs must always be 0 — they are day-rated, not hour-rated
-  const finalInstallHrs = isWAFHA ? 0 : installHrs;
-  return { q, f, isContr, isWAFHA, installHrs: finalInstallHrs, commHrs, eeLabHrs, eeLabCost,
+  // WAFHA items: installHrs must always be 0 — they are day-rated, not hour-rated.
+  // Items with install_wbs: their hours are counted via accumulateInstallRows /
+  // installAgg (the linked install row). Return 0 here to prevent double-counting
+  // in all phase/total accumulators. instHrsForDisplay preserves the value so the
+  // cost detail panel can still show "64 hrs install" informationally.
+  const hasLinkedInstall = !!(item.install_wbs);
+  const finalInstallHrs = (isWAFHA || hasLinkedInstall) ? 0 : installHrs;
+  return { q, f, isContr, isWAFHA, installHrs: finalInstallHrs,
+           instHrsForDisplay: installHrs,  // for cost detail panel header only
+           commHrs, eeLabHrs, eeLabCost,
            contrCost, plantFact, equipCost, matBurden, eeInt, comm,
            instHrsOverridden: installHrsOvrd !== "" && installHrsOvrd != null, instHrsPU,
            effectiveResource };
@@ -1388,7 +1395,22 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
     "3.2.1.06.4.07","3.2.2.02.4.08",
     "3.3.1.05.4.03",
   ]);
-  const updLine = (code, key, val) => setLines(p=>({...p,[code]:{...p[code],[key]:val}}));
+  const updLine = (code, key, val) => setLines(p => {
+    const updated = { ...p, [code]: { ...p[code], [key]: val } };
+    // When supply qty changes and this item links to an install row,
+    // clear any manual instHrsOvrd on that row so hours re-derive
+    // automatically from the new qty × install_hrs_per.
+    if (key === "qty") {
+      const supplyItem = supply.find(s => s.wbs_code === code);
+      if (supplyItem?.install_wbs) {
+        const instCode = supplyItem.install_wbs;
+        if (updated[instCode]?.instHrsOvrd !== undefined) {
+          updated[instCode] = { ...updated[instCode], instHrsOvrd: "" };
+        }
+      }
+    }
+    return updated;
+  });
 
   const calcItem = useCallback((item)=>{
     const ln = getLine(item.wbs_code);
@@ -1993,7 +2015,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                         {hasQty && (
                           <div className="text-xs text-gray-500">
                             <div className="font-semibold mb-1 text-gray-600">Hours this item</div>
-                            <div className="font-bold text-purple-700">{fmtHrs(c.installHrs)} install</div>
+                            <div className="font-bold text-purple-700">{fmtHrs(c.instHrsForDisplay || c.installHrs)} install</div>
                           </div>
                         )}
                       </div>
@@ -2479,7 +2501,7 @@ function ReviewLines({ lines, isCommercial }) {
                       <td className="px-3 py-1.5 text-center font-bold text-orange-700">{ln.qty}</td>
                       <td className="px-3 py-1.5 text-center text-gray-500">{ln.factor||"1"}</td>
                       <td className="px-3 py-1.5 text-center text-gray-500">{item.uom||"each"}</td>
-                      <td className="px-3 py-1.5 text-right font-medium text-purple-700">{fmtHrs(c.installHrs)||"—"}</td>
+                      <td className="px-3 py-1.5 text-right font-medium text-purple-700">{fmtHrs(c.instHrsForDisplay || c.installHrs)||"—"}</td>
                       <td className="px-3 py-1.5 text-right font-bold text-[var(--primary-800)]">{fmt(c.eeInt)}</td>
                       {isCommercial && <td className="px-3 py-1.5 text-right font-bold text-orange-700">{fmt(c.comm)}</td>}
                       <td className="px-3 py-1.5 text-gray-500 text-[11px]">{c.isContr?"Contractor":"EE"}</td>
