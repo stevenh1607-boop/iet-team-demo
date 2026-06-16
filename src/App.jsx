@@ -585,6 +585,52 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
            effectiveResource };
 }
 
+// ── INSTALL ROW ACCUMULATOR ──────────────────────────────────────
+// Supply items with install_wbs delegate their labour to a linked install
+// row (scope=Install). These rows have no qty in lines[] — hours are
+// auto-derived from supply qty × install_hrs_per. calcLine on a supply
+// row with resource_main="Supplier" returns eeLabCost=0, so summary
+// screens must call this helper to add the install-row labour separately.
+// Returns an array of {ph, eeInt, comm, installHrs, eeLabCost, contrCost}
+// one entry per install row that has active hours.
+function accumulateInstallRows(supply, lines, resourceCodes, isCommercial) {
+  const installItems = supply.filter(s=>s.scope==="Install"&&!!s.install_wbs);
+  const result = [];
+  installItems.forEach(inst=>{
+    const linked = supply.filter(s=>s.scope!=="Install"&&s.install_wbs===inst.wbs_code);
+    let derivedHrs=0, derivedQty=0;
+    linked.forEach(sup=>{
+      const ln=lines[sup.wbs_code]||{};
+      const q=parseFloat(ln.qty||"0");
+      const f=parseFloat(ln.factor||"1");
+      if(q>0){ derivedHrs+=q*f*(sup.install_hrs_per||0); derivedQty+=q*f; }
+    });
+    if(derivedHrs<=0&&derivedQty<=0) return;
+    const instLn   = lines[inst.wbs_code]||{};
+    const ovrdHrs  = instLn.instHrsOvrd!==""&&instLn.instHrsOvrd!=null?(parseFloat(instLn.instHrsOvrd)||0):null;
+    const activeHrs= ovrdHrs!==null?ovrdHrs:derivedHrs;
+    if(activeHrs<=0) return;
+    const delivery = instLn.delivery||inst.delivery_method||"EE Delivered";
+    const isContr  = delivery==="Contractor Delivered";
+    const resOvrd  = instLn.resourceOvrd||{};
+    const resName  = resOvrd?.install||inst.resource_main||"ZS Electrical Technician";
+    const resData  = resourceCodes?.[resName];
+    const eeRate   = resData?.ee_internal_rate||inst.ee_labour_rate||139.26;
+    const contrRate= parseFloat(instLn.contrRate||"")||inst.contractor_rate||0;
+    const plant    = parseFloat(instLn.plant||inst.plant_cost||"0")||0;
+    const eeLabCost= isContr?0:activeHrs*eeRate;
+    const contrCost= isContr?derivedQty*contrRate:0;
+    const plantFact= plant;
+    const eeInt    = eeLabCost+contrCost+plantFact;
+    const comm     = isContr
+      ?(contrCost*(1+ANS_CON)+plantFact)
+      :(eeLabCost*(1+labMargin(resName,resourceCodes))+plantFact);
+    const ph = inst.wbs_code.split(".")[0];
+    result.push({ph, eeInt, comm, installHrs:activeHrs, eeLabCost, contrCost, plantFact, resName});
+  });
+  return result;
+}
+
 // ── SHARED UI ───────────────────────────────────────────────────
 
 function Card({ children, className="" }) {
@@ -653,7 +699,7 @@ function UnlockPinField({ onConfirm, onCancel }) {
 // percentage of base. Re-running CART (or a base change) supersedes it —
 // callers compare cartResult.base to the live base to detect staleness.
 function resolveContingency(inv, base, isCommercial, tolerance=1){
-  const pct = parseFloat(isCommercial?inv.contComm:inv.contInt)||10;
+  const pct = parseFloat(isCommercial?inv.contComm:inv.contInt)||5;
   const cr = inv.cartResult;
   if (cr && cr.isCommercial===isCommercial && Math.abs(cr.base-base)<=tolerance && base>0){
     return { amt:cr.p50, pct: cr.p50/base*100, source:"cart", cr };
@@ -2731,6 +2777,11 @@ function doGeneratePDF(ctx) {
       else{eeCost+=(c.eeLabCost||0)+(c.plantFact||0);eeANS+=(c.eeLabCost||0)*labMargin(c.effectiveResource, resourceCodes);}
       matCost+=c.equipCost||0; matANS+=(c.equipCost||0)*ANS_MAT;
     });
+    // Install row labour (auto-derived, not accumulate via supply forEach above)
+    accumulateInstallRows(supply, lines, resourceCodes, isCommercial).forEach(({eeLabCost,contrCost,plantFact,resName})=>{
+      if(contrCost>0){ subCost+=contrCost+plantFact; subANS+=contrCost*ANS_CON; }
+      else { eeCost+=eeLabCost+plantFact; eeANS+=eeLabCost*labMargin(resName,resourceCodes); }
+    });
     const contPctF=parseFloat(inv.contingency||'0')/100;
     const base=subCost+matCost+eeCost;
     const cont=base*contPctF;
@@ -2983,6 +3034,9 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
   // Phase 1-3, 5 rollups
   const phaseNames = {"1":"Planning","2":"Design","3":"Construction","4":"Commissioning","5":"M&C"};
   const byPhase = {};
+
+  // Step A: Accumulate costs from supply rows (equipment, materials, contractor,
+  //         and for items WITHOUT a linked install_wbs, also EE labour directly)
   entered.forEach(item=>{
     const ph=item.wbs_code.split(".")[0];
     if(ph==="4") return;
@@ -2991,13 +3045,23 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
     const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
     byPhase[ph].eeInt+=c.eeInt; byPhase[ph].comm+=c.comm;
     byPhase[ph].installHrs+=c.installHrs;
-    // commHrs from supply items excluded from construction phase —
-    // they appear only in Phase 4 via the commissioning derivation below
     byPhase[ph].lines++;
     byPhase[ph].eeLabCost  += c.eeLabCost  || 0;
     byPhase[ph].eeLabCostExWAFHA += c.isWAFHA ? 0 : (c.eeLabCost || 0);
     byPhase[ph].contrCost  += c.contrCost  || 0;
-    byPhase[ph].matCost    += c.equipCost  || 0; // PCE/materials
+    byPhase[ph].matCost    += c.equipCost  || 0;
+  });
+
+  // Step B: Accumulate install row labour (auto-derived, no qty in lines[])
+  accumulateInstallRows(supply, lines, resourceCodes, isCommercial).forEach(({ph,eeInt,comm,installHrs,eeLabCost,contrCost})=>{
+    if(ph==="4") return;
+    if(!byPhase[ph]) byPhase[ph]={eeInt:0,comm:0,installHrs:0,commHrs:0,lines:0,eeLabCost:0,eeLabCostExWAFHA:0,contrCost:0,matCost:0};
+    byPhase[ph].eeInt      += eeInt;
+    byPhase[ph].comm       += comm;
+    byPhase[ph].installHrs += installHrs;
+    byPhase[ph].eeLabCost  += eeLabCost;
+    byPhase[ph].eeLabCostExWAFHA += eeLabCost; // install rows are never WAFHA
+    byPhase[ph].contrCost  += contrCost;
   });
 
   // Phase 4 derived (skip direct_entry items — those use estimator-entered qty)
@@ -3141,6 +3205,18 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
       const ln=lines[item.wbs_code]||{};
       const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
       accum(item.wbs_code, c);
+    });
+    // Install row labour (auto-derived, not in entered[])
+    accumulateInstallRows(supply, lines, resourceCodes, isCommercial).forEach(({ph,eeInt,comm,installHrs,plantFact})=>{
+      if(ph==="4") return;
+      // Accumulate under the install row's WBS code ancestors
+      const installItems2 = supply.filter(s=>s.scope==="Install"&&!!s.install_wbs&&s.wbs_code.split(".")[0]===ph);
+      installItems2.forEach(inst=>{
+        const linked=supply.filter(s=>s.scope!=="Install"&&s.install_wbs===inst.wbs_code);
+        const hasQty=linked.some(sup=>parseFloat(lines[sup.wbs_code]?.qty||"0")>0);
+        if(!hasQty) return;
+        accum(inst.wbs_code, {eeInt,comm,installHrs,commHrs:0});
+      });
     });
     // Phase 4 commission nodes — derived from commission links with scaling
     Object.entries(commTotals).forEach(([commWbs, ct])=>{
@@ -3435,20 +3511,28 @@ function FinancialScreen({ inv, lines, isCommercial }) {
       const isContr = (ln.delivery||item.delivery_method||"") === "Contractor Delivered";
 
       if (isContr) {
-        // Sub-Contract: contractor cost + plant on contractor items
         const sc = (c.contrCost||0) + (c.plantFact||0);
         subCost += sc;
-        subANS  += (c.contrCost||0)*ANS_CON;  // ANS only on labour portion
+        subANS  += (c.contrCost||0)*ANS_CON;
       } else {
-        // EE Internal Works: EE labour + plant on EE items
         const ee = (c.eeLabCost||0) + (c.plantFact||0);
         eeCost += ee;
-        eeANS  += (c.eeLabCost||0)*labMargin(c.effectiveResource, resourceCodes);   // ANS only on labour portion, per-resource margin
+        eeANS  += (c.eeLabCost||0)*labMargin(c.effectiveResource, resourceCodes);
       }
 
-      // Materials: equipment/PCE cost on all items
       matCost += c.equipCost||0;
       matANS  += (c.equipCost||0)*ANS_MAT;
+    });
+
+    // Add install row labour (auto-derived rows not in lines[])
+    accumulateInstallRows(supply, lines, resourceCodes, isCommercial).forEach(({eeLabCost,contrCost,plantFact,resName,eeInt,comm})=>{
+      if(contrCost>0){
+        subCost += contrCost + plantFact;
+        subANS  += contrCost*ANS_CON;
+      } else {
+        eeCost += eeLabCost + plantFact;
+        eeANS  += eeLabCost*labMargin(resName, resourceCodes);
+      }
     });
 
     // Cost* column = base cost (no ANS, no contingency)
@@ -10883,7 +10967,7 @@ const defaultInv = {
   complexity:"High", newTech:"Moderate", estimatedBy:"Steven Hannigan",
   reviewedBy:"Daniel Lawrence", startMonth:"Jul", startYear:"2025",
   planStart:"1", planDur:"4", designStart:"1", designDur:"9",
-  constrStart:"6", constrDur:"15", contInt:"10", contComm:"10",
+  constrStart:"6", constrDur:"15", contInt:"5", contComm:"5",
   contIntDollar:"", contCommDollar:"",
 };
 
@@ -11165,6 +11249,10 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
       if(!ln||parseFloat(ln.qty||"0")<=0) return;
       const c=calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, resourceCodes, 0);
       eeInt+=c.eeInt; comm+=c.comm; eeLabCost+=c.eeLabCost||0;
+    });
+    // Install row labour (auto-derived)
+    accumulateInstallRows(supply, lines, resourceCodes, isCommercial).forEach(r=>{
+      eeInt+=r.eeInt; comm+=r.comm; eeLabCost+=r.eeLabCost;
     });
     const commTotals={};
     supply.forEach(item=>{
