@@ -1805,7 +1805,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
         </div>
         {/* Column headers */}
         <div className="bg-gray-50 border-b text-xs font-semibold text-gray-500 px-3 py-1.5 grid flex-shrink-0"
-          style={{gridTemplateColumns:"16px 1fr 46px 72px 64px 90px 56px"}}>
+          style={{gridTemplateColumns:"32px 1fr 46px 72px 64px 90px 56px"}}>
           <div/><div>Description / WBS Code</div>
           <div className="text-center">UOM</div>
           <div className="text-center text-orange-700">Qty</div>
@@ -1832,9 +1832,9 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
             return (
               <div key={item.wbs_code} className={`border-b ${rowBase} transition-colors`}>
                 <div className="grid items-center px-3 py-2 text-xs"
-                  style={{gridTemplateColumns:"16px 1fr 46px 72px 64px 90px 56px"}}>
+                  style={{gridTemplateColumns:"32px 1fr 46px 72px 64px 90px 56px"}}>
                   <button onClick={()=>setExpandedRows(p=>({...p,[item.wbs_code]:!p[item.wbs_code]}))}
-                    className={`text-center rounded text-xs w-4 h-4 flex items-center justify-center ${isExp?"bg-[var(--primary-600)] text-white":"text-gray-300 hover:text-[var(--primary-500)]"}`}>
+                    className={`text-center rounded text-base w-8 h-8 flex items-center justify-center ${isExp?"bg-[var(--primary-600)] text-white":"text-gray-300 hover:text-[var(--primary-500)]"}`}>
                     {isExp?"▾":"▸"}
                   </button>
                   <div className="min-w-0 pr-2">
