@@ -57,6 +57,54 @@
   --accent-700:  #b45309;
 }
 
+[data-theme="forest"] {
+  --primary-50:  #F0FAF5;
+  --primary-100: #DCF1E6;
+  --primary-200: #B7E2CB;
+  --primary-300: #9FDBBB;
+  --primary-400: #8AD1A9;
+  --primary-500: #74C69D;
+  --primary-600: #4F9774;
+  --primary-700: #2D6A4F;
+  --primary-800: #234D3D;
+  --primary-900: #1B4332;
+  --accent-500:  #EB8B6E;
+  --accent-600:  #E76F51;
+  --accent-700:  #C95736;
+}
+
+[data-theme="plum"] {
+  --primary-50:  #F6F0FB;
+  --primary-100: #EAD9F6;
+  --primary-200: #D6B8ED;
+  --primary-300: #C39BE3;
+  --primary-400: #AF84D6;
+  --primary-500: #9B72CF;
+  --primary-600: #7549A8;
+  --primary-700: #4A1C6E;
+  --primary-800: #321352;
+  --primary-900: #1A0A2E;
+  --accent-500:  #F7B884;
+  --accent-600:  #F4A261;
+  --accent-700:  #D98640;
+}
+
+[data-theme="steel"] {
+  --primary-50:  #EFF5F7;
+  --primary-100: #DCE9ED;
+  --primary-200: #B9D3DC;
+  --primary-300: #9BC0CB;
+  --primary-400: #8AB5C2;
+  --primary-500: #7BAABB;
+  --primary-600: #4F7E92;
+  --primary-700: #2E4A62;
+  --primary-800: #243A4D;
+  --primary-900: #1C2B3A;
+  --accent-500:  #D4683A;
+  --accent-600:  #C1440E;
+  --accent-700:  #9E3709;
+}
+
 /* Smooth scrollbars (theme-aware) */
 * { scrollbar-width: thin; scrollbar-color: var(--primary-300) var(--primary-900); }
 ::-webkit-scrollbar { width: 6px; height: 6px; }

@@ -12610,6 +12610,18 @@ const THEMES = [
     id: "slate", name: "Slate", desc: "Neutral monochrome theme",
     swatches: ["#0f172a", "#334155", "#64748b", "#d97706"],
   },
+  {
+    id: "forest", name: "Forest & Ember", desc: "Deep green with a warm ember accent",
+    swatches: ["#1B4332", "#2D6A4F", "#74C69D", "#E76F51"],
+  },
+  {
+    id: "plum", name: "Midnight Plum", desc: "Rich dark purple with a golden accent",
+    swatches: ["#1A0A2E", "#4A1C6E", "#9B72CF", "#F4A261"],
+  },
+  {
+    id: "steel", name: "Steel & Rust", desc: "Industrial grey-teal with a rust accent",
+    swatches: ["#1C2B3A", "#2E4A62", "#7BAABB", "#C1440E"],
+  },
 ];
 
 // ── USER ACCESS / PINs ──────────────────────────────────────────
