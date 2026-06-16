@@ -8288,7 +8288,6 @@ function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
     {id:"eqpricing",  label:"💲 Equipment Pricing",    count:null},
     {id:"civil",      label:"🏗️ Civil & Building",     count:null},
     {id:"assemblies", label:"🔩 Material Assemblies",  count:null},
-    {id:"inventory",  label:"📦 Inventory Materials",  count:null},
     {id:"escalation", label:"📈 Escalation Rates",     count:null},
     {id:"scaling",    label:"📐 Comm Scaling",          count:WBS_PROFILES.length},
     {id:"people",     label:"👥 People & Roles",        count:people.filter(p=>p.active).length},
@@ -8414,11 +8413,6 @@ function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
       {/* Material Assemblies */}
       {tab==="assemblies"&&(
         <SourcePricingEditor source="Assembly" label="Material Assemblies" managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
-      )}
-
-      {/* Inventory Materials */}
-      {tab==="inventory"&&(
-        <SourcePricingEditor source="Inventory" label="Inventory Materials" managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
       )}
 
       {/* Escalation Rates */}
