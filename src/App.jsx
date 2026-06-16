@@ -628,10 +628,10 @@ function accumulateInstallRows(supply, lines, resourceCodes, isCommercial) {
     const resData  = resourceCodes?.[resName];
     const eeRate   = resData?.ee_internal_rate||inst.ee_labour_rate||139.26;
     const contrRate= parseFloat(instLn.contrRate||"")||inst.contractor_rate||0;
-    const plant    = parseFloat(instLn.plant||inst.plant_cost||"0")||0;
-    const eeLabCost= isContr?0:activeHrs*eeRate;
-    const contrCost= isContr?derivedQty*contrRate:0;
-    const plantFact= plant;
+    const plantPerUnit = parseFloat(inst.plant_cost||0)||0;
+    const plantFact = parseFloat(instLn.plant||"") > 0
+      ? parseFloat(instLn.plant)        // manual $ override
+      : plantPerUnit * derivedQty;      // auto: scale with qty
     const eeInt    = eeLabCost+contrCost+plantFact;
     const comm     = isContr
       ?(contrCost*(1+ANS_CON)+plantFact)
@@ -1359,9 +1359,12 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
       // a flat +20% on top of it again — double-counting the margin.
       const eeRate    = resData?.ee_internal_rate || inst.ee_labour_rate || 246.95;
       const contrRate = parseFloat(instLn.contrRate || "") || inst.contractor_rate || 0;
-      // Plant cost: from line override first, then supply data plant_cost field
-      const plant     = parseFloat(instLn.plant || "") || parseFloat(inst.plant_cost || 0) || 0;
-      const plantFact = plant; // factor already baked into hrs/qty derivation; plant is a flat $/item rate
+      // Plant cost scales with derivedQty (plant_cost is a $/unit-of-install-activity rate)
+      // Manual override in instLn.plant takes the full dollar value as entered.
+      const plantPerUnit = parseFloat(inst.plant_cost || 0) || 0;
+      const plantFact = parseFloat(instLn.plant || "") > 0
+        ? parseFloat(instLn.plant)                       // manual $ override → use as-is
+        : plantPerUnit * derivedQty;                     // auto → scale with qty
       // Cost calc
       const eeLabCost   = isContr ? 0 : activeHrs * eeRate;
       const contrCost   = isContr ? derivedQty * contrRate : 0;
@@ -1985,11 +1988,47 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                         <div>
                           <label className="text-xs text-gray-500 block mb-0.5">Install Hrs/Unit Override</label>
                           {isWAFHAItem(item) && <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">WAFHA — day-rated, no install hrs override</div>}
-                          {!isWAFHAItem(item) && <input type="number" min="0" value={ln.instHrsOvrd||""} placeholder={String(item.install_hrs_per||0)}
-                            onChange={e=>updLine(item.wbs_code,"instHrsOvrd",e.target.value)}
-                            onKeyDown={e=>e.key==="Enter"&&e.currentTarget.blur()}
-                            className="w-full text-xs border border-purple-300 bg-purple-50 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-purple-400"/>}
+                          {!isWAFHAItem(item) && <>
+                            {/* For items with install_wbs, override is stored on the install row
+                                so installAgg/accumulateInstallRows picks it up immediately */}
+                            <input type="number" min="0"
+                              value={item.install_wbs
+                                ? (lines[item.install_wbs]?.instHrsOvrd || "")
+                                : (ln.instHrsOvrd || "")}
+                              placeholder={String(item.install_hrs_per || 0)}
+                              onChange={e=>{
+                                const val = e.target.value;
+                                if (item.install_wbs) {
+                                  setLines(p=>({...p,[item.install_wbs]:{...p[item.install_wbs],instHrsOvrd:val}}));
+                                } else {
+                                  updLine(item.wbs_code,"instHrsOvrd",val);
+                                }
+                              }}
+                              onKeyDown={e=>e.key==="Enter"&&e.currentTarget.blur()}
+                              className="w-full text-xs border border-purple-300 bg-purple-50 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-purple-400"/>
+                            {item.install_wbs && (lines[item.install_wbs]?.instHrsOvrd) && (
+                              <div className="text-[10px] text-orange-600 mt-0.5">⚡ overrides auto-derived hrs · clear to restore</div>
+                            )}
+                            {item.install_hrs_per > 0 && !(lines[item.install_wbs]?.instHrsOvrd) && (
+                              <div className="text-[10px] text-gray-400 mt-0.5">Std: {item.install_hrs_per} hrs/unit · auto × qty</div>
+                            )}
+                          </>}
                         </div>
+                        {/* Plant & Machinery rate display — read-only, sourced from install row */}
+                        {item.install_wbs && (() => {
+                          const instRow = supply.find(s=>s.wbs_code===item.install_wbs);
+                          const plantPU = instRow?.plant_cost || 0;
+                          if (!plantPU) return null;
+                          return (
+                            <div>
+                              <label className="text-xs text-gray-500 block mb-0.5">Plant & Machinery ($/unit)</label>
+                              <div className="w-full text-xs border border-gray-200 bg-gray-50 rounded px-1.5 py-1 text-gray-500 font-mono">
+                                ${plantPU.toFixed(2)} /unit
+                                <span className="text-[10px] text-gray-400 ml-1">× {parseFloat(ln.qty||"1").toFixed(0)} = ${(plantPU*parseFloat(ln.qty||"1")).toFixed(2)}</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
                         <div>
                           <label className="text-xs text-gray-500 block mb-0.5">Contractor Rate ($/unit)</label>
                           {item.pct_of_total ? (
@@ -2015,7 +2054,14 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                         {hasQty && (
                           <div className="text-xs text-gray-500">
                             <div className="font-semibold mb-1 text-gray-600">Hours this item</div>
-                            <div className="font-bold text-purple-700">{fmtHrs(c.instHrsForDisplay || c.installHrs)} install</div>
+                            {item.install_wbs && installAgg[item.install_wbs] ? (
+                              <div className={`font-bold ${installAgg[item.install_wbs].isOverridden?"text-orange-600":"text-purple-700"}`}>
+                                {fmtHrs(installAgg[item.install_wbs].activeHrs)} install
+                                {installAgg[item.install_wbs].isOverridden && <span className="text-orange-400 text-[10px] ml-1">⚡ overridden</span>}
+                              </div>
+                            ) : (
+                              <div className="font-bold text-purple-700">{fmtHrs(c.instHrsForDisplay || c.installHrs)} install</div>
+                            )}
                           </div>
                         )}
                       </div>
