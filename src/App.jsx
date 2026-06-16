@@ -1811,7 +1811,17 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
           <div className="text-center text-orange-700">Qty</div>
           <div className="text-center">Factor</div>
           <div className="text-center text-orange-700 text-[9px] font-normal leading-tight">Materials<br/>cost only</div>
-          <div className="text-center text-gray-400">Expand</div>
+          <button
+            onClick={()=>{
+              const allCodes = [...items.map(i=>i.wbs_code), ...installItems.map(i=>i.wbs_code)];
+              const allExpanded = allCodes.every(c=>expandedRows[c]);
+              setExpandedRows(p=>{
+                const next = {...p};
+                allCodes.forEach(c=>{ next[c] = !allExpanded; });
+                return next;
+              });
+            }}
+            className="text-center text-gray-400 hover:text-[var(--primary-600)] hover:underline">Expand</button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {items.length === 0 && installItems.length === 0 && (
