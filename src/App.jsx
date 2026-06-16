@@ -7928,6 +7928,243 @@ function WBSIntegrityPanel({ wbs, supply, nullApproved, toggleNullApproved }) {
   );
 }
 
+// ── SOURCE PRICING EDITOR ────────────────────────────────────────
+// Unified editor for Civil & Building, Material Assemblies, Inventory Materials.
+// All three share the same equipment_pricing.json store and the same
+// base_price / esc_rate / escalated_price fields — this one component
+// handles all three, filtered by source tag.
+function SourcePricingEditor({ source, label, managerMode, onUnlock }) {
+  const { equipPricing: ctxPricing } = useData();
+  const [localPricing, setLocalPricing] = useState(null);
+  const [search,       setSearch]       = useState("");
+  const [editingKey,   setEditingKey]   = useState(null);
+  const [editVals,     setEditVals]     = useState({});
+
+  const pricing = localPricing || ctxPricing || {};
+
+  // Filter to this source only
+  const srcItems = useMemo(()=>
+    Object.values(pricing)
+      .filter(r => r.source === source)
+      .sort((a,b)=> (a.wbs_code||"").localeCompare(b.wbs_code||""))
+  , [pricing, source]);
+
+  const filtered = useMemo(()=>{
+    const q = search.toLowerCase();
+    if (!q) return srcItems;
+    return srcItems.filter(r =>
+      (r.wbs_code||"").toLowerCase().includes(q) ||
+      (r.description||"").toLowerCase().includes(q) ||
+      (r.category||"").toLowerCase().includes(q) ||
+      (r.family||"").toLowerCase().includes(q)
+    );
+  }, [srcItems, search]);
+
+  // Whether this source has base_price/esc_rate (live re-escalation capable)
+  // vs pre-escalated only (Civil, Assembly)
+  const hasLiveEsc = source === "Inventory";
+  const hasSomeEsc = source !== "Civil" && source !== "Assembly";
+
+  const startEdit = (r) => {
+    setEditingKey(r.wbs_code);
+    setEditVals({
+      base_price:     r.base_price != null ? String(r.base_price) : "",
+      esc_rate:       r.esc_rate   != null ? String((r.esc_rate*100).toFixed(1)) : "6.0",
+      price_date:     r.price_date || "",
+      escalated_price: r.escalated_price != null ? String(r.escalated_price.toFixed(4)) : "",
+      price_comments: r.price_comments || "",
+      comments:       r.comments       || "",
+      lead_weeks:     r.lead_weeks != null ? String(r.lead_weeks) : "",
+    });
+  };
+
+  const saveEdit = (wbs) => {
+    const updated = { ...(localPricing || ctxPricing || {}) };
+    if (!updated[wbs]) return;
+    const r = { ...updated[wbs] };
+    const newBase    = parseFloat(editVals.base_price);
+    const newEscRate = parseFloat(editVals.esc_rate) / 100;
+    const newDate    = editVals.price_date || null;
+    const newEscAmt  = parseFloat(editVals.escalated_price);
+    // For pre-escalated sources (Civil, Assembly): only escalated_price is editable
+    if (!hasSomeEsc) {
+      if (!isNaN(newEscAmt)) r.escalated_price = newEscAmt;
+    } else {
+      if (!isNaN(newBase))    r.base_price    = newBase;
+      if (!isNaN(newEscRate)) r.esc_rate      = newEscRate;
+      if (newDate)            r.price_date    = newDate;
+      // Recalculate escalated_price if base/rate/date changed
+      if (!isNaN(newBase) && !isNaN(newEscRate) && newDate) {
+        try {
+          const pd  = new Date(newDate);
+          const yrs = (Date.now() - pd.getTime()) / (1000*60*60*24*365.25);
+          r.escalated_price = yrs > 0 ? newBase * Math.pow(1 + newEscRate, yrs) : newBase;
+        } catch { r.escalated_price = newBase * (1 + newEscRate); }
+      } else if (!isNaN(newEscAmt)) {
+        r.escalated_price = newEscAmt; // manual override
+      }
+    }
+    if (editVals.price_comments !== undefined) r.price_comments = editVals.price_comments;
+    if (editVals.comments !== undefined)       r.comments       = editVals.comments;
+    if (editVals.lead_weeks !== undefined && !isNaN(parseInt(editVals.lead_weeks)))
+      r.lead_weeks = parseInt(editVals.lead_weeks);
+    updated[wbs] = r;
+    setLocalPricing(updated);
+    setEditingKey(null);
+  };
+
+  const cancelEdit = () => setEditingKey(null);
+
+  const fmt = v => v != null ? "$"+Number(v).toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2}) : "—";
+  const pct = v => v != null ? (Number(v)*100).toFixed(1)+"%" : "—";
+
+  // Source badge colour
+  const srcColour = {
+    Civil:     "bg-amber-100 text-amber-800 border-amber-300",
+    Assembly:  "bg-purple-100 text-purple-800 border-purple-300",
+    Inventory: "bg-teal-100 text-teal-800 border-teal-300",
+  }[source] || "bg-gray-100 text-gray-700 border-gray-300";
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Toolbar */}
+      <div className="bg-white border-b px-3 py-2 flex items-center gap-2 flex-shrink-0 flex-wrap">
+        <input value={search} onChange={e=>setSearch(e.target.value)}
+          placeholder={`Search ${label} by WBS, description…`}
+          className="border border-gray-300 rounded px-2 py-1 text-xs w-64 focus:outline-none focus:ring-1 focus:ring-[var(--primary-300)]"/>
+        {search && <button onClick={()=>setSearch("")} className="text-gray-400 text-xs hover:text-gray-600">✕</button>}
+        <span className="text-xs text-gray-400">{filtered.length} of {srcItems.length} items</span>
+        {!hasSomeEsc && (
+          <span className="text-xs bg-amber-50 border border-amber-200 text-amber-700 px-2 py-1 rounded">
+            ⚠ Pre-escalated prices — no base price stored. Edit the escalated price directly, or enter a base price + esc% to enable live recalculation.
+          </span>
+        )}
+        <div className="flex-1"/>
+        {managerMode ? (
+          <span className="text-xs bg-orange-100 text-orange-700 border border-orange-300 px-3 py-1.5 rounded font-semibold">🔓 Manager Mode — click row to edit</span>
+        ) : (
+          <button onClick={onUnlock} className="text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 px-3 py-1.5 rounded flex items-center gap-1.5">🔒 Manager Mode</button>
+        )}
+      </div>
+
+      {/* Data flow note */}
+      <div className="bg-[var(--primary-50)] border-b border-[var(--primary-100)] px-3 py-1.5 text-[10px] text-[var(--primary-700)] flex items-center gap-2 flex-shrink-0">
+        <span className="font-semibold">Data flow:</span>
+        <span className="font-mono bg-white border border-[var(--primary-200)] px-1 rounded">Base Price</span>
+        <span className="text-gray-400">×</span>
+        <span className="font-mono bg-white border border-[var(--primary-200)] px-1 rounded">(1 + esc%)^years</span>
+        <span className="text-gray-400">→</span>
+        <span className="font-mono bg-orange-100 border border-orange-200 px-1 rounded text-orange-800">Escalated Price → pce_price → materials cost</span>
+        <span className="text-gray-400 ml-2">then</span>
+        <span className="font-mono bg-green-100 border border-green-200 px-1 rounded text-green-800">× FY timeline escalation</span>
+        <span className="text-[var(--primary-500)]">= final cost</span>
+      </div>
+
+      {/* Table */}
+      <div className="flex-1 overflow-auto">
+        <table className="text-xs w-full min-w-max">
+          <thead className="bg-gray-50 border-b sticky top-0 z-10">
+            <tr>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600 whitespace-nowrap" style={{minWidth:"160px"}}>WBS Code</th>
+              <th className="text-left px-2 py-2 font-semibold text-gray-600 whitespace-nowrap" style={{minWidth:"260px"}}>Description</th>
+              <th className="text-left px-2 py-2 font-semibold text-gray-500 whitespace-nowrap">Category</th>
+              {hasSomeEsc && <th className="text-right px-2 py-2 font-semibold text-blue-700 whitespace-nowrap">Base Price</th>}
+              {hasSomeEsc && <th className="text-center px-2 py-2 font-semibold text-purple-700 whitespace-nowrap">Esc %</th>}
+              {hasSomeEsc && <th className="text-center px-2 py-2 font-semibold text-gray-500 whitespace-nowrap">Price Date</th>}
+              <th className="text-right px-2 py-2 font-semibold text-orange-700 whitespace-nowrap">Escalated Price</th>
+              {source === "PCE" || source === "Comms" || source === "SCADA"
+                ? <th className="text-center px-2 py-2 font-semibold text-gray-500 whitespace-nowrap">Lead (wks)</th>
+                : null}
+              <th className="text-left px-2 py-2 font-semibold text-gray-400 whitespace-nowrap">Comments</th>
+              <th className="px-2 py-2 text-gray-400 whitespace-nowrap"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(r => {
+              const isEd = editingKey === r.wbs_code;
+              const rowBg = isEd ? "bg-[var(--primary-50)]" : "hover:bg-gray-50";
+              const inp = (field, cls="w-24") => (
+                <input type="number" step="any" value={editVals[field]||""}
+                  onChange={e=>setEditVals(p=>({...p,[field]:e.target.value}))}
+                  className={`${cls} border border-[var(--primary-300)] bg-[var(--primary-50)] rounded px-1 py-0.5 text-xs text-right focus:outline-none`}/>
+              );
+              const txtInp = (field, cls="w-32") => (
+                <input type="text" value={editVals[field]||""}
+                  onChange={e=>setEditVals(p=>({...p,[field]:e.target.value}))}
+                  className={`${cls} border border-[var(--primary-300)] bg-[var(--primary-50)] rounded px-1 py-0.5 text-xs focus:outline-none`}/>
+              );
+              return (
+                <tr key={r.wbs_code} className={`border-b ${rowBg} ${managerMode?"cursor-pointer":""}`}
+                    onClick={()=>{ if(managerMode && !isEd) startEdit(r); }}>
+                  <td className="px-3 py-1.5 font-mono text-[var(--primary-700)] whitespace-nowrap">{r.wbs_code}</td>
+                  <td className="px-2 py-1.5 text-gray-700 max-w-xs truncate" title={r.description}>{r.description}</td>
+                  <td className="px-2 py-1.5 text-gray-500 whitespace-nowrap">
+                    <span className={`text-[9px] border rounded px-1 py-0.5 ${srcColour}`}>{r.category||r.source}</span>
+                  </td>
+                  {hasSomeEsc && (
+                    <td className="px-2 py-1.5 text-right tabular-nums text-blue-800 whitespace-nowrap">
+                      {isEd ? inp("base_price","w-24") : (r.base_price != null ? fmt(r.base_price) : <span className="text-gray-300">—</span>)}
+                    </td>
+                  )}
+                  {hasSomeEsc && (
+                    <td className="px-2 py-1.5 text-center text-purple-700 whitespace-nowrap">
+                      {isEd ? (
+                        <span className="flex items-center gap-0.5">
+                          {inp("esc_rate","w-14")}
+                          <span className="text-gray-400">%</span>
+                        </span>
+                      ) : pct(r.esc_rate)}
+                    </td>
+                  )}
+                  {hasSomeEsc && (
+                    <td className="px-2 py-1.5 text-center text-gray-500 whitespace-nowrap">
+                      {isEd ? txtInp("price_date","w-28") : (r.price_date||<span className="text-gray-300">—</span>)}
+                    </td>
+                  )}
+                  <td className="px-2 py-1.5 text-right tabular-nums text-orange-800 font-semibold whitespace-nowrap">
+                    {isEd ? inp("escalated_price","w-28") : fmt(r.escalated_price)}
+                  </td>
+                  {(source==="PCE"||source==="Comms"||source==="SCADA") && (
+                    <td className="px-2 py-1.5 text-center text-gray-500">
+                      {isEd ? inp("lead_weeks","w-14") : (r.lead_weeks!=null?r.lead_weeks+"w":"—")}
+                    </td>
+                  )}
+                  <td className="px-2 py-1.5 text-gray-400 max-w-xs truncate" title={r.price_comments||r.comments}>
+                    {isEd ? (
+                      <input type="text" value={editVals.price_comments||""}
+                        onChange={e=>setEditVals(p=>({...p,price_comments:e.target.value}))}
+                        className="w-48 border border-gray-300 rounded px-1 py-0.5 text-xs focus:outline-none"
+                        placeholder="Price comments"/>
+                    ) : (r.price_comments||r.comments||"")}
+                  </td>
+                  <td className="px-2 py-1.5 whitespace-nowrap text-right">
+                    {isEd ? (
+                      <span className="flex gap-1 justify-end">
+                        <button onClick={e=>{e.stopPropagation();saveEdit(r.wbs_code);}}
+                          className="text-[10px] bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded font-semibold">Save</button>
+                        <button onClick={e=>{e.stopPropagation();cancelEdit();}}
+                          className="text-[10px] bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded">Cancel</button>
+                      </span>
+                    ) : managerMode ? (
+                      <button onClick={e=>{e.stopPropagation();startEdit(r);}}
+                        className="text-[10px] text-[var(--primary-600)] hover:text-[var(--primary-800)] px-1">Edit</button>
+                    ) : null}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {filtered.length === 0 && (
+          <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
+            No {label} items found{search ? " matching search" : ""}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
   const {wbs:wbsCtx, supply, resourceCodes, loading, error} = useData();
   const [tab,          setTab]         = useState("items");
@@ -8049,6 +8286,9 @@ function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
     {id:"rates",      label:"💲 Resource Rates",       count:Object.keys(resourceCodes||{}).length},
     {id:"catalogue",  label:"🔧 Equipment Catalogue",  count:null},
     {id:"eqpricing",  label:"💲 Equipment Pricing",    count:null},
+    {id:"civil",      label:"🏗️ Civil & Building",     count:null},
+    {id:"assemblies", label:"🔩 Material Assemblies",  count:null},
+    {id:"inventory",  label:"📦 Inventory Materials",  count:null},
     {id:"escalation", label:"📈 Escalation Rates",     count:null},
     {id:"scaling",    label:"📐 Comm Scaling",          count:WBS_PROFILES.length},
     {id:"people",     label:"👥 People & Roles",        count:people.filter(p=>p.active).length},
@@ -8164,6 +8404,21 @@ function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
       {/* Equipment Pricing */}
       {tab==="eqpricing"&&(
         <EquipmentPricingEditor managerMode={managerMode} onUnlock={()=>setShowPinModal(true)} onPriceUpdate={onPriceUpdate}/>
+      )}
+
+      {/* Civil & Building */}
+      {tab==="civil"&&(
+        <SourcePricingEditor source="Civil" label="Civil & Building" managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
+      )}
+
+      {/* Material Assemblies */}
+      {tab==="assemblies"&&(
+        <SourcePricingEditor source="Assembly" label="Material Assemblies" managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
+      )}
+
+      {/* Inventory Materials */}
+      {tab==="inventory"&&(
+        <SourcePricingEditor source="Inventory" label="Inventory Materials" managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
       )}
 
       {/* Escalation Rates */}
