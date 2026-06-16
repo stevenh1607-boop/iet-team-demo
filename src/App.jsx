@@ -9,7 +9,7 @@ import { useState, useMemo, useEffect, useCallback, createContext, useContext, u
 const BASE = import.meta.env.BASE_URL || "/";
 
 // ── DATA CONTEXT ────────────────────────────────────────────────
-const DataCtx = createContext({ wbs:[], rates:[], supply:[], equipment:[], equipLookup:{}, commLookup:{}, commProfiles:{}, escRates:null, resourceCodes:{}, invMats:[], matAssemblies:[], equipPricing:{}, loading:true, error:null });
+const DataCtx = createContext({ wbs:[], supply:[], equipment:[], equipLookup:{}, commLookup:{}, commProfiles:{}, escRates:null, resourceCodes:{}, invMats:[], matAssemblies:[], equipPricing:{}, loading:true, error:null });
 
 // ── COPPERLEAF CSV EXPORT ────────────────────────────────────────
 // Matches Sync_To_C55 macro structure exactly:
@@ -541,13 +541,22 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
   // Use resourceOvrd if set (Main Resource Code override for non-linked items)
   const effectiveResource = resourceOvrd || item.resource_main || "";
   const isWAFHA    = (effectiveResource === "Work Away From Home");
+  // Look up the resource's EE Internal rate from resource_codes.json.
+  // This makes "Resource Type of Main Activity" drive BOTH the internal
+  // labour cost AND the ANS margin — changing the resource on a WBS item
+  // updates both fields automatically, consistent with MASTER.xlsm behaviour.
+  // Falls back to item.ee_labour_rate (supply_items.json) only when the
+  // resource name isn't found in the lookup (shouldn't happen post resource-
+  // codes retirement, but keeps the calc safe during any transition period).
+  const resEntry   = ratesLookup?.[effectiveResource];
   // WAFHA rate: use manager-edited rate from ratesLookup if available, else item rate, else workbook default
   const wafhaRate  = ratesLookup?.["Work Away From Home"]
     ? (isCommercial
         ? (ratesLookup["Work Away From Home"].ee_commercial_rate || 359.50)
         : (ratesLookup["Work Away From Home"].ee_internal_rate   || 359.50))
     : (item.ee_labour_rate || 359.50);
-  const eeRate     = isWAFHA ? wafhaRate : (item.ee_labour_rate || 246.95);
+  const eeRate     = isWAFHA ? wafhaRate
+                   : (resEntry?.ee_internal_rate ?? item.ee_labour_rate ?? 246.95);
   // Percentage-of-total items: cost = pct × total non-prelim base for this L3 group
   const isPctItem  = !!(item.pct_of_total);
   const pctRate    = isPctItem ? ((pctBase || 0) * item.pct_of_total) : 0;
@@ -4412,7 +4421,7 @@ function TemplateLibrary({ onLoad, saved, setSaved, currentInv, currentLines }) 
 
 function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
   // Resolved pricing context — used to freeze a rate snapshot at the moment of approval
-  const { supply: snapSupply, rates: snapRates, commLookup: snapCommLookup, resourceCodes } = useData();
+  const { supply: snapSupply, commLookup: snapCommLookup, resourceCodes } = useData();
   const [hubTab,      setHubTab]      = useState("portfolio");
   const [saved,       setSaved]       = useState([]);
   const [search,      setSearch]      = useState("");
@@ -4479,14 +4488,18 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
   const confirmApproval = (id) => {
     if (approvePinVal === APPROVE_PIN) {
       // ── Rate snapshot on approval (demo version of Prompt 5D) ──
-      // Freeze the resolved prices and rate table at this moment so the
-      // approved estimate never reprices when master rates/equipment
-      // pricing change later. Never snapshot twice.
+      // Freeze the resolved prices and resource_codes.json rate table at this
+      // moment so the approved estimate never reprices when master rates/
+      // equipment pricing change later. Never snapshot twice.
+      // NOTE: estimates approved before this field existed have a
+      // rateSnapshot with `prices` but no `resourceCodes` — those fall back
+      // to live resourceCodes (DataCtx provider), same as they already did
+      // for OT-ratio purposes pre-fix.
       const target = saved.find(s=>s.id===id);
       const rateSnapshot = target?.rateSnapshot || {
         takenAt: new Date().toISOString(),
         prices: Object.fromEntries((snapSupply||[]).filter(s=>s.pce_price!=null).map(s=>[s.wbs_code, s.pce_price])),
-        rates: JSON.parse(JSON.stringify(snapRates||[])),
+        resourceCodes: JSON.parse(JSON.stringify(resourceCodes||{})),
       };
       const updated = saved.map(s=>s.id===id ? {...s, status:"Approved", rateSnapshot} : s);
       setSaved(updated);
@@ -6431,7 +6444,7 @@ const SAMPLE_PEOPLE=[
 
 
 // ── RATES EDITOR ────────────────────────────────────────────────
-function RatesEditor({ rates, managerMode, onUnlock }) {
+function RatesEditor({ managerMode, onUnlock }) {
   // Source is resource_codes.json (keyed by name) — richer than old resource_rates.json
   const { resourceCodes: ctxRC } = useData();
   const [localRC,     setLocalRC]     = useState(null);
@@ -7173,7 +7186,8 @@ function EscalationEditor({ managerMode, onUnlock }) {
 //          Plant Cost | UOM | Install WBS | Commission WBS | Status/Gap
 // Manager Mode (PIN-locked) enables inline editing of every field.
 // ══════════════════════════════════════════════════════════════════
-function WBSItemEditor({ wbs, supply, rates, managerMode, onUnlock, loading }) {
+function WBSItemEditor({ wbs, supply, managerMode, onUnlock, loading }) {
+  const { resourceCodes } = useData();
   const [search,      setSearch]      = useState("");
   const [phaseFilter, setPhaseFilter] = useState("All");
   const [scopeFilter, setScopeFilter] = useState("All");
@@ -7203,8 +7217,14 @@ function WBSItemEditor({ wbs, supply, rates, managerMode, onUnlock, loading }) {
   const wbsAddDupe    = wbsAddVal && usedWbsCodesSupply.has(wbsAddVal);
   const wbsAddOk      = wbsAddVal && !wbsAddDupe;
 
-  // Build rates lookup for resource options
-  const resourceTypes = useMemo(()=> rates.map(r=>r.resource_type), [rates]);
+  // Build rates lookup for resource options — resource_codes.json (44 labour
+  // resources, e.g. ZS Specialist Technician, Telecomms Technician, Project
+  // Manager) rather than the legacy 24-entry resource_rates.json.
+  const resourceTypes = useMemo(()=>
+    Object.values(resourceCodes||{})
+      .map(r=>r.resource_name)
+      .filter(name => name && (resourceCodes[name]?.ee_internal_rate != null)) // labour resources only — excludes Materials (LLT/Non-LLT/PCE/Non-PCE)
+  , [resourceCodes]);
 
   const gapCount = useMemo(()=> displaySupply.filter(s=>
     !s.pct_of_total && !(
@@ -7881,7 +7901,7 @@ function WBSIntegrityPanel({ wbs, supply, nullApproved, toggleNullApproved }) {
 }
 
 function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
-  const {wbs:wbsCtx, supply, rates, loading, error} = useData();
+  const {wbs:wbsCtx, supply, resourceCodes, loading, error} = useData();
   const [tab,          setTab]         = useState("items");
   const [search,       setSearch]      = useState("");
   const [scopeFilter,  setScopeFilter] = useState("All");
@@ -7998,7 +8018,7 @@ function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
   const equipSelectedCount = Object.values(equipSel).filter(q=>parseFloat(q)>0).length;
   const tabs=[
     {id:"items",      label:"📋 WBS Item Editor",      count:wbs.length},
-    {id:"rates",      label:"💲 Resource Rates",       count:rates.length},
+    {id:"rates",      label:"💲 Resource Rates",       count:Object.keys(resourceCodes||{}).length},
     {id:"catalogue",  label:"🔧 Equipment Catalogue",  count:null},
     {id:"eqpricing",  label:"💲 Equipment Pricing",    count:null},
     {id:"escalation", label:"📈 Escalation Rates",     count:null},
@@ -8089,7 +8109,7 @@ function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
         ))}
         <div className="flex-1"/>
         {loading&&<span className="text-xs text-[var(--primary-500)] animate-pulse pb-2 pr-2">⟳ Loading…</span>}
-        {!loading&&!error&&<span className="text-xs text-green-600 pb-2 pr-2">✓ {wbs.length} WBS · {rates.length} rates</span>}
+        {!loading&&!error&&<span className="text-xs text-green-600 pb-2 pr-2">✓ {wbs.length} WBS · {Object.keys(resourceCodes||{}).length} rates</span>}
         {error&&<span className="text-xs text-red-500 pb-2 pr-2">⚠ {error}</span>}
       </div>
 
@@ -8098,7 +8118,6 @@ function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
         <WBSItemEditor
           wbs={wbs}
           supply={supply}
-          rates={rates}
           managerMode={managerMode}
           onUnlock={()=>setShowPinModal(true)}
           loading={loading}
@@ -8107,7 +8126,7 @@ function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
 
       {/* Resource Rates */}
       {tab==="rates"&&(
-        <RatesEditor rates={rates} managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
+        <RatesEditor managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
       )}
 
       {/* Equipment Catalogue */}
@@ -12479,7 +12498,6 @@ export default function App() {
 
   // Live data
   const [wbsData,     setWbsData]     = useState([]);
-  const [ratesData,   setRatesData]   = useState([]);
   const [supplyData,  setSupplyData]  = useState([]);
   const [equipData,   setEquipData]   = useState([]);
   const [equipLookup,  setEquipLookup]  = useState({});
@@ -12503,7 +12521,6 @@ export default function App() {
   useEffect(()=>{
     Promise.all([
       fetch(`${BASE}data/wbs_master.json`).then(r=>{if(!r.ok)throw new Error("wbs_master "+r.status);return r.json();}),
-      fetch(`${BASE}data/resource_rates.json`).then(r=>{if(!r.ok)throw new Error("resource_rates "+r.status);return r.json();}),
       fetch(`${BASE}data/supply_items.json`).then(r=>{if(!r.ok)throw new Error("supply_items "+r.status);return r.json();}),
       fetch(`${BASE}data/equipment.json`).then(r=>{if(!r.ok)return {items:[]};return r.json();}).catch(()=>({items:[]})),
       fetch(`${BASE}data/equipment_wbs_lookup.json`).then(r=>{if(!r.ok)return {lookup:{}};return r.json();}).catch(()=>({lookup:{}})),
@@ -12514,9 +12531,8 @@ export default function App() {
       fetch(`${BASE}data/inventory_materials.json`).then(r=>{if(!r.ok)return [];return r.json();}).catch(()=>[]),
       fetch(`${BASE}data/material_assemblies.json`).then(r=>{if(!r.ok)return [];return r.json();}).catch(()=>[]),
     ])
-    .then(([wbs,rates,supply,equip,lookup,commLookup,escRatesData,resourceCodesData,equipPricingData,invMatsData,matAssData])=>{
+    .then(([wbs,supply,equip,lookup,commLookup,escRatesData,resourceCodesData,equipPricingData,invMatsData,matAssData])=>{
       setWbsData(wbs.records||[]);
-      setRatesData(rates.records||[]);
       setSupplyData(supply.items||[]);
       // Normalise equipment items into the shape EquipmentScreen expects
       const normalised = (equip.items||[]).map(e => {
@@ -12859,7 +12875,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-    <DataCtx.Provider value={{wbs:wbsData,rates:(activeSnapshot?.rates?.length ? activeSnapshot.rates : ratesData),supply:resolvedSupply,equipment:resolvedEquipment,equipLookup,commLookup,commProfiles,escRates,resourceCodes,equipPricing,invMats,matAssemblies,loading,error}}>
+    <DataCtx.Provider value={{wbs:wbsData,supply:resolvedSupply,equipment:resolvedEquipment,equipLookup,commLookup,commProfiles,escRates,resourceCodes:(Object.keys(activeSnapshot?.resourceCodes||{}).length ? activeSnapshot.resourceCodes : resourceCodes),equipPricing,invMats,matAssemblies,loading,error}}>
       <div className="flex flex-col h-screen font-sans text-sm select-none">
 
         {/* Top nav */}
@@ -12885,7 +12901,7 @@ export default function App() {
           ))}
           <div className="flex-1"/>
           {loading&&<span className="text-xs text-[var(--primary-300)] animate-pulse pr-4">⟳ Loading live data…</span>}
-          {!loading&&!error&&<span className="text-xs text-green-400 pr-4">✓ {wbsData.length} WBS · {supplyData.length} items · {equipData.length} equipment · {ratesData.length} rates</span>}
+          {!loading&&!error&&<span className="text-xs text-green-400 pr-4">✓ {wbsData.length} WBS · {supplyData.length} items · {equipData.length} equipment · {Object.keys(resourceCodes||{}).length} rates</span>}
           {error&&<span className="text-xs text-red-400 pr-4">⚠ Data error — {error}</span>}
           {currentUser ? (
             <div className="flex items-center gap-2 pr-4 pl-2 border-l border-[var(--primary-700)] ml-2 h-full">
