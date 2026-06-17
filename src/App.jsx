@@ -3657,7 +3657,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
             {/* Grand total footer */}
             <div className="grid border-t-2 border-gray-300 bg-gray-50 text-xs font-bold"
               style={{gridTemplateColumns: isCommercial?"1fr 80px 80px 90px 90px":"1fr 80px 80px 90px"}}>
-              <div className="px-3 py-2 text-gray-700">Total (excl. contingency)</div>
+              <div className="px-3 py-2 text-gray-700">Total (excl. OT, contingency &amp; escalation)</div>
               <div className="py-2 text-center text-purple-700">{Object.entries(nodeRollup).filter(([k])=>k.split('.').length===1).reduce((a,[,v])=>a+v.installHrs,0)>0?fmtHrs(Object.entries(nodeRollup).filter(([k])=>k.split('.').length===1).reduce((a,[,v])=>a+v.installHrs,0)):"—"}</div>
               <div className="py-2 text-center text-teal-700">{commGrandHrs>0?fmtHrs(commGrandHrs):"—"}</div>
               <div className="py-2 text-right pr-2 text-[var(--primary-900)] text-sm">{fmt(grandEE)}</div>
@@ -3682,7 +3682,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
             )}
             {/* Contingency row */}
             <div className="grid text-xs border-b" style={{gridTemplateColumns: isCommercial?"1fr 100px 100px":"1fr 100px"}}>
-              <div className="px-4 py-2 text-gray-600 font-medium">Base Estimate (excl. contingency &amp; escalation)</div>
+              <div className="px-4 py-2 text-gray-600 font-medium">Base Estimate (excl. contingency &amp; escalation) <span className="font-normal text-gray-400" title="This value includes the 20% OT uplift on EE-delivered labour and is the number used as the CART base estimate">· incl. OT · CART base</span></div>
               <div className="py-2 text-right pr-4 font-bold text-[var(--primary-900)]">{fmt(grandEEwithOT)}</div>
               {isCommercial && <div className="py-2 text-right pr-4 font-bold text-orange-800">{fmt(grandComm)}</div>}
             </div>
@@ -11739,7 +11739,7 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
             {/* Base + systemic */}
             <div className="grid grid-cols-2 gap-4">
               <Card className="bg-white">
-                <SectionHeader color="blue" title="Base Estimate" subtitle="Excl. contingency & escalation — live from estimate"/>
+                <SectionHeader color="blue" title="Base Estimate" subtitle="Excl. contingency & escalation — matches 'Base Estimate' in Summary (incl. 20% OT uplift)"/>
                 <div className="p-4">
                   <div className="text-2xl font-bold text-[var(--primary-900)] font-mono">{fmt(baseEstimate)}</div>
                   <div className="text-xs text-gray-500 mt-1">{isCommercial?"Commercial (ANS applied)":"EE Internal"} rate stream · {inv.name||"Untitled"} · Rev {inv.revision||"A"}</div>
