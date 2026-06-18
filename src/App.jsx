@@ -8462,7 +8462,7 @@ function WBSIntegrityPanel({ wbs, supply, nullApproved, toggleNullApproved }) {
 // base_price / esc_rate / escalated_price fields — this one component
 // handles all three, filtered by source tag.
 function SourcePricingEditor({ source, label, managerMode, onUnlock }) {
-  const { equipPricing: ctxPricing, matAssemblies } = useData();
+  const { equipPricing: ctxPricing } = useData();
   const [localPricing, setLocalPricing] = useState(null);
   const [search,       setSearch]       = useState("");
   const [editingKey,   setEditingKey]   = useState(null);
@@ -8552,41 +8552,6 @@ function SourcePricingEditor({ source, label, managerMode, onUnlock }) {
     Assembly:  "bg-purple-100 text-purple-800 border-purple-300",
     Inventory: "bg-teal-100 text-teal-800 border-teal-300",
   }[source] || "bg-gray-100 text-gray-700 border-gray-300";
-
-  // Assembly source: render 2-col card grid from matAssemblies data
-  if (source === "Assembly") {
-    const asmFmt = v => v != null ? "$"+Number(v).toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2}) : "—";
-    const assemblies = (matAssemblies || []).sort((a,b)=>(a.wbs_code||"").localeCompare(b.wbs_code||""));
-    const section = wbsCode => (wbsCode||"").split(".").slice(0,3).join(".");
-    return (
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="bg-white border-b px-3 py-2 flex items-center gap-2 flex-shrink-0">
-          <span className="text-xs text-gray-500 font-semibold">{assemblies.length} material assemblies</span>
-          <div className="flex-1"/>
-          {managerMode ? (
-            <span className="text-xs bg-orange-100 text-orange-700 border border-orange-300 px-3 py-1.5 rounded font-semibold">🔓 Manager Mode</span>
-          ) : (
-            <button onClick={onUnlock} className="text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 px-3 py-1.5 rounded flex items-center gap-1.5">🔒 Manager Mode</button>
-          )}
-        </div>
-        <div className="flex-1 overflow-auto p-4">
-          <div className="grid grid-cols-2 gap-3 max-w-4xl">
-            {assemblies.map(asm=>(
-              <div key={asm.wbs_code} className="bg-white rounded-lg border border-[#e8edf3] shadow-sm p-4 flex flex-col gap-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-mono font-bold bg-[var(--primary-50)] text-[var(--primary-700)] border border-[var(--primary-200)] px-2 py-0.5 rounded">{asm.wbs_code}</span>
-                  <span className="text-[10px] font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Approved</span>
-                </div>
-                <div className="text-xs font-semibold text-gray-800 leading-tight">{asm.description}</div>
-                <div className="text-[11px] text-gray-500">{section(asm.wbs_code)} · {(asm.components||[]).length} item{(asm.components||[]).length!==1?"s":""}</div>
-                <div className="text-sm font-mono font-bold text-[var(--primary-800)] mt-auto pt-1 border-t border-gray-100">{asmFmt(asm.total_cost)}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
