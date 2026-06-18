@@ -1147,7 +1147,8 @@
       "resource_type": "ZS Specialist Technician",
       "profile_id": "SCADA_RTC",
       "profile_name": "SCADA RTC",
-      "profile_status": "Confirmed"
+      "profile_status": "Confirmed",
+      "direct_entry": true
     },
     "4.1.6.02.7.02": {
       "description": "SCADA RTU Cubicle (Panel: ZS Team)",
