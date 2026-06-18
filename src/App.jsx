@@ -13700,26 +13700,26 @@ export default function App() {
     <DataCtx.Provider value={{wbs:wbsData,supply:resolvedSupply,equipment:resolvedEquipment,equipLookup,commLookup,commProfiles,escRates,resourceCodes:(Object.keys(activeSnapshot?.resourceCodes||{}).length ? activeSnapshot.resourceCodes : resourceCodes),equipPricing,invMats,matAssemblies,loading,error}}>
       <div className="flex flex-col h-screen font-sans text-sm select-none">
 
-        {/* Top nav — bold brand mode: white logo band + orange swoosh + navy nav */}
+        {/* Top nav — white logo band + accent swoosh + primary nav */}
         <div className="flex-shrink-0" style={{boxShadow:"0 4px 18px -4px rgba(8,18,45,.32)"}}>
           {/* White logo band */}
           <div className="bg-white px-5 py-2.5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* EE logo: three skewed bars */}
+              {/* Logo: three skewed bars using theme primary + accent */}
               <div className="flex items-end gap-[3px]" style={{height:28}}>
-                <div style={{width:7,height:28,background:"#002266",transform:"skewX(-12deg)"}}/>
-                <div style={{width:7,height:20,background:"#002266",transform:"skewX(-12deg)"}}/>
-                <div style={{width:7,height:28,background:"#FF5300",transform:"skewX(-12deg)"}}/>
+                <div style={{width:7,height:28,background:"var(--primary-900)",transform:"skewX(-12deg)"}}/>
+                <div style={{width:7,height:20,background:"var(--primary-900)",transform:"skewX(-12deg)"}}/>
+                <div style={{width:7,height:28,background:"var(--accent-600)",transform:"skewX(-12deg)"}}/>
               </div>
               <div>
-                <div className="text-xs font-extrabold tracking-tight leading-none" style={{color:"#002266"}}>Essential Energy</div>
+                <div className="text-xs font-extrabold tracking-tight leading-none text-[var(--primary-900)]">Essential Energy</div>
                 <div className="text-[10px] text-gray-400 leading-none mt-0.5">Investment Estimation Tool</div>
               </div>
             </div>
             <div className="flex items-center gap-4">
               {inv.name && <span className="text-xs text-gray-500 truncate max-w-64">{inv.name}</span>}
               {loading&&<span className="text-xs text-gray-400 animate-pulse">⟳ Loading…</span>}
-              {!loading&&!error&&<span className="text-xs font-medium" style={{color:"#002266"}}>✓ {wbsData.length} WBS · {supplyData.length} items · {equipData.length} equipment · {Object.keys(resourceCodes||{}).length} rates</span>}
+              {!loading&&!error&&<span className="text-xs font-medium text-[var(--primary-700)]">✓ {wbsData.length} WBS · {supplyData.length} items · {equipData.length} equipment · {Object.keys(resourceCodes||{}).length} rates</span>}
               {error&&<span className="text-xs text-red-500">⚠ Data error</span>}
               {currentUser ? (
                 <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
@@ -13729,22 +13729,22 @@ export default function App() {
               ) : (
                 <button onClick={()=>setShowLogin(true)}
                   className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 pl-3 border-l border-gray-200">
-                  Read-only · <span className="underline font-medium" style={{color:"#002266"}}>Sign in</span>
+                  Read-only · <span className="underline font-medium text-[var(--primary-700)]">Sign in</span>
                 </button>
               )}
             </div>
           </div>
-          {/* Orange swoosh divider */}
-          <div style={{height:4,background:"linear-gradient(90deg,#FF5300 0%,#FF6A1F 60%,#E64A00 100%)"}}/>
-          {/* Navy nav bar */}
-          <div className="flex items-center px-4 py-0" style={{background:"#002266"}}>
+          {/* Accent swoosh divider */}
+          <div style={{height:4,background:"linear-gradient(90deg,var(--accent-600) 0%,var(--accent-500) 60%,var(--accent-700) 100%)"}}/>
+          {/* Primary nav bar */}
+          <div className="flex items-center px-4 py-0 bg-[var(--primary-900)]">
             {APP_TABS.map(tab=>(
               <button key={tab.id} onClick={()=>{
                   if (appTab==="estimation" && tab.id!=="estimation" && !estimateLocked && !editLockInfo) releaseLock(currentRecordId);
                   setAppTab(tab.id);
                 }}
                 className={`px-5 py-2.5 text-xs font-semibold transition-colors border-b-[3px] ${
-                  appTab===tab.id?"border-[#FF5300] text-white bg-[#102C5C]":"border-transparent text-[#93B0DA] hover:text-white hover:bg-[#102C5C]"}`}>
+                  appTab===tab.id?"border-[var(--accent-600)] text-white bg-[var(--primary-800)]":"border-transparent text-[var(--primary-300)] hover:text-white hover:bg-[var(--primary-800)]"}`}>
                 {tab.label}
                 {tab.id==="saved"&&<span className="ml-1 text-xs bg-[var(--primary-700)] text-[var(--primary-200)] px-1.5 py-0.5 rounded-full font-mono">
                   {(()=>{try{return JSON.parse(localStorage.getItem("iet_investments")||"[]").length}catch{return 0}})()}
