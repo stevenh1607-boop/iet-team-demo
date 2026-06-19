@@ -9,7 +9,7 @@ import { useState, useMemo, useEffect, useCallback, createContext, useContext, u
 const BASE = import.meta.env.BASE_URL || "/";
 
 // ── DATA CONTEXT ────────────────────────────────────────────────
-const DataCtx = createContext({ wbs:[], supply:[], equipment:[], equipLookup:{}, commLookup:{}, commProfiles:{}, escRates:null, resourceCodes:{}, invMats:[], matAssemblies:[], equipPricing:{}, loading:true, error:null });
+const DataCtx = createContext({ wbs:[], supply:[], equipment:[], equipLookup:{}, commLookup:{}, commProfiles:{}, escRates:null, resourceCodes:{}, equipPricing:{}, loading:true, error:null });
 
 // ── COPPERLEAF CSV EXPORT ────────────────────────────────────────
 // Matches Sync_To_C55 macro structure exactly:
@@ -1236,137 +1236,6 @@ function WBSNavTree({ wbs, supply, activePhase, setActivePhase, selectedL4, onSe
 
 // ── ESTIMATION SCREEN ────────────────────────────────────────────
 // ── INVENTORY & ASSEMBLY LOOKUP PANEL ────────────────────────────
-// Searchable lookup for Inventory Materials and Material Assemblies
-// shown as a collapsible drawer in the cost detail panel
-function InvMatsLookup({ wbsCode }) {
-  const { invMats, matAssemblies } = useData();
-  const [open,    setOpen]    = useState(false);
-  const [tab,     setTab]     = useState("assembly"); // "assembly" | "inventory"
-  const [search,  setSearch]  = useState("");
-
-  // Find assembly matching this WBS code
-  const matchAssembly = matAssemblies.find(a => a.wbs_code === wbsCode);
-
-  const filteredInv = useMemo(() => {
-    if (!search.trim()) return invMats.slice(0, 50);
-    const q = search.toLowerCase();
-    return invMats.filter(i =>
-      (i.description||"").toLowerCase().includes(q) ||
-      (i.item_number||"").toLowerCase().includes(q) ||
-      (i.category||"").toLowerCase().includes(q)
-    ).slice(0, 80);
-  }, [invMats, search]);
-
-  const fmtP = v => v > 0 ? `$${v.toFixed(2)}` : "—";
-
-  return (
-    <div className="border-t border-gray-100 mt-2">
-      <button onClick={()=>setOpen(o=>!o)}
-        className="flex items-center gap-1.5 text-xs text-[var(--primary-700)] hover:text-[var(--primary-900)] py-1.5 font-medium w-full">
-        <span>{open ? "▾" : "▸"}</span>
-        <span>📦 Inventory Materials & Assemblies Lookup</span>
-        {matchAssembly && <span className="bg-[var(--primary-100)] text-[var(--primary-700)] rounded px-1.5 py-0.5 text-[10px] ml-1">Assembly available</span>}
-      </button>
-
-      {open && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-2">
-          {/* Tabs */}
-          <div className="flex border-b border-gray-200 bg-white">
-            {[
-              {id:"assembly", label:`🔧 Assembly${matchAssembly?" (matched)":""}`},
-              {id:"inventory", label:"📋 Inventory Materials"},
-            ].map(t=>(
-              <button key={t.id} onClick={()=>setTab(t.id)}
-                className={`text-xs px-3 py-2 font-medium border-b-2 transition-colors ${tab===t.id?"border-[var(--primary-600)] text-[var(--primary-700)]":"border-transparent text-gray-500 hover:text-gray-700"}`}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {tab==="assembly" && (
-            <div className="p-3">
-              {matchAssembly ? (
-                <>
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <div className="text-xs font-bold text-gray-800">{matchAssembly.description}</div>
-                      <div className="text-[10px] text-gray-400">{matchAssembly.wbs_code} · Ref: {matchAssembly.reference||"—"}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs font-bold text-[var(--primary-700)]">{matchAssembly.total_cost ? `$${matchAssembly.total_cost.toFixed(2)}` : "—"}</div>
-                      <div className="text-[10px] text-gray-400">total assembly cost</div>
-                    </div>
-                  </div>
-                  <table className="w-full text-[10px] border-collapse">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="text-left px-2 py-1">Description</th>
-                        <th className="text-left px-2 py-1">Inv Code</th>
-                        <th className="text-right px-2 py-1">Qty</th>
-                        <th className="text-left px-2 py-1">UOM</th>
-                        <th className="text-right px-2 py-1">Unit Rate</th>
-                        <th className="text-right px-2 py-1">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {matchAssembly.components.map((c,i)=>(
-                        <tr key={i} className={i%2===0?"bg-white":"bg-gray-50"}>
-                          <td className="px-2 py-0.5 text-gray-700">{c.description}</td>
-                          <td className="px-2 py-0.5 font-mono text-gray-400">{c.inv_code||"—"}</td>
-                          <td className="px-2 py-0.5 text-right">{c.qty}</td>
-                          <td className="px-2 py-0.5 text-gray-400">{c.uom}</td>
-                          <td className="px-2 py-0.5 text-right">{c.unit_price ? `$${c.unit_price.toFixed(2)}` : "—"}</td>
-                          <td className="px-2 py-0.5 text-right font-semibold">{c.total ? `$${c.total.toFixed(2)}` : "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </>
-              ) : (
-                <div className="text-xs text-gray-400 py-4 text-center">No pre-built assembly found for WBS {wbsCode}</div>
-              )}
-            </div>
-          )}
-
-          {tab==="inventory" && (
-            <div className="p-2">
-              <input value={search} onChange={e=>setSearch(e.target.value)}
-                placeholder="Search inventory by description, item number or category…"
-                className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs mb-2 focus:outline-none focus:ring-1 focus:ring-[var(--primary-400)]"/>
-              <div className="max-h-48 overflow-y-auto">
-                <table className="w-full text-[10px] border-collapse">
-                  <thead className="sticky top-0 bg-gray-100">
-                    <tr>
-                      <th className="text-left px-2 py-1">Item #</th>
-                      <th className="text-left px-2 py-1">Description</th>
-                      <th className="text-left px-2 py-1">Category</th>
-                      <th className="text-left px-2 py-1">UOM</th>
-                      <th className="text-right px-2 py-1">Last Price</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredInv.map((item,i)=>(
-                      <tr key={i} className={i%2===0?"bg-white":"bg-gray-50"}>
-                        <td className="px-2 py-0.5 font-mono text-gray-500">{item.item_number}</td>
-                        <td className="px-2 py-0.5 text-gray-700">{item.description}</td>
-                        <td className="px-2 py-0.5 text-gray-400">{item.category}</td>
-                        <td className="px-2 py-0.5 text-gray-400">{item.uom}</td>
-                        <td className="px-2 py-0.5 text-right font-semibold text-[var(--primary-700)]">{fmtP(item.last_price)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {!search && invMats.length > 50 && (
-                  <div className="text-[10px] text-gray-400 text-center py-1">Showing 50 of {invMats.length} — search to filter</div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // Thin wrapper that scrolls the selected commissioning group into view
 function CommScrollList({ selectedCommGroup, children }) {
@@ -13352,8 +13221,7 @@ export default function App() {
   const handlePriceUpdate = useCallback((key, updatedRow) => {
     setEquipPricing(prev => ({ ...prev, [key]: updatedRow }));
   }, []);
-  const [invMats,      setInvMats]      = useState([]);
-  const [matAssemblies,setMatAssemblies]= useState([]);
+
   const [equipSel,    setEquipSel]    = useState({});
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
@@ -13368,10 +13236,9 @@ export default function App() {
       fetch(`${BASE}data/escalation_rates.json`).then(r=>{if(!r.ok)return null;return r.json();}).catch(()=>null),
       fetch(`${BASE}data/resource_codes.json`).then(r=>{if(!r.ok)return {};return r.json();}).catch(()=>({})),
       fetch(`${BASE}data/equipment_pricing.json`).then(r=>{if(!r.ok)return {};return r.json();}).catch(()=>({})),
-      fetch(`${BASE}data/inventory_materials.json`).then(r=>{if(!r.ok)return [];return r.json();}).catch(()=>[]),
-      fetch(`${BASE}data/material_assemblies.json`).then(r=>{if(!r.ok)return [];return r.json();}).catch(()=>[]),
+
     ])
-    .then(([wbs,supply,equip,lookup,commLookup,escRatesData,resourceCodesData,equipPricingData,invMatsData,matAssData])=>{
+    .then(([wbs,supply,equip,lookup,commLookup,escRatesData,resourceCodesData,equipPricingData])=>{
       setWbsData(wbs.records||[]);
       setSupplyData(supply.items||[]);
       // Normalise equipment items into the shape EquipmentScreen expects
@@ -13411,8 +13278,7 @@ export default function App() {
       setEscRates(escRatesData);
       setResourceCodes(resourceCodesData || {});
       setEquipPricing(equipPricingData || {});
-      setInvMats(Array.isArray(invMatsData) ? invMatsData : []);
-      setMatAssemblies(Array.isArray(matAssData) ? matAssData : []);
+
       setLoading(false);
     })
     .catch(err=>{setError(err.message);setLoading(false);});
@@ -13715,7 +13581,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-    <DataCtx.Provider value={{wbs:wbsData,supply:resolvedSupply,equipment:resolvedEquipment,equipLookup,commLookup,commProfiles,escRates,resourceCodes:(Object.keys(activeSnapshot?.resourceCodes||{}).length ? activeSnapshot.resourceCodes : resourceCodes),equipPricing,invMats,matAssemblies,loading,error}}>
+    <DataCtx.Provider value={{wbs:wbsData,supply:resolvedSupply,equipment:resolvedEquipment,equipLookup,commLookup,commProfiles,escRates,resourceCodes:(Object.keys(activeSnapshot?.resourceCodes||{}).length ? activeSnapshot.resourceCodes : resourceCodes),equipPricing,loading,error}}>
       <div className="flex flex-col h-screen font-sans text-sm select-none">
 
         {/* Top nav — white logo band + accent swoosh + primary nav */}
