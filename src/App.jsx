@@ -592,15 +592,6 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
   return new Blob([wbout], { type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
 
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a   = document.createElement("a");
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
 // Australian FY: July–June. Month 1 = project start = July of start year.
 // Compound monthly escalation index per the ABS-based formula.
 function escalationIndex(monthNum, annualRatesArr) {
