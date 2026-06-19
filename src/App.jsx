@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, createContext, useContext, useRef, Component } from "react";
+﻿import { useState, useMemo, useEffect, useCallback, createContext, useContext, useRef, Component } from "react";
 
 // ═══════════════════════════════════════════════════════════════════
 // IET ESTIMATION TOOL — FULL SCALE DEMO
@@ -8,8 +8,155 @@ import { useState, useMemo, useEffect, useCallback, createContext, useContext, u
 
 const BASE = import.meta.env.BASE_URL || "/";
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// IET EXPORT/IMPORT UTILITIES — Local Estimate Save/Load
+// ═══════════════════════════════════════════════════════════════════════════
+function exportEstimateJSON(inv, resourceCodes, escalationRates, equipmentSelection, commissioning, supply) {
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
+  const safeInvName = (inv.name || "estimate")
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "_")
+    .slice(0, 40);
+  const safeClass = (inv.estClass || "Class5").replace(/\s+/g, "").toLowerCase();
+  const filename = `IET_${inv.number || inv.id}_${safeInvName}_${safeClass}_${dateStr}.json`;
+  const rateSnapshot = {
+    takenAt: now.toISOString(),
+    takenAtDisplay: now.toLocaleString("en-AU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+    resourceCodes: JSON.parse(JSON.stringify(resourceCodes || {})),
+    escalationRates: JSON.parse(JSON.stringify(escalationRates || {})),
+  };
+  const exportData = {
+    exportVersion: "1.0",
+    exportDate: now.toISOString(),
+    exportDateDisplay: now.toLocaleString("en-AU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+    filename,
+    investment: { ...inv, rateSnapshot, exportedAt: now.toISOString(), exportedBy: "IET Demo User" },
+    equipmentSelection: equipmentSelection || {},
+    commissioning: commissioning || {},
+    supplyMetadata: { count: (supply || []).length, lastModified: now.toISOString() },
+    metadata: { appVersion: "1.0.0", appEnvironment: "demo", exportedOn: now.toISOString(), schema: "IET_1.0" },
+  };
+  return { data: exportData, filename, blob: new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" }) };
+}
+
+function validateAndParseJSON(jsonText, fileName = "unknown") {
+  const errors = [];
+  const warnings = [];
+  let data = null;
+  try {
+    data = JSON.parse(jsonText);
+  } catch (e) {
+    return { valid: false, errors: [`Invalid JSON syntax: ${e.message}`], warnings: [], data: null, errorReport: generateErrorReport(fileName, [`Invalid JSON: ${e.message}`], []) };
+  }
+  if (!data.investment) {
+    errors.push("Missing 'investment' field — not a valid IET export");
+  } else {
+    const inv = data.investment;
+    if (!inv.id && !inv.number) errors.push("Investment must have either 'id' or 'number'");
+    if (!inv.name) warnings.push("Investment name is missing — will use 'Imported Estimate'");
+    if (!inv.type || !["Internally Funded", "Commercially Funded"].includes(inv.type)) {
+      errors.push(`Investment type must be 'Internally Funded' or 'Commercially Funded', got '${inv.type}'`);
+    }
+    if (inv.rateSnapshot && typeof inv.rateSnapshot !== "object") errors.push("rateSnapshot must be an object");
+    if (data.supplyMetadata && typeof data.supplyMetadata.count !== "number") {
+      warnings.push("supplyMetadata.count is not a number");
+    }
+  }
+  if (errors.length > 0) {
+    return { valid: false, errors, warnings, data: null, errorReport: generateErrorReport(fileName, errors, warnings) };
+  }
+  return { valid: true, errors, warnings, data, errorReport: null };
+}
+
+function generateErrorReport(fileName, errors, warnings) {
+  const now = new Date().toLocaleString("en-AU");
+  const lines = [
+    "═══════════════════════════════════════════════════════════════════",
+    "IET ESTIMATE IMPORT ERROR REPORT",
+    "═══════════════════════════════════════════════════════════════════",
+    "",
+    `File: ${fileName}`,
+    `Reported: ${now}`,
+    `Import Status: REJECTED`,
+    "",
+  ];
+  if (errors.length > 0) {
+    lines.push("ERRORS (blocking import):");
+    lines.push("───────────────────────────────────────────────────────────────");
+    errors.forEach((err, i) => { lines.push(`${i + 1}. ${err}`); });
+    lines.push("");
+  }
+  if (warnings.length > 0) {
+    lines.push("WARNINGS (informational):");
+    lines.push("───────────────────────────────────────────────────────────────");
+    warnings.forEach((warn, i) => { lines.push(`${i + 1}. ${warn}`); });
+    lines.push("");
+  }
+  lines.push("ACTION:");
+  lines.push("───────────────────────────────────────────────────────────────");
+  lines.push("1. Review the errors listed above.");
+  lines.push("2. Verify the export file is from a valid IET estimate.");
+  lines.push("3. If the file is corrupted, try exporting the estimate again.");
+  lines.push("4. Contact your Estimation Specialist if the problem persists.");
+  lines.push("");
+  lines.push("═══════════════════════════════════════════════════════════════════");
+  return lines.join("\n");
+}
+
+function saveRecentEstimate(inv, totalEE, totalComm) {
+  try {
+    const recents = JSON.parse(localStorage.getItem("iet_recents") || "[]");
+    const newRecent = {
+      id: inv.id,
+      number: inv.number,
+      name: inv.name,
+      estClass: inv.estClass,
+      type: inv.type,
+      savedAt: new Date().toLocaleString("en-AU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+      savedAtISO: new Date().toISOString(),
+      totalEE,
+      totalComm,
+    };
+    const filtered = recents.filter((r) => r.id !== inv.id);
+    filtered.unshift(newRecent);
+    const kept = filtered.slice(0, 10);
+    localStorage.setItem("iet_recents", JSON.stringify(kept));
+  } catch (e) {
+    console.error("Failed to save recent estimate:", e);
+  }
+}
+
+function getRecentEstimates() {
+  try {
+    return JSON.parse(localStorage.getItem("iet_recents") || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function downloadErrorReport(errorReport, estimateNumber) {
+  const filename = `IET_Import_ErrorReport_${estimateNumber || "estimate"}_${new Date().toISOString().split("T")[0]}.txt`;
+  const blob = new Blob([errorReport], { type: "text/plain" });
+  downloadBlob(blob, filename);
+}
+// ═══════════════════════════════════════════════════════════════════════════
+
 // ── DATA CONTEXT ────────────────────────────────────────────────
-const DataCtx = createContext({ wbs:[], supply:[], equipment:[], equipLookup:{}, commLookup:{}, commProfiles:{}, escRates:null, resourceCodes:{}, equipPricing:{}, loading:true, error:null });
+const DataCtx = createContext({ wbs:[], supply:[], equipment:[], equipLookup:{}, commLookup:{}, commProfiles:{}, escRates:null, resourceCodes:{}, invMats:[], matAssemblies:[], equipPricing:{}, loading:true, error:null });
 
 // ── COPPERLEAF CSV EXPORT ────────────────────────────────────────
 // Matches Sync_To_C55 macro structure exactly:
@@ -81,34 +228,6 @@ const WBS_GROUP_LABELS = {
 
 // Generate Copperleaf-format XLSX (matches Spend_Template exactly)
 // Returns a Blob for download — uses SheetJS (xlsx) loaded at runtime
-function buildSpendWeights(spendProfile, phaseKey, phaseMonths) {
-  const n = phaseMonths.length;
-  if (n === 0) return [];
-  const type = spendProfile?.type || 'default';
-  if (type === 'custom' && spendProfile?.customPct?.[phaseKey]) {
-    const pcts = spendProfile.customPct[phaseKey];
-    const total = pcts.reduce((a, b) => a + b, 0);
-    if (total > 0 && pcts.length === n) {
-      return phaseMonths.map((m, i) => [m, pcts[i] / total]);
-    }
-  }
-  const makeCurve = (n, shape) => {
-    const raw = Array.from({ length: n }, (_, i) => {
-      const x = (i + 0.5) / n;
-      if (shape === 'front')    return Math.pow(1 - x, 0.6);
-      if (shape === 'back')     return Math.pow(x, 0.6);
-      if (shape === 'balanced') return Math.sin(Math.PI * x);
-      return 1 / (1 + Math.exp(-10 * (x - 0.5)));
-    });
-    const sum = raw.reduce((a, b) => a + b, 0);
-    return raw.map(v => v / sum);
-  };
-  const shapeMap = { default: 'scurve', wbs1: 'front', wbs2: 'balanced', wbs3: 'back' };
-  const shape = shapeMap[type] || 'scurve';
-  const weights = makeCurve(n, shape);
-  return phaseMonths.map((m, i) => [m, weights[i]]);
-}
-
 async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfiles, escRates, resourceCodes, isCommercial, equipLookup) {
   // Dynamically load SheetJS if not already present
   if (!window.XLSX) {
@@ -315,9 +434,8 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
       if (totalVal <= 0) return;
       const cat = currType !== "Hour" ? "contractors" : "internal_ee";
       const ef  = escFactor(phase, cat);
-      const scaledTotal = totalVal * (1 + ef);
-      const weights = buildSpendWeights(inv.spendProfile, phase, phMonths);
-      const monthSpend = weights.map(([m, w]) => [m, parseFloat((scaledTotal * w).toFixed(6))]);
+      const perMonth = (totalVal * (1+ef)) / phMonths.length;
+      const monthSpend = phMonths.map(m => [m, parseFloat(perMonth.toFixed(6))]);
       writeSpend(l3, resName, isWAFHA ? "Day" : currType,
                  getResCode(resName), getLabourType(resName), monthSpend);
     });
@@ -351,15 +469,15 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
     });
 
     if (nonLLTTotal > 0) {
-      const weights = buildSpendWeights(inv.spendProfile, phase, phMonths);
+      const perMonth = nonLLTTotal / phMonths.length;
       writeSpend(l3, "Materials (Non-LLT)", "Dollar", "GMAT", "",
-                 weights.map(([m, w]) => [m, parseFloat((nonLLTTotal * w).toFixed(6))]));
+                 phMonths.map(m=>[m, parseFloat(perMonth.toFixed(6))]));
     }
 
     lltRows.forEach(({totalMat, effQty, desc, category, makeModel, contractNo, voltage}) => {
-      const lltWeights = buildSpendWeights(inv.spendProfile, phase, phMonths);
+      const perMonth = totalMat / phMonths.length;
       writeSpend(l3, "Materials (LLT)", "Dollar", "LLMAT", "",
-                 lltWeights.map(([m, w]) => [m, parseFloat((totalMat * w).toFixed(6))]),
+                 phMonths.map(m=>[m, parseFloat(perMonth.toFixed(6))]),
                  { lltDesc:desc, lltItem:category, lltQty:String(effQty),
                    makeModel, contractNo, voltage });
     });
@@ -388,10 +506,9 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
     Object.entries(hrsByRes).forEach(([resName, totalHrs]) => {
       if (totalHrs <= 0) return;
       const ef = escFactor("4", "internal_ee");
-      const scaledHrs = totalHrs * (1 + ef);
-      const commWeights = buildSpendWeights(inv.spendProfile, "4", phMonths);
+      const perMonth = (totalHrs * (1+ef)) / phMonths.length;
       writeSpend(l3, resName, "Hour", getResCode(resName), getLabourType(resName),
-                 commWeights.map(([m, w]) => [m, parseFloat((scaledHrs * w).toFixed(6))]));
+                 phMonths.map(m=>[m, parseFloat(perMonth.toFixed(6))]));
     });
   });
 
@@ -607,71 +724,12 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
   const matBurden  = isCommercial ? 0 : equipCost * MAT_BURDEN;
   const eeInt  = eeLabCost + contrCost + plantFact + equipCost + matBurden;
   const comm   = eeLabCost*(1+labMargin(effectiveResource, ratesLookup)) + contrCost*(1+ANS_CON) + plantFact + equipCost*(1+ANS_MAT);
-  // WAFHA items: installHrs must always be 0 — they are day-rated, not hour-rated.
-  // Items with install_wbs: their hours are counted via accumulateInstallRows /
-  // installAgg (the linked install row). Return 0 here to prevent double-counting
-  // in all phase/total accumulators. instHrsForDisplay preserves the value so the
-  // cost detail panel can still show "64 hrs install" informationally.
-  const hasLinkedInstall = !!(item.install_wbs);
-  const finalInstallHrs = (isWAFHA || hasLinkedInstall) ? 0 : installHrs;
-  return { q, f, isContr, isWAFHA, installHrs: finalInstallHrs,
-           instHrsForDisplay: installHrs,  // for cost detail panel header only
-           commHrs, eeLabHrs, eeLabCost,
+  // WAFHA items: installHrs must always be 0 — they are day-rated, not hour-rated
+  const finalInstallHrs = isWAFHA ? 0 : installHrs;
+  return { q, f, isContr, isWAFHA, installHrs: finalInstallHrs, commHrs, eeLabHrs, eeLabCost,
            contrCost, plantFact, equipCost, matBurden, eeInt, comm,
            instHrsOverridden: installHrsOvrd !== "" && installHrsOvrd != null, instHrsPU,
            effectiveResource };
-}
-
-// ── INSTALL ROW ACCUMULATOR ──────────────────────────────────────
-// Supply items with install_wbs delegate their labour to a linked install
-// row (scope=Install). These rows have no qty in lines[] — hours are
-// auto-derived from supply qty × install_hrs_per. calcLine on a supply
-// row with resource_main="Supplier" returns eeLabCost=0, so summary
-// screens must call this helper to add the install-row labour separately.
-// Returns an array of {ph, eeInt, comm, installHrs, eeLabCost, contrCost}
-// one entry per install row that has active hours.
-function accumulateInstallRows(supply, lines, resourceCodes, isCommercial) {
-  // Install rows have install_wbs="" on themselves — identify derived install rows
-  // by building a set of WBS codes referenced by supply rows' install_wbs field.
-  const derivedInstallWbs = new Set();
-  supply.forEach(s=>{ if(s.install_wbs) derivedInstallWbs.add(s.install_wbs); });
-  const installItems = supply.filter(s=>s.scope==="Install" && derivedInstallWbs.has(s.wbs_code));
-  const result = [];
-  installItems.forEach(inst=>{
-    const linked = supply.filter(s=>s.scope!=="Install"&&s.install_wbs===inst.wbs_code);
-    let derivedHrs=0, derivedQty=0;
-    linked.forEach(sup=>{
-      const ln=lines[sup.wbs_code]||{};
-      const q=parseFloat(ln.qty||"0");
-      const f=parseFloat(ln.factor||"1");
-      if(q>0){ derivedHrs+=q*f*(sup.install_hrs_per||0); derivedQty+=q*f; }
-    });
-    if(derivedHrs<=0&&derivedQty<=0) return;
-    const instLn   = lines[inst.wbs_code]||{};
-    const ovrdHrs  = instLn.instHrsOvrd!==""&&instLn.instHrsOvrd!=null?(parseFloat(instLn.instHrsOvrd)||0):null;
-    const activeHrs= ovrdHrs!==null?ovrdHrs:derivedHrs;
-    if(activeHrs<=0) return;
-    const delivery = instLn.delivery||inst.delivery_method||"EE Delivered";
-    const isContr  = delivery==="Contractor Delivered";
-    const resOvrd  = instLn.resourceOvrd||{};
-    const resName  = resOvrd?.install||inst.resource_main||"ZS Electrical Technician";
-    const resData  = resourceCodes?.[resName];
-    const eeRate   = resData?.ee_internal_rate||inst.ee_labour_rate||139.26;
-    const contrRate= parseFloat(instLn.contrRate||"")||inst.contractor_rate||0;
-    const plantPerUnit = parseFloat(inst.plant_cost||0)||0;
-    const plantFact = parseFloat(instLn.plant||"") > 0
-      ? parseFloat(instLn.plant)        // manual $ override
-      : plantPerUnit * derivedQty;      // auto: scale with qty
-    const eeLabCost= isContr?0:activeHrs*eeRate;
-    const contrCost= isContr?derivedQty*contrRate:0;
-    const eeInt    = eeLabCost+contrCost+plantFact;
-    const comm     = isContr
-      ?(contrCost*(1+ANS_CON)+plantFact)
-      :(eeLabCost*(1+labMargin(resName,resourceCodes))+plantFact);
-    const ph = inst.wbs_code.split(".")[0];
-    result.push({ph, eeInt, comm, installHrs:activeHrs, eeLabCost, contrCost, plantFact, resName});
-  });
-  return result;
 }
 
 // ── SHARED UI ───────────────────────────────────────────────────
@@ -742,7 +800,7 @@ function UnlockPinField({ onConfirm, onCancel }) {
 // percentage of base. Re-running CART (or a base change) supersedes it —
 // callers compare cartResult.base to the live base to detect staleness.
 function resolveContingency(inv, base, isCommercial, tolerance=1){
-  const pct = parseFloat(isCommercial?inv.contComm:inv.contInt)||5;
+  const pct = parseFloat(isCommercial?inv.contComm:inv.contInt)||10;
   const cr = inv.cartResult;
   if (cr && cr.isCommercial===isCommercial && Math.abs(cr.base-base)<=tolerance && base>0){
     return { amt:cr.p50, pct: cr.p50/base*100, source:"cart", cr };
@@ -760,7 +818,6 @@ function resolveContingency(inv, base, isCommercial, tolerance=1){
 function InvestmentSetup({ inv, onChange }) {
   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const upd = (k,v) => onChange({...inv, [k]:v});
-  const [spendTab, setSpendTab] = useState("1");
   return (
     <div className="flex-1 overflow-y-auto bg-orange-50 p-4">
       <div className="max-w-5xl mx-auto space-y-4">
@@ -946,126 +1003,6 @@ function InvestmentSetup({ inv, onChange }) {
           </div>
         </Card>
 
-        {/* Spend Profile Card */}
-        <Card>
-          <SectionHeader color="teal" title="Spend Profile" subtitle="Controls monthly cost distribution in Copperleaf export" />
-          <div className="p-4 bg-white">
-            {(()=>{
-              const sp = inv.spendProfile || { type: 'default', customPct: null };
-              const PROFILES = [
-                { id:'default', label:'Default (S-curve)',    note:'Spend accelerates through mid-project then slows — typical project S-curve.' },
-                { id:'wbs1',    label:'WBS 1 — Front-loaded', note:'Higher spend in early months, tapering toward project end.' },
-                { id:'wbs2',    label:'WBS 2 — Balanced',     note:'Bell-curve distribution — spend peaks in the middle of each phase.' },
-                { id:'wbs3',    label:'WBS 3 — Back-loaded',  note:'Low spend early, ramping up toward the end of each phase.' },
-                { id:'custom',  label:'Custom',               note:'' },
-              ];
-              const phaseDefs = [
-                { key:'1', label:'Planning',      n:Math.max(1,parseInt(inv.planDur||4)) },
-                { key:'2', label:'Design',        n:Math.max(1,parseInt(inv.designDur||9)) },
-                { key:'3', label:'Construction',  n:Math.max(1,parseInt(inv.constrDur||15)) },
-                { key:'4', label:'Commissioning', n:Math.max(1,parseInt(inv.constrDur||15)) },
-                { key:'5', label:'M&C',           n:2 },
-              ];
-              const makeSCurvePcts = (n) => {
-                const raw = Array.from({length:n},(_,i)=>{const x=(i+0.5)/n; return 1/(1+Math.exp(-10*(x-0.5)));});
-                const sum = raw.reduce((a,b)=>a+b,0);
-                const normed = raw.map(v=>parseFloat(((v/sum)*100).toFixed(2)));
-                const diff = parseFloat((100-normed.reduce((a,b)=>a+b,0)).toFixed(2));
-                if (normed.length>0) normed[normed.length-1]=parseFloat((normed[normed.length-1]+diff).toFixed(2));
-                return normed;
-              };
-              const makeEvenPcts = (n) => {
-                const base = parseFloat((100/n).toFixed(2));
-                const arr = Array(n).fill(base);
-                const diff = parseFloat((100-arr.reduce((a,b)=>a+b,0)).toFixed(2));
-                if (arr.length>0) arr[arr.length-1]=parseFloat((arr[arr.length-1]+diff).toFixed(2));
-                return arr;
-              };
-              const getCustomPcts = (phKey, n) => {
-                const stored = sp.customPct?.[phKey];
-                return (stored && stored.length===n) ? stored : Array(n).fill(0);
-              };
-              const setCustomPct = (phKey, newPcts) => {
-                upd("spendProfile", {...sp, type:'custom', customPct:{...(sp.customPct||{}), [phKey]:newPcts}});
-              };
-              const phaseSum = (phKey, n) => parseFloat(getCustomPcts(phKey,n).reduce((a,b)=>a+b,0).toFixed(2));
-
-              return (
-                <>
-                  <div className="flex gap-2 flex-wrap mb-4">
-                    {PROFILES.map(p=>(
-                      <label key={p.id} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border cursor-pointer text-xs transition-colors ${sp.type===p.id?"border-teal-500 bg-teal-50 text-teal-800 font-semibold":"border-gray-200 hover:border-teal-300 text-gray-700"}`}>
-                        <input type="radio" name="spendProfile" className="accent-teal-600" checked={sp.type===p.id}
-                          onChange={()=>upd("spendProfile",{...sp, type:p.id})} />
-                        {p.label}
-                      </label>
-                    ))}
-                  </div>
-
-                  {sp.type!=='custom' && (
-                    <div className="text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded px-3 py-2">
-                      {PROFILES.find(p=>p.id===sp.type)?.note}
-                    </div>
-                  )}
-
-                  {sp.type==='custom' && (
-                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <div className="flex border-b bg-gray-50 overflow-x-auto">
-                        {phaseDefs.map(ph=>{
-                          const sum = phaseSum(ph.key, ph.n);
-                          const ok  = Math.abs(sum-100)<0.1;
-                          return (
-                            <button key={ph.key} onClick={()=>setSpendTab(ph.key)}
-                              className={`text-xs px-3 py-2 border-b-2 transition-colors flex items-center gap-1 whitespace-nowrap ${spendTab===ph.key?"border-teal-600 text-teal-700 bg-white font-semibold":"border-transparent text-gray-500 hover:text-gray-700"}`}>
-                              {ph.label} <span className={`text-[10px] font-bold ${ok?"text-green-600":"text-amber-500"}`}>{ok?"✓":"⚠"}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {phaseDefs.filter(ph=>ph.key===spendTab).map(ph=>{
-                        const pcts = getCustomPcts(ph.key, ph.n);
-                        const sum  = parseFloat(pcts.reduce((a,b)=>a+b,0).toFixed(2));
-                        const ok   = Math.abs(sum-100)<0.1;
-                        return (
-                          <div key={ph.key} className="p-3">
-                            <div className="flex gap-2 mb-3">
-                              <button onClick={()=>setCustomPct(ph.key, makeEvenPcts(ph.n))}
-                                className="text-xs bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 font-medium">Even split</button>
-                              <button onClick={()=>setCustomPct(ph.key, makeSCurvePcts(ph.n))}
-                                className="text-xs bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded px-2 py-1 font-medium">Copy from S-curve</button>
-                              <button onClick={()=>setCustomPct(ph.key, Array(ph.n).fill(0))}
-                                className="text-xs text-red-500 hover:bg-red-50 border border-red-200 rounded px-2 py-1 font-medium">Clear</button>
-                              <span className="text-xs text-gray-400 ml-auto self-center">{ph.n} months</span>
-                            </div>
-                            <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
-                              {pcts.map((v,i)=>(
-                                <div key={i} className="flex items-center gap-2">
-                                  <span className="text-[10px] text-gray-400 w-14 flex-shrink-0">Month {i+1}</span>
-                                  <input type="number" min="0" max="100" step="0.01" value={v}
-                                    onChange={e=>{const next=[...pcts]; next[i]=parseFloat(e.target.value)||0; setCustomPct(ph.key,next);}}
-                                    className="w-20 border border-gray-200 rounded px-2 py-0.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-teal-400" />
-                                  <span className="text-[10px] text-gray-400">%</span>
-                                  <div className="flex-1 bg-gray-100 rounded-full h-2">
-                                    <div className="bg-teal-400 h-2 rounded-full transition-all" style={{width:`${Math.min(100,Math.max(0,v))}%`}}/>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                            <div className={`mt-3 text-xs font-semibold rounded px-2 py-1.5 flex items-center gap-2 ${ok?"bg-green-50 text-green-700 border border-green-200":"bg-amber-50 text-amber-700 border border-amber-200"}`}>
-                              <span>{ok?"✓":"⚠"}</span>
-                              <span>Total: {sum.toFixed(2)}% {ok?"(sums to 100%)":"— must sum to 100% before Copperleaf export"}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-        </Card>
-
         {/* Invoicing Milestones Card */}
         <Card>
           <SectionHeader color="orange" title="Invoicing Milestones" subtitle="Milestone payment schedule (incoming money) — must sum to 100%" />
@@ -1236,6 +1173,137 @@ function WBSNavTree({ wbs, supply, activePhase, setActivePhase, selectedL4, onSe
 
 // ── ESTIMATION SCREEN ────────────────────────────────────────────
 // ── INVENTORY & ASSEMBLY LOOKUP PANEL ────────────────────────────
+// Searchable lookup for Inventory Materials and Material Assemblies
+// shown as a collapsible drawer in the cost detail panel
+function InvMatsLookup({ wbsCode }) {
+  const { invMats, matAssemblies } = useData();
+  const [open,    setOpen]    = useState(false);
+  const [tab,     setTab]     = useState("assembly"); // "assembly" | "inventory"
+  const [search,  setSearch]  = useState("");
+
+  // Find assembly matching this WBS code
+  const matchAssembly = matAssemblies.find(a => a.wbs_code === wbsCode);
+
+  const filteredInv = useMemo(() => {
+    if (!search.trim()) return invMats.slice(0, 50);
+    const q = search.toLowerCase();
+    return invMats.filter(i =>
+      (i.description||"").toLowerCase().includes(q) ||
+      (i.item_number||"").toLowerCase().includes(q) ||
+      (i.category||"").toLowerCase().includes(q)
+    ).slice(0, 80);
+  }, [invMats, search]);
+
+  const fmtP = v => v > 0 ? `$${v.toFixed(2)}` : "—";
+
+  return (
+    <div className="border-t border-gray-100 mt-2">
+      <button onClick={()=>setOpen(o=>!o)}
+        className="flex items-center gap-1.5 text-xs text-[var(--primary-700)] hover:text-[var(--primary-900)] py-1.5 font-medium w-full">
+        <span>{open ? "▾" : "▸"}</span>
+        <span>📦 Inventory Materials & Assemblies Lookup</span>
+        {matchAssembly && <span className="bg-[var(--primary-100)] text-[var(--primary-700)] rounded px-1.5 py-0.5 text-[10px] ml-1">Assembly available</span>}
+      </button>
+
+      {open && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-2">
+          {/* Tabs */}
+          <div className="flex border-b border-gray-200 bg-white">
+            {[
+              {id:"assembly", label:`🔧 Assembly${matchAssembly?" (matched)":""}`},
+              {id:"inventory", label:"📋 Inventory Materials"},
+            ].map(t=>(
+              <button key={t.id} onClick={()=>setTab(t.id)}
+                className={`text-xs px-3 py-2 font-medium border-b-2 transition-colors ${tab===t.id?"border-[var(--primary-600)] text-[var(--primary-700)]":"border-transparent text-gray-500 hover:text-gray-700"}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {tab==="assembly" && (
+            <div className="p-3">
+              {matchAssembly ? (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <div className="text-xs font-bold text-gray-800">{matchAssembly.description}</div>
+                      <div className="text-[10px] text-gray-400">{matchAssembly.wbs_code} · Ref: {matchAssembly.reference||"—"}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-[var(--primary-700)]">{matchAssembly.total_cost ? `$${matchAssembly.total_cost.toFixed(2)}` : "—"}</div>
+                      <div className="text-[10px] text-gray-400">total assembly cost</div>
+                    </div>
+                  </div>
+                  <table className="w-full text-[10px] border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="text-left px-2 py-1">Description</th>
+                        <th className="text-left px-2 py-1">Inv Code</th>
+                        <th className="text-right px-2 py-1">Qty</th>
+                        <th className="text-left px-2 py-1">UOM</th>
+                        <th className="text-right px-2 py-1">Unit Rate</th>
+                        <th className="text-right px-2 py-1">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {matchAssembly.components.map((c,i)=>(
+                        <tr key={i} className={i%2===0?"bg-white":"bg-gray-50"}>
+                          <td className="px-2 py-0.5 text-gray-700">{c.description}</td>
+                          <td className="px-2 py-0.5 font-mono text-gray-400">{c.inv_code||"—"}</td>
+                          <td className="px-2 py-0.5 text-right">{c.qty}</td>
+                          <td className="px-2 py-0.5 text-gray-400">{c.uom}</td>
+                          <td className="px-2 py-0.5 text-right">{c.unit_price ? `$${c.unit_price.toFixed(2)}` : "—"}</td>
+                          <td className="px-2 py-0.5 text-right font-semibold">{c.total ? `$${c.total.toFixed(2)}` : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              ) : (
+                <div className="text-xs text-gray-400 py-4 text-center">No pre-built assembly found for WBS {wbsCode}</div>
+              )}
+            </div>
+          )}
+
+          {tab==="inventory" && (
+            <div className="p-2">
+              <input value={search} onChange={e=>setSearch(e.target.value)}
+                placeholder="Search inventory by description, item number or category…"
+                className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs mb-2 focus:outline-none focus:ring-1 focus:ring-[var(--primary-400)]"/>
+              <div className="max-h-48 overflow-y-auto">
+                <table className="w-full text-[10px] border-collapse">
+                  <thead className="sticky top-0 bg-gray-100">
+                    <tr>
+                      <th className="text-left px-2 py-1">Item #</th>
+                      <th className="text-left px-2 py-1">Description</th>
+                      <th className="text-left px-2 py-1">Category</th>
+                      <th className="text-left px-2 py-1">UOM</th>
+                      <th className="text-right px-2 py-1">Last Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredInv.map((item,i)=>(
+                      <tr key={i} className={i%2===0?"bg-white":"bg-gray-50"}>
+                        <td className="px-2 py-0.5 font-mono text-gray-500">{item.item_number}</td>
+                        <td className="px-2 py-0.5 text-gray-700">{item.description}</td>
+                        <td className="px-2 py-0.5 text-gray-400">{item.category}</td>
+                        <td className="px-2 py-0.5 text-gray-400">{item.uom}</td>
+                        <td className="px-2 py-0.5 text-right font-semibold text-[var(--primary-700)]">{fmtP(item.last_price)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {!search && invMats.length > 50 && (
+                  <div className="text-[10px] text-gray-400 text-center py-1">Showing 50 of {invMats.length} — search to filter</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Thin wrapper that scrolls the selected commissioning group into view
 function CommScrollList({ selectedCommGroup, children }) {
@@ -1314,14 +1382,6 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
   const [navSearch, setNavSearch]       = useState("");
 
   // Filter supply items for selected L4 group — keep Supply and Install separate
-  // Build a set of install row WBS codes that are referenced by supply rows.
-  // Install rows themselves have install_wbs="" — the link is SUPPLY → INSTALL.
-  const derivedInstallWbsCodes = useMemo(()=>{
-    const s = new Set();
-    supply.forEach(item=>{ if(item.install_wbs) s.add(item.install_wbs); });
-    return s;
-  },[supply]);
-
   const allL4Items = useMemo(()=>{
     if (!selectedL4) return [];
     if (navSearch) {
@@ -1334,17 +1394,17 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
   },[supply, selectedL4, navSearch]);
 
   // Separate Supply rows from Install rows:
-  // "Derived" install rows = scope=Install AND their WBS code is referenced by at
-  // least one supply row's install_wbs field. Previously used !!s.install_wbs on
-  // the install row itself — but install rows always have install_wbs="" (the link
-  // is one-directional: supply → install). This is the correct test.
-  const isDerivedInstall = (s) => s.scope === "Install" && derivedInstallWbsCodes.has(s.wbs_code);
+  // "Direct-entry" Install rows (no install_wbs parent link) are shown as regular estimatable
+  // items — civil earthworks, cable trenching, conductor stringing etc. are priced this way.
+  // "Derived" Install rows (have supply items that propagate qty to them) sit in the install
+  // section at the bottom and are shown auto-derived, not directly enterable.
+  const isDerivedInstall = (s) => s.scope === "Install" && !!s.install_wbs;
   const items = useMemo(()=>
-    allL4Items.filter(s => !isDerivedInstall(s)),
-  [allL4Items, derivedInstallWbsCodes]);
+    allL4Items.filter(s => s.scope !== "Install" || !s.install_wbs),
+  [allL4Items]);
   const installItems = useMemo(()=>
-    allL4Items.filter(s => isDerivedInstall(s)),
-  [allL4Items, derivedInstallWbsCodes]);
+    allL4Items.filter(s => s.scope === "Install" && !!s.install_wbs),
+  [allL4Items]);
 
   // Build install aggregation: installWbsCode → { item, derivedHrs, derivedQty, linkedSupply[] }
   // derivedHrs = sum of (enteredQty × factor × install_hrs_per) for each supply item → this install
@@ -1381,23 +1441,15 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
       // a flat +20% on top of it again — double-counting the margin.
       const eeRate    = resData?.ee_internal_rate || inst.ee_labour_rate || 246.95;
       const contrRate = parseFloat(instLn.contrRate || "") || inst.contractor_rate || 0;
-      // Plant cost scales with derivedQty (plant_cost is a $/unit-of-install-activity rate)
-      // Manual override in instLn.plant takes the full dollar value as entered.
-      const plantPerUnit = parseFloat(inst.plant_cost || 0) || 0;
-      const plantFact = parseFloat(instLn.plant || "") > 0
-        ? parseFloat(instLn.plant)                       // manual $ override → use as-is
-        : plantPerUnit * derivedQty;                     // auto → scale with qty
       // Cost calc
       const eeLabCost   = isContr ? 0 : activeHrs * eeRate;
       const contrCost   = isContr ? derivedQty * contrRate : 0;
-      const eeInt       = eeLabCost + contrCost + plantFact;
-      const comm        = isContr
-        ? contrCost*(1+ANS_CON) + plantFact
-        : eeLabCost*(1+labMargin(resName, ratesLookup)) + plantFact;
+      const eeInt       = eeLabCost + contrCost;
+      const comm        = isContr ? contrCost * (1+ANS_CON) : eeLabCost * (1+labMargin(resName, ratesLookup));
       agg[inst.wbs_code] = {
         item: inst, linked, derivedHrs, derivedQty,
         ovrdHrs, activeHrs, delivery, isContr,
-        resName, eeRate, contrRate, plantFact, eeLabCost, contrCost, eeInt, comm,
+        resName, eeRate, contrRate, eeLabCost, contrCost, eeInt, comm,
         isOverridden: ovrdHrs !== null,
       };
     });
@@ -1420,57 +1472,24 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
     "3.2.1.06.4.07","3.2.2.02.4.08",
     "3.3.1.05.4.03",
   ]);
-  const updLine = (code, key, val) => setLines(p => {
-    const updated = { ...p, [code]: { ...p[code], [key]: val } };
-    // When supply qty changes and this item links to an install row,
-    // clear any manual instHrsOvrd on that row so hours re-derive
-    // automatically from the new qty × install_hrs_per.
-    if (key === "qty") {
-      const supplyItem = supply.find(s => s.wbs_code === code);
-      if (supplyItem?.install_wbs) {
-        const instCode = supplyItem.install_wbs;
-        if (updated[instCode]?.instHrsOvrd !== undefined) {
-          updated[instCode] = { ...updated[instCode], instHrsOvrd: "" };
-        }
-      }
-    }
-    return updated;
-  });
+  const updLine = (code, key, val) => setLines(p=>({...p,[code]:{...p[code],[key]:val}}));
 
   const calcItem = useCallback((item)=>{
     const ln = getLine(item.wbs_code);
     return calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, ratesLookup, pctBaseLookup[item.wbs_code] || 0);
   },[lines, isCommercial]);
 
-  const groupTotals = useMemo(()=>{
-    // Supply row costs for current L4 group
-    const base = items.reduce((a,it)=>{
-      const c=calcItem(it);
-      return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs,eeTotal:a.eeTotal+c.eeInt,commTotal:a.commTotal+c.comm};
-    },{installHrs:0,commHrs:0,eeTotal:0,commTotal:0});
-    // Add install row labour for items in this L4 group
-    Object.values(installAgg).forEach(agg=>{
-      base.eeTotal     += agg.eeInt;
-      base.commTotal   += agg.comm;
-      base.installHrs  += agg.activeHrs;
-    });
-    return base;
-  },[items, calcItem, installAgg]);
+  const groupTotals = useMemo(()=>items.reduce((a,it)=>{
+    const c=calcItem(it);
+    // commHrs from supply items must NOT appear in construction totals —
+    // commissioning hours are accounted for separately via Phase 4 commTotals
+    return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs,eeTotal:a.eeTotal+c.eeInt,commTotal:a.commTotal+c.comm};
+  },{installHrs:0,commHrs:0,eeTotal:0,commTotal:0}),[items,calcItem]);
 
-  const investTotals = useMemo(()=>{
-    // Supply row costs across entire investment
-    const base = supply.reduce((a,it)=>{
-      const c=calcItem(it);
-      return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs,eeTotal:a.eeTotal+c.eeInt,commTotal:a.commTotal+c.comm};
-    },{installHrs:0,commHrs:0,eeTotal:0,commTotal:0});
-    // Add install row labour across all install rows in the full supply list
-    accumulateInstallRows(supply, lines, ratesLookup, isCommercial).forEach(r=>{
-      base.eeTotal    += r.eeInt;
-      base.commTotal  += r.comm;
-      base.installHrs += r.installHrs;
-    });
-    return base;
-  },[supply, calcItem, lines, ratesLookup, isCommercial]);
+  const investTotals = useMemo(()=>supply.reduce((a,it)=>{
+    const c=calcItem(it);
+    return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs,eeTotal:a.eeTotal+c.eeInt,commTotal:a.commTotal+c.comm};
+  },{installHrs:0,commHrs:0,eeTotal:0,commTotal:0}),[supply,calcItem]);
 
   const linesEntered = Object.values(lines).filter(l=>parseFloat(l.qty)>0 && !l._commOvrd).length;
 
@@ -1825,23 +1844,13 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
         </div>
         {/* Column headers */}
         <div className="bg-gray-50 border-b text-xs font-semibold text-gray-500 px-3 py-1.5 grid flex-shrink-0"
-          style={{gridTemplateColumns:"32px 1fr 46px 72px 64px 90px 56px"}}>
+          style={{gridTemplateColumns:"16px 1fr 46px 72px 64px 90px 56px"}}>
           <div/><div>Description / WBS Code</div>
           <div className="text-center">UOM</div>
           <div className="text-center text-orange-700">Qty</div>
           <div className="text-center">Factor</div>
           <div className="text-center text-orange-700 text-[9px] font-normal leading-tight">Materials<br/>cost only</div>
-          <button
-            onClick={()=>{
-              const allCodes = [...items.map(i=>i.wbs_code), ...installItems.map(i=>i.wbs_code)];
-              const allExpanded = allCodes.every(c=>expandedRows[c]);
-              setExpandedRows(p=>{
-                const next = {...p};
-                allCodes.forEach(c=>{ next[c] = !allExpanded; });
-                return next;
-              });
-            }}
-            className="text-center text-gray-400 hover:text-[var(--primary-600)] hover:underline">Expand</button>
+          <div className="text-center text-gray-400">Expand</div>
         </div>
         <div className="flex-1 overflow-y-auto">
           {items.length === 0 && installItems.length === 0 && (
@@ -1862,9 +1871,9 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
             return (
               <div key={item.wbs_code} className={`border-b ${rowBase} transition-colors`}>
                 <div className="grid items-center px-3 py-2 text-xs"
-                  style={{gridTemplateColumns:"32px 1fr 46px 72px 64px 90px 56px"}}>
+                  style={{gridTemplateColumns:"16px 1fr 46px 72px 64px 90px 56px"}}>
                   <button onClick={()=>setExpandedRows(p=>({...p,[item.wbs_code]:!p[item.wbs_code]}))}
-                    className={`text-center rounded text-base w-8 h-8 flex items-center justify-center ${isExp?"bg-[var(--primary-600)] text-white":"text-gray-300 hover:text-[var(--primary-500)]"}`}>
+                    className={`text-center rounded text-xs w-4 h-4 flex items-center justify-center ${isExp?"bg-[var(--primary-600)] text-white":"text-gray-300 hover:text-[var(--primary-500)]"}`}>
                     {isExp?"▾":"▸"}
                   </button>
                   <div className="min-w-0 pr-2">
@@ -2020,47 +2029,11 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                         <div>
                           <label className="text-xs text-gray-500 block mb-0.5">Install Hrs/Unit Override</label>
                           {isWAFHAItem(item) && <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">WAFHA — day-rated, no install hrs override</div>}
-                          {!isWAFHAItem(item) && <>
-                            {/* For items with install_wbs, override is stored on the install row
-                                so installAgg/accumulateInstallRows picks it up immediately */}
-                            <input type="number" min="0"
-                              value={item.install_wbs
-                                ? (lines[item.install_wbs]?.instHrsOvrd || "")
-                                : (ln.instHrsOvrd || "")}
-                              placeholder={String(item.install_hrs_per || 0)}
-                              onChange={e=>{
-                                const val = e.target.value;
-                                if (item.install_wbs) {
-                                  setLines(p=>({...p,[item.install_wbs]:{...p[item.install_wbs],instHrsOvrd:val}}));
-                                } else {
-                                  updLine(item.wbs_code,"instHrsOvrd",val);
-                                }
-                              }}
-                              onKeyDown={e=>e.key==="Enter"&&e.currentTarget.blur()}
-                              className="w-full text-xs border border-purple-300 bg-purple-50 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-purple-400"/>
-                            {item.install_wbs && (lines[item.install_wbs]?.instHrsOvrd) && (
-                              <div className="text-[10px] text-orange-600 mt-0.5">⚡ overrides auto-derived hrs · clear to restore</div>
-                            )}
-                            {item.install_hrs_per > 0 && !(lines[item.install_wbs]?.instHrsOvrd) && (
-                              <div className="text-[10px] text-gray-400 mt-0.5">Std: {item.install_hrs_per} hrs/unit · auto × qty</div>
-                            )}
-                          </>}
+                          {!isWAFHAItem(item) && <input type="number" min="0" value={ln.instHrsOvrd||""} placeholder={String(item.install_hrs_per||0)}
+                            onChange={e=>updLine(item.wbs_code,"instHrsOvrd",e.target.value)}
+                            onKeyDown={e=>e.key==="Enter"&&e.currentTarget.blur()}
+                            className="w-full text-xs border border-purple-300 bg-purple-50 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-purple-400"/>}
                         </div>
-                        {/* Plant & Machinery rate display — read-only, sourced from install row */}
-                        {item.install_wbs && (() => {
-                          const instRow = supply.find(s=>s.wbs_code===item.install_wbs);
-                          const plantPU = instRow?.plant_cost || 0;
-                          if (!plantPU) return null;
-                          return (
-                            <div>
-                              <label className="text-xs text-gray-500 block mb-0.5">Plant & Machinery ($/unit)</label>
-                              <div className="w-full text-xs border border-gray-200 bg-gray-50 rounded px-1.5 py-1 text-gray-500 font-mono">
-                                ${plantPU.toFixed(2)} /unit
-                                <span className="text-[10px] text-gray-400 ml-1">× {parseFloat(ln.qty||"1").toFixed(0)} = ${(plantPU*parseFloat(ln.qty||"1")).toFixed(2)}</span>
-                              </div>
-                            </div>
-                          );
-                        })()}
                         <div>
                           <label className="text-xs text-gray-500 block mb-0.5">Contractor Rate ($/unit)</label>
                           {item.pct_of_total ? (
@@ -2086,14 +2059,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                         {hasQty && (
                           <div className="text-xs text-gray-500">
                             <div className="font-semibold mb-1 text-gray-600">Hours this item</div>
-                            {item.install_wbs && installAgg[item.install_wbs] ? (
-                              <div className={`font-bold ${installAgg[item.install_wbs].isOverridden?"text-orange-600":"text-purple-700"}`}>
-                                {fmtHrs(installAgg[item.install_wbs].activeHrs)} install
-                                {installAgg[item.install_wbs].isOverridden && <span className="text-orange-400 text-[10px] ml-1">⚡ overridden</span>}
-                              </div>
-                            ) : (
-                              <div className="font-bold text-purple-700">{fmtHrs(c.instHrsForDisplay || c.installHrs)} install</div>
-                            )}
+                            <div className="font-bold text-purple-700">{fmtHrs(c.installHrs)} install</div>
                           </div>
                         )}
                       </div>
@@ -2135,12 +2101,6 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                                     <div className="flex justify-between">
                                       <span className="text-gray-500">Contractor <span className="text-teal-400 text-[10px]">({iagg.resName})</span></span>
                                       <span className="font-medium">{fmt(iagg.contrCost)}</span>
-                                    </div>
-                                  )}
-                                  {iagg.plantFact > 0 && (
-                                    <div className="flex justify-between">
-                                      <span className="text-gray-500">Plant & Machinery</span>
-                                      <span className="font-medium">{fmt(iagg.plantFact)}</span>
                                     </div>
                                   )}
                                 </>;
@@ -2308,21 +2268,9 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                             </div>
                             <div className="bg-gray-50 rounded border border-gray-200 px-2 py-1.5">
                               <div className="text-[9px] text-gray-400 uppercase tracking-wide mb-0.5">{agg.isContr?"Contractor rate":"EE rate"}</div>
-                              <div className="font-medium text-gray-700">{agg.isContr?fmt(agg.contrRate)+" /unit":fmt(agg.eeRate)+" /hr · "+fmt(agg.eeLabCost)+" labour"}</div>
+                              <div className="font-medium text-gray-700">{agg.isContr?fmt(agg.contrRate)+" /unit":fmt(agg.eeRate)+" /hr · "+fmt(agg.eeLabCost)+" total"}</div>
                             </div>
                           </div>
-                          {agg.plantFact > 0 && (
-                            <div className="grid grid-cols-3 gap-2 text-xs">
-                              <div className="bg-amber-50 rounded border border-amber-200 px-2 py-1.5 col-span-2">
-                                <div className="text-[9px] text-amber-600 uppercase tracking-wide mb-0.5">Plant & Machinery</div>
-                                <div className="font-medium text-amber-800">{fmt(agg.plantFact)} <span className="text-[9px] text-amber-500">(from WBS plant_cost field)</span></div>
-                              </div>
-                              <div className="bg-[var(--primary-50)] rounded border border-[var(--primary-200)] px-2 py-1.5">
-                                <div className="text-[9px] text-[var(--primary-600)] uppercase tracking-wide mb-0.5">Total EE Internal</div>
-                                <div className="font-bold text-[var(--primary-800)]">{fmt(agg.eeInt)}</div>
-                              </div>
-                            </div>
-                          )}
 
                           {/* Commission link summary — shows Phase 4 hrs that will be derived */}
                           {(()=>{
@@ -2579,7 +2527,7 @@ function ReviewLines({ lines, isCommercial }) {
                       <td className="px-3 py-1.5 text-center font-bold text-orange-700">{ln.qty}</td>
                       <td className="px-3 py-1.5 text-center text-gray-500">{ln.factor||"1"}</td>
                       <td className="px-3 py-1.5 text-center text-gray-500">{item.uom||"each"}</td>
-                      <td className="px-3 py-1.5 text-right font-medium text-purple-700">{fmtHrs(c.instHrsForDisplay || c.installHrs)||"—"}</td>
+                      <td className="px-3 py-1.5 text-right font-medium text-purple-700">{fmtHrs(c.installHrs)||"—"}</td>
                       <td className="px-3 py-1.5 text-right font-bold text-[var(--primary-800)]">{fmt(c.eeInt)}</td>
                       {isCommercial && <td className="px-3 py-1.5 text-right font-bold text-orange-700">{fmt(c.comm)}</td>}
                       <td className="px-3 py-1.5 text-gray-500 text-[11px]">{c.isContr?"Contractor":"EE"}</td>
@@ -2930,15 +2878,9 @@ function doGeneratePDF(ctx) {
       else{eeCost+=(c.eeLabCost||0)+(c.plantFact||0);eeANS+=(c.eeLabCost||0)*labMargin(c.effectiveResource, resourceCodes);}
       matCost+=c.equipCost||0; matANS+=(c.equipCost||0)*ANS_MAT;
     });
-    // Install row labour (auto-derived, not accumulate via supply forEach above)
-    accumulateInstallRows(supply, lines, resourceCodes, isCommercial).forEach(({eeLabCost,contrCost,plantFact,resName})=>{
-      if(contrCost>0){ subCost+=contrCost+plantFact; subANS+=contrCost*ANS_CON; }
-      else { eeCost+=eeLabCost+plantFact; eeANS+=eeLabCost*labMargin(resName,resourceCodes); }
-    });
+    const contPctF=parseFloat(inv.contingency||'0')/100;
     const base=subCost+matCost+eeCost;
-    const contRes=resolveContingency(inv,base,isCommercial);
-    const cont=contRes.amt;
-    const contPctF=contRes.pct/100;
+    const cont=base*contPctF;
     const totalCost=base+cont;
     const totalANS=subANS+matANS+eeANS;
     const cv=totalCost+totalANS;
@@ -2979,7 +2921,7 @@ function doGeneratePDF(ctx) {
           ${finRowComm('Sub-Contract (Contractor Delivered)',subCost+subANS,false)}
           ${finRowComm('Materials (PCE/Equipment)',matCost+matANS,false)}
           ${finRowComm('EE Internal Works',eeCost+eeANS,false)}
-          ${finRowComm('Contingency ('+contRes.pct.toFixed(3)+'%)',cont,false)}
+          ${finRowComm('Contingency ('+parseFloat(inv.contingency||'0')+'%)',cont,false)}
           ${finRowComm('Contract Value (excl. GST)',cv,true)}
           ${finRowComm('GST (10%)',gst,false)}
           ${finRowComm('Contract Value (incl. GST)',gstInc,true)}
@@ -2998,7 +2940,7 @@ function doGeneratePDF(ctx) {
           ${finRow('Sub-Contract (Contractor Delivered)',subCost,subANS,subCost+subANS,false)}
           ${finRow('Materials (PCE/Equipment)',matCost,matANS,matCost+matANS,false)}
           ${finRow('EE Internal Works',eeCost,eeANS,eeCost+eeANS,false)}
-          ${finRow('Contingency ('+contRes.pct.toFixed(3)+'%)',cont,0,cont,false)}
+          ${finRow('Contingency ('+parseFloat(inv.contingency||'0')+'%)',cont,0,cont,false)}
           ${finRow('Total Estimated Cost',totalCost,null,null,true)}
           ${finRow('Admin / ANS Burden',null,totalANS,null,false)}
           ${finRow('Contract Value (excl. GST)',null,null,cv,true)}
@@ -3188,9 +3130,6 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
   // Phase 1-3, 5 rollups
   const phaseNames = {"1":"Planning","2":"Design","3":"Construction","4":"Commissioning","5":"M&C"};
   const byPhase = {};
-
-  // Step A: Accumulate costs from supply rows (equipment, materials, contractor,
-  //         and for items WITHOUT a linked install_wbs, also EE labour directly)
   entered.forEach(item=>{
     const ph=item.wbs_code.split(".")[0];
     if(ph==="4") return;
@@ -3199,23 +3138,13 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
     const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
     byPhase[ph].eeInt+=c.eeInt; byPhase[ph].comm+=c.comm;
     byPhase[ph].installHrs+=c.installHrs;
+    // commHrs from supply items excluded from construction phase —
+    // they appear only in Phase 4 via the commissioning derivation below
     byPhase[ph].lines++;
     byPhase[ph].eeLabCost  += c.eeLabCost  || 0;
     byPhase[ph].eeLabCostExWAFHA += c.isWAFHA ? 0 : (c.eeLabCost || 0);
     byPhase[ph].contrCost  += c.contrCost  || 0;
-    byPhase[ph].matCost    += c.equipCost  || 0;
-  });
-
-  // Step B: Accumulate install row labour (auto-derived, no qty in lines[])
-  accumulateInstallRows(supply, lines, resourceCodes, isCommercial).forEach(({ph,eeInt,comm,installHrs,eeLabCost,contrCost})=>{
-    if(ph==="4") return;
-    if(!byPhase[ph]) byPhase[ph]={eeInt:0,comm:0,installHrs:0,commHrs:0,lines:0,eeLabCost:0,eeLabCostExWAFHA:0,contrCost:0,matCost:0};
-    byPhase[ph].eeInt      += eeInt;
-    byPhase[ph].comm       += comm;
-    byPhase[ph].installHrs += installHrs;
-    byPhase[ph].eeLabCost  += eeLabCost;
-    byPhase[ph].eeLabCostExWAFHA += eeLabCost; // install rows are never WAFHA
-    byPhase[ph].contrCost  += contrCost;
+    byPhase[ph].matCost    += c.equipCost  || 0; // PCE/materials
   });
 
   // Phase 4 derived (skip direct_entry items — those use estimator-entered qty)
@@ -3359,20 +3288,6 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
       const ln=lines[item.wbs_code]||{};
       const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
       accum(item.wbs_code, c);
-    });
-    // Install row labour (auto-derived, not in entered[])
-    accumulateInstallRows(supply, lines, resourceCodes, isCommercial).forEach(({ph,eeInt,comm,installHrs,plantFact})=>{
-      if(ph==="4") return;
-      // Accumulate under the install row's WBS code ancestors
-      const derivedInstallWbs2 = new Set();
-      supply.forEach(s=>{ if(s.install_wbs) derivedInstallWbs2.add(s.install_wbs); });
-      const installItems2 = supply.filter(s=>s.scope==="Install"&&derivedInstallWbs2.has(s.wbs_code)&&s.wbs_code.split(".")[0]===ph);
-      installItems2.forEach(inst=>{
-        const linked=supply.filter(s=>s.scope!=="Install"&&s.install_wbs===inst.wbs_code);
-        const hasQty=linked.some(sup=>parseFloat(lines[sup.wbs_code]?.qty||"0")>0);
-        if(!hasQty) return;
-        accum(inst.wbs_code, {eeInt,comm,installHrs,commHrs:0});
-      });
     });
     // Phase 4 commission nodes — derived from commission links with scaling
     Object.entries(commTotals).forEach(([commWbs, ct])=>{
@@ -3527,7 +3442,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
             {/* Grand total footer */}
             <div className="grid border-t-2 border-gray-300 bg-gray-50 text-xs font-bold"
               style={{gridTemplateColumns: isCommercial?"1fr 80px 80px 90px 90px":"1fr 80px 80px 90px"}}>
-              <div className="px-3 py-2 text-gray-700">Total (excl. OT, contingency &amp; escalation)</div>
+              <div className="px-3 py-2 text-gray-700">Total (excl. contingency)</div>
               <div className="py-2 text-center text-purple-700">{Object.entries(nodeRollup).filter(([k])=>k.split('.').length===1).reduce((a,[,v])=>a+v.installHrs,0)>0?fmtHrs(Object.entries(nodeRollup).filter(([k])=>k.split('.').length===1).reduce((a,[,v])=>a+v.installHrs,0)):"—"}</div>
               <div className="py-2 text-center text-teal-700">{commGrandHrs>0?fmtHrs(commGrandHrs):"—"}</div>
               <div className="py-2 text-right pr-2 text-[var(--primary-900)] text-sm">{fmt(grandEE)}</div>
@@ -3552,7 +3467,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
             )}
             {/* Contingency row */}
             <div className="grid text-xs border-b" style={{gridTemplateColumns: isCommercial?"1fr 100px 100px":"1fr 100px"}}>
-              <div className="px-4 py-2 text-gray-600 font-medium">Base Estimate (excl. contingency &amp; escalation) <span className="font-normal text-gray-400" title="This value includes the 20% OT uplift on EE-delivered labour and is the number used as the CART base estimate">· incl. OT · CART base</span></div>
+              <div className="px-4 py-2 text-gray-600 font-medium">Base Estimate (excl. contingency &amp; escalation)</div>
               <div className="py-2 text-right pr-4 font-bold text-[var(--primary-900)]">{fmt(grandEEwithOT)}</div>
               {isCommercial && <div className="py-2 text-right pr-4 font-bold text-orange-800">{fmt(grandComm)}</div>}
             </div>
@@ -3667,28 +3582,20 @@ function FinancialScreen({ inv, lines, isCommercial }) {
       const isContr = (ln.delivery||item.delivery_method||"") === "Contractor Delivered";
 
       if (isContr) {
+        // Sub-Contract: contractor cost + plant on contractor items
         const sc = (c.contrCost||0) + (c.plantFact||0);
         subCost += sc;
-        subANS  += (c.contrCost||0)*ANS_CON;
+        subANS  += (c.contrCost||0)*ANS_CON;  // ANS only on labour portion
       } else {
+        // EE Internal Works: EE labour + plant on EE items
         const ee = (c.eeLabCost||0) + (c.plantFact||0);
         eeCost += ee;
-        eeANS  += (c.eeLabCost||0)*labMargin(c.effectiveResource, resourceCodes);
+        eeANS  += (c.eeLabCost||0)*labMargin(c.effectiveResource, resourceCodes);   // ANS only on labour portion, per-resource margin
       }
 
+      // Materials: equipment/PCE cost on all items
       matCost += c.equipCost||0;
       matANS  += (c.equipCost||0)*ANS_MAT;
-    });
-
-    // Add install row labour (auto-derived rows not in lines[])
-    accumulateInstallRows(supply, lines, resourceCodes, isCommercial).forEach(({eeLabCost,contrCost,plantFact,resName,eeInt,comm})=>{
-      if(contrCost>0){
-        subCost += contrCost + plantFact;
-        subANS  += contrCost*ANS_CON;
-      } else {
-        eeCost += eeLabCost + plantFact;
-        eeANS  += eeLabCost*labMargin(resName, resourceCodes);
-      }
     });
 
     // Cost* column = base cost (no ANS, no contingency)
@@ -3785,13 +3692,9 @@ function FinancialScreen({ inv, lines, isCommercial }) {
 
   return (
     <div className="flex flex-col gap-4 p-4 overflow-y-auto h-full bg-gray-50">
-      {/* Header card */}
-      <div className="bg-white rounded-lg border border-[#e8edf3] shadow-sm px-5 py-3 flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-bold text-[var(--primary-900)]">Financial Report — {inv.name||"Current Estimate"}</h2>
-          <div className="text-xs text-gray-500 mt-0.5">{isCommercial?"Commercial (ANS) rates":"EE Internal rates"} · all escalation costs excluded</div>
-        </div>
-        <span className="text-xs font-semibold bg-[var(--primary-100)] text-[var(--primary-800)] px-2.5 py-1 rounded-full">{inv.estClass||"Class 5"} · Rev {inv.revision||"A"}</span>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-bold text-[#1e3a5f]">Financial Report — {inv.name||"Current Estimate"}</h2>
+        <span className="text-xs text-gray-400 italic">All escalation costs excluded · {isCommercial?"Commercial (ANS) rates":"EE Internal rates"}</span>
       </div>
 
       {/* Cost summary + PA breakdown side by side */}
@@ -3801,7 +3704,7 @@ function FinancialScreen({ inv, lines, isCommercial }) {
         <div className="flex-1 min-w-[460px] bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
           <table className="w-full text-xs border-collapse">
             <thead>
-              <tr className="bg-[var(--primary-900)] text-white">
+              <tr className="bg-[#1e3a5f] text-white">
                 {["Item","Cost* ($)","Admin / ANS Burden ($)","Contract Value ($)","EE Internal ERP** ($)","EE Internal ERP incl overheads*** ($)","Comments"].map(h=>(
                   <th key={h} className="px-2 py-2 font-semibold text-left whitespace-nowrap first:text-left text-right [&:first-child]:text-left">{h}</th>
                 ))}
@@ -3834,7 +3737,7 @@ function FinancialScreen({ inv, lines, isCommercial }) {
                 <td className="px-2 py-1.5 text-right tabular-nums">{fmtD(totals.cont*1.866)}</td>
                 <td></td>
               </tr>
-              <tr className="bg-[var(--primary-900)] text-white font-bold">
+              <tr className="bg-[#1e3a5f] text-white font-bold">
                 <td className="px-2 py-2">Total Estimated Cost</td>
                 <td className="px-2 py-2 text-right tabular-nums">{fmtD(totals.totalCost)}</td>
                 <td className="px-2 py-2 text-right tabular-nums">{fmtD(totals.totalANS)}</td>
@@ -3856,7 +3759,7 @@ function FinancialScreen({ inv, lines, isCommercial }) {
 
         {/* Commercial PA breakdown */}
         <div className="w-72 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-          <div className="bg-[var(--primary-900)] text-white px-3 py-2 text-xs font-bold">Commercial Project Agreement Cost Breakdown</div>
+          <div className="bg-[#1e3a5f] text-white px-3 py-2 text-xs font-bold">Commercial Project Agreement Cost Breakdown</div>
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr className="bg-gray-100">
@@ -3916,16 +3819,16 @@ function FinancialScreen({ inv, lines, isCommercial }) {
           <line x1={PL} y1={PT} x2={PL} y2={PT+H} stroke="#9ca3af" strokeWidth="1"/>
           <line x1={PL} y1={PT+H} x2={PL+W} y2={PT+H} stroke="#9ca3af" strokeWidth="1"/>
           <polyline points={pts("cumM")} fill="none" stroke="#eab308" strokeWidth="2"/>
-          <polyline points={pts("cumC")} fill="none" stroke="#002266" strokeWidth="2"/>
-          <polyline points={pts("cumE")} fill="none" stroke="#15803d" strokeWidth="2"/>
+          <polyline points={pts("cumC")} fill="none" stroke="#1e3a5f" strokeWidth="2"/>
+          <polyline points={pts("cumE")} fill="none" stroke="#16a34a" strokeWidth="2"/>
           {cashFlow.map((r,i)=>i%step!==0?null:(
             <text key={i} x={PL+i*sx} y={PT+H+13} textAnchor="end" fontSize="8" fill="#6b7280"
                   transform={`rotate(-45,${PL+i*sx},${PT+H+13})`}>{r.lbl}</text>
           ))}
           {[
             {c:"#eab308",l:"Milestone Payments (Incoming Money)"},
-            {c:"#002266",l:"Cost + Contingency"},
-            {c:"#15803d",l:"EE Internal ERP Costing incl overheads***"},
+            {c:"#1e3a5f",l:"Cost + Contingency"},
+            {c:"#16a34a",l:"EE Internal ERP Costing incl overheads***"},
           ].map(({c,l},i)=>(
             <g key={i} transform={`translate(${PL+i*210},${CH-10})`}>
               <line x1={0} y1={0} x2={16} y2={0} stroke={c} strokeWidth="2"/>
@@ -4719,6 +4622,9 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
   const [importText,     setImportText]     = useState("");
   const [importError,    setImportError]    = useState("");
   const [importPreview,  setImportPreview]  = useState(null);
+  const [showExportMenu,   setShowExportMenu]   = useState(null);
+  const [recentEstimates,  setRecentEstimates]  = useState([]);
+  const [importErrorReport, setImportErrorReport] = useState(null);
 
   // Load from localStorage on mount and on focus
   const load = () => {
@@ -4728,6 +4634,11 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
     } catch(e){}
   };
   useEffect(()=>{ load(); window.addEventListener("focus",load); return ()=>window.removeEventListener("focus",load); },[]);
+
+  useEffect(() => {
+    const recents = getRecentEstimates();
+    setRecentEstimates(recents);
+  }, []);
 
   const APPROVE_PIN = "1607"; // Same manager PIN — in Power Platform this becomes AD role check
 
@@ -4792,6 +4703,17 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
     localStorage.setItem("iet_investments", JSON.stringify(updated));
     if (selected?.id===id) setSelected(null);
   };
+
+  const exportCurrentEstimate = (formatType) => {
+    if (!selected) return;
+    if (formatType === "json") {
+      const exported = exportEstimateJSON(selected.inv, resourceCodes, null, {}, {}, snapSupply);
+      downloadBlob(exported.blob, exported.filename);
+      saveRecentEstimate(selected.inv, selected.totalEE, selected.totalComm);
+      setShowExportMenu(null);
+    }
+  };
+
   const startDelete = (s, e) => {
     if (e) e.stopPropagation();
     setDeleteModal({ stage:1, inv:s });
@@ -5038,23 +4960,6 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
             }
             commDirectCount++;
             rpt.commDirect.push([code, cd.description||"", qty, commHrsNote]);
-          } else if (cd && !cd.direct_entry && hasQty) {
-            // Non-direct-entry commission row: qty is derived from supply links,
-            // but the estimator may have overridden the per-unit EE hours (col Z).
-            // Capture that override so the Phase 4 derivation uses the workbook
-            // hours rather than the commission_lookup.json database default.
-            // Example: 4.1.6.02.7.04 changed from 16 hrs/unit to 1 hr/unit.
-            const dz = de[EC({r, c:eeHrsCol})]?.v;
-            if (typeof dz === "number" && dz > 0) {
-              const dbHrsPerUnit = cd.hrs_per_unit || 0;
-              if (Math.abs(dz - dbHrsPerUnit) > 1e-6) {
-                const totHrs = Math.round(dz * qty * 100) / 100;
-                lines[`comm_ovrd_${code}`] = { qty: String(totHrs), _commOvrd: true };
-                overrideCount++;
-                rpt.overrides.push([code, cd.description||"",
-                  "Commission EE Unit Hrs (col Z)", dbHrsPerUnit, dz]);
-              }
-            }
           } else if (hasQty) { unmatched++; rpt.unmatched.push([code, qty]); }
           continue;
         }
@@ -5388,10 +5293,9 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
     return ms && ss && cs && ts;
   }).sort((a,b)=>{
     let av,bv;
-    if (sortBy==="name")           { av=a.inv.name||"";           bv=b.inv.name||""; }
-    else if (sortBy==="estimator") { av=a.inv.estimatedBy||"";    bv=b.inv.estimatedBy||""; }
-    else if (sortBy==="comm")      { av=a.totalComm;              bv=b.totalComm; }
-    else if (sortBy==="ee")        { av=a.totalEE;                bv=b.totalEE; }
+    if (sortBy==="name")      { av=a.inv.name;      bv=b.inv.name; }
+    else if (sortBy==="comm") { av=a.totalComm;     bv=b.totalComm; }
+    else if (sortBy==="ee")   { av=a.totalEE;       bv=b.totalEE; }
     else { av=a.savedAtISO||a.savedAt; bv=b.savedAtISO||b.savedAt; }
     return sortDir==="asc" ? (av>bv?1:-1) : (av<bv?1:-1);
   });
@@ -5424,14 +5328,47 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
           </button>
         ))}
         <div className="flex-1"/>
-        <button onClick={()=>setShowImport(true)}
-          className="border border-gray-300 text-gray-600 hover:bg-gray-50 text-xs px-3 py-1.5 rounded font-semibold flex items-center gap-1.5 my-1.5">
-          📥 Import Estimate
-        </button>
-        <button onClick={onNew}
-          className="bg-orange-600 hover:bg-orange-500 text-white text-xs px-4 py-1.5 rounded font-bold flex items-center gap-1.5 shadow my-1.5 ml-2">
-          ＋ New Estimate
-        </button>
+        {/* File Menu Button */}
+        <div className="relative">
+          <button onClick={()=>setShowExportMenu(showExportMenu ? null : "menu")}
+            className="border border-gray-300 text-gray-600 hover:bg-gray-50 text-xs px-3 py-1.5 rounded font-semibold flex items-center gap-1.5 my-1.5">
+            📁 File
+          </button>
+          {showExportMenu === "menu" && (
+            <div className="absolute right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-40 w-48">
+              <button onClick={onNew}
+                className="block w-full text-left px-4 py-2 text-xs hover:bg-gray-50 border-b border-gray-100 font-semibold">
+                ➕ New Estimate
+              </button>
+              <button onClick={()=>setShowImport(true)}
+                className="block w-full text-left px-4 py-2 text-xs hover:bg-gray-50 border-b border-gray-100 font-semibold">
+                📥 Import Estimate…
+              </button>
+              {selected && (
+                <>
+                  <button onClick={()=>exportCurrentEstimate("json")}
+                    className="block w-full text-left px-4 py-2 text-xs hover:bg-gray-50 border-b border-gray-100 font-semibold">
+                    💾 Save as JSON…
+                  </button>
+                </>
+              )}
+              {recentEstimates.length > 0 && (
+                <>
+                  <hr className="border-gray-100 my-1"/>
+                  <div className="px-4 py-1 text-xs font-bold text-gray-400 bg-gray-50">Recent Estimates</div>
+                  {recentEstimates.slice(0, 5).map(rec => (
+                    <button key={rec.id}
+                      onClick={()=>{const saved_rec = saved.find(s=>s.id===rec.id); if(saved_rec) setSelected(saved_rec); setShowExportMenu(null);}}
+                      className="block w-full text-left px-4 py-2 text-xs hover:bg-blue-50 border-b border-gray-100">
+                      <div className="font-semibold text-gray-700">{rec.name}</div>
+                      <div className="text-gray-400 text-xs">{rec.savedAt}</div>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Template Library tab */}
@@ -5508,7 +5445,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
                   <th className="px-3 py-2 font-semibold text-gray-500 text-center">Status</th>
                   <th className="px-3 py-2 font-semibold text-gray-500 text-center">Class</th>
                   <th className="px-3 py-2 font-semibold text-gray-500 text-center">Rev</th>
-                  <th className="px-3 py-2 font-semibold text-left"><SortBtn col="estimator" label="Estimator"/></th>
+                  <th className="px-3 py-2 font-semibold text-gray-500 text-left">Estimator</th>
                   <th className="px-3 py-2 font-semibold text-gray-500 text-left">Reviewer</th>
                   <th className="px-3 py-2 font-semibold text-right"><SortBtn col="ee" label="EE Internal"/></th>
                   <th className="px-3 py-2 font-semibold text-right"><SortBtn col="comm" label="Commercial"/></th>
@@ -5957,7 +5894,17 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
                     className="w-full border border-gray-300 rounded px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary-400)] resize-none"/>
                 </div>
                 {importError && (
-                  <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">⚠ {importError}</div>
+                  <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">
+                    <span>⚠ {importError}</span>
+                    {importErrorReport && (
+                      <button
+                        onClick={() => downloadErrorReport(importErrorReport, selected?.inv?.number || "estimate")}
+                        className="ml-auto text-xs border border-red-300 bg-white hover:bg-red-50 text-red-700 px-2 py-1 rounded font-semibold whitespace-nowrap"
+                      >
+                        📋 Download Error Report
+                      </button>
+                    )}
+                  </div>
                 )}
                 <div className="text-xs text-gray-400 bg-amber-50 border border-amber-100 rounded p-2 mb-4">
                   💡 Excel import maps the workbook's General Information to Investment Setup and brings in every entered quantity (column AR of Database &amp; Estimate). JSON import round-trips with the ⬇ Export JSON button on any saved estimate. In the Power Platform build this connects directly to Dataverse.
@@ -6042,8 +5989,8 @@ function ContributionSplitTab({ saved, setSaved }) {
   const { supply } = useData();
   const fmt  = (n) => `$${Math.round(n||0).toLocaleString("en-AU")}`;
   const pct  = (a,b) => b>0 ? Math.round(a/b*100) : 0;
-  const EE_BLUE  = "#1F478A";
-  const CUST_ORG = "#FF5300";
+  const EE_BLUE  = "#1e3a5f";
+  const CUST_ORG = "#ea580c";
 
   // ID comparison: saved ids are numbers, select values are strings
   const findById = (invId) => saved.find(s=>String(s.id)===String(invId));
@@ -6096,32 +6043,25 @@ function ContributionSplitTab({ saved, setSaved }) {
       return {eeSplit,custSplit,eePct:pct(eeSplit,base),custPct:pct(custSplit,base),overCap:custSplit,ritD:custSplit>0};
     }
     if(method==="section"||method==="item"){
+      // Sum tagged: lineTagging is per child, keyed by wbs_code (item) or l3 (section)
       const tagging=child.lineTagging||{};
-      const itemPercentages=child.itemPercentages||{};
       const rec=findById(child.invId);
       if(!rec) return {eeSplit:0,custSplit:0,eePct:0,custPct:0,overCap:0,ritD:false};
       const lines=rec.lines||{};
       const entered=supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
-      if(!entered.length) return {eeSplit:0,custSplit:0,eePct:0,custPct:0,overCap:0,ritD:false};
-      let eeAmt=0, custAmt=0;
-      const share=1/entered.length*base;
-      // Deduplicate section keys so each section only contributes one share
-      const seenKeys=new Set();
+      let eeAmt=0, custAmt=0, untagAmt=0;
       entered.forEach(item=>{
         const key=method==="section"?item.wbs_code.split(".").slice(0,3).join("."):item.wbs_code;
-        if(method==="section"&&seenKeys.has(key)) return;
-        seenKeys.add(key);
+        const ln=lines[item.wbs_code]||{};
+        // Use simple proportion of total based on qty — approximation for demo
         const tag=tagging[key];
-        if(tag==="%"){
-          const eePct=(itemPercentages[key]??50)/100;
-          eeAmt+=share*eePct;
-          custAmt+=share*(1-eePct);
-        } else if(tag==="EE"){
-          eeAmt+=share;
-        } else {
-          custAmt+=share; // Customer tag or untagged → Customer
-        }
+        const share=1/entered.length*base;
+        if(tag==="EE") eeAmt+=share;
+        else if(tag==="Customer") custAmt+=share;
+        else untagAmt+=share;
       });
+      // Untagged defaults to Customer
+      custAmt+=untagAmt;
       return {eeSplit:eeAmt,custSplit:custAmt,eePct:pct(eeAmt,base),custPct:pct(custAmt,base),overCap:0,ritD:false};
     }
     return {eeSplit:0,custSplit:0,eePct:0,custPct:0,overCap:0,ritD:false};
@@ -6162,23 +6102,8 @@ function ContributionSplitTab({ saved, setSaved }) {
     const child=(prog?.children||[]).find(c=>String(c.invId)===String(invId));
     if(!child) return;
     const tagging={...child.lineTagging||{}};
-    // If switching away from "%", clean up the stored percentage
-    if(child.lineTagging?.[key]==="%"&&value!=="%"){
-      const percentages={...child.itemPercentages||{}};
-      delete percentages[key];
-      updateChild(invId,{itemPercentages:percentages});
-    }
     if(value===undefined) delete tagging[key]; else tagging[key]=value;
     updateChild(invId,{lineTagging:tagging});
-  };
-
-  const updateItemPercentage = (invId, key, pct)=>{
-    const child=(prog?.children||[]).find(c=>String(c.invId)===String(invId));
-    if(!child) return;
-    const percentages={...child.itemPercentages||{}};
-    if(pct!==undefined&&!isNaN(pct)) percentages[key]=Math.min(100,Math.max(0,pct));
-    else delete percentages[key];
-    updateChild(invId,{itemPercentages:percentages});
   };
 
   const createProg = ()=>{
@@ -6195,7 +6120,7 @@ function ContributionSplitTab({ saved, setSaved }) {
     if(!addInvId||!prog) return;
     const sId=String(addInvId);
     if((prog.children||[]).find(c=>String(c.invId)===sId)){setShowAddInv(false);return;}
-    updateProg({children:[...(prog.children||[]),{invId:sId,role:addInvRole,splitMethod:"percentage",eePct:25,eeCap:7000000,lineTagging:{},itemPercentages:{}}]});
+    updateProg({children:[...(prog.children||[]),{invId:sId,role:addInvRole,splitMethod:"percentage",eePct:25,eeCap:7000000,lineTagging:{}}]});
     setShowAddInv(false); setAddInvId(""); setExpandedChild(sId);
   };
   const removeChild = (invId)=>{
@@ -6273,38 +6198,6 @@ function ContributionSplitTab({ saved, setSaved }) {
             <th style="text-align:right;padding:5px 10px">Install Hrs</th>
           </tr></thead><tbody>${phaseRows}</tbody>
         </table>`:`<p style="font-size:11px;color:#9ca3af;margin:8px 10px">No phase breakdown — save from Summary tab to populate.</p>`}
-        ${(()=>{
-          const method=c.splitMethod||"percentage";
-          if(method!=="section"&&method!=="item") return "";
-          const rec=findById(c.invId);
-          if(!rec) return "";
-          const lines=rec.lines||{};
-          const tagging=c.lineTagging||{};
-          const itemPercentages=c.itemPercentages||{};
-          const entered=supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
-          const seen=new Set();
-          const itemRows=entered.map(item=>{
-            const key=method==="section"?item.wbs_code.split(".").slice(0,3).join("."):item.wbs_code;
-            if(seen.has(key)) return "";
-            seen.add(key);
-            const tag=tagging[key];
-            let tagLabel,splitLabel;
-            if(tag==="EE"){tagLabel="EE";splitLabel="100% EE / 0% Customer";}
-            else if(tag==="Customer"){tagLabel="Customer";splitLabel="0% EE / 100% Customer";}
-            else if(tag==="%"){const ep=itemPercentages[key]??50;tagLabel="% Override";splitLabel=`${ep}% EE / ${100-ep}% Customer`;}
-            else{tagLabel="Untagged (default)";splitLabel="0% EE / 100% Customer";}
-            return `<tr><td style="padding:5px 10px;font-family:monospace">${key}</td><td style="padding:5px 10px">${item.description||key}</td><td style="padding:5px 10px;font-weight:600">${tagLabel}</td><td style="padding:5px 10px">${splitLabel}</td></tr>`;
-          }).join("");
-          if(!itemRows) return "";
-          return `<table style="width:100%;border-collapse:collapse;margin:10px 0;font-size:11px">
-            <thead><tr style="background:#4b5563;color:#fff">
-              <th style="text-align:left;padding:5px 10px">${method==="section"?"Section":"Item"}</th>
-              <th style="text-align:left;padding:5px 10px">Description</th>
-              <th style="text-align:left;padding:5px 10px">Tag</th>
-              <th style="text-align:left;padding:5px 10px">Split Allocation</th>
-            </tr></thead><tbody>${itemRows}</tbody>
-          </table>`;
-        })()}
       </div>`;
     }).join("");
 
@@ -6437,43 +6330,20 @@ ${invRows}
           <div className="flex-1 overflow-y-auto p-4">
             <div className="max-w-5xl mx-auto space-y-3">
 
-              {/* Programme header — navy card per spec */}
-              <div className="rounded-lg overflow-hidden shadow-sm" style={{background:"#002266"}}>
-                <div className="px-5 py-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{color:"#93B0DA"}}>PROGRAMME</div>
-                      <div className="text-lg font-extrabold text-white leading-tight truncate">{prog.name}</div>
-                      {prog.number&&<div className="text-xs font-mono mt-1" style={{color:"#93B0DA"}}>{prog.number} · {summary.children.length} investment{summary.children.length!==1?"s":""} · Created {prog.createdAt}</div>}
-                    </div>
-                    <div className="flex-shrink-0 text-right ml-4">
-                      <div className="text-[10px] uppercase tracking-wide mb-0.5" style={{color:"#93B0DA"}}>Programme Commercial Total</div>
-                      <div className="text-xl font-extrabold font-mono text-white">{fmt(summary.totalComm||summary.totalEE)}</div>
-                    </div>
+              {/* Programme header */}
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-lg font-bold text-gray-900">{prog.name}</div>
+                    {prog.number&&<div className="text-xs text-gray-400 font-mono">{prog.number} · Created {prog.createdAt}</div>}
                   </div>
-                  {/* Programme split bar */}
-                  {summary.children.length>0&&(
-                    <div className="mt-3">
-                      <div className="h-3.5 rounded-full flex overflow-hidden" style={{background:"rgba(255,255,255,0.15)"}}>
-                        <div style={{width:`${pct(summary.totalEESplit,progTotal)}%`,background:"#4A7BC1"}} className="h-full transition-all rounded-l-full"/>
-                        <div style={{width:`${pct(summary.totalCustSplit,progTotal)}%`,background:"#FF5300"}} className="h-full transition-all rounded-r-full"/>
-                      </div>
-                      <div className="flex justify-between mt-1.5 text-xs font-semibold">
-                        <span style={{color:"#cfe0f5"}}>EE {fmt(summary.totalEESplit)} ({pct(summary.totalEESplit,progTotal)}%)</span>
-                        <span style={{color:"#ffa07a"}}>Customer {fmt(summary.totalCustSplit)} ({pct(summary.totalCustSplit,progTotal)}%)</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="px-5 py-2 flex items-center justify-between" style={{background:"rgba(0,0,0,0.2)"}}>
                   <div className="flex items-center gap-2">
                     <button onClick={generateReport} disabled={!summary.children.length}
-                      className="text-xs bg-[var(--accent-600)] hover:bg-[var(--accent-700)] disabled:opacity-40 text-white px-3 py-1.5 rounded font-semibold flex items-center gap-1.5 shadow">
+                      className="text-xs bg-[var(--primary-700)] hover:bg-[var(--primary-600)] disabled:opacity-40 text-white px-3 py-1.5 rounded font-semibold flex items-center gap-1.5 shadow">
                       🖨️ Produce Report
                     </button>
-                    {anyRitD&&<span className="text-xs bg-amber-200 text-amber-900 px-2 py-1 rounded font-semibold">⚠ RIT-D required on one or more investments</span>}
+                    <button onClick={()=>deleteProg(prog.id)} className="text-xs text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 px-2 py-1 rounded">Delete</button>
                   </div>
-                  <button onClick={()=>deleteProg(prog.id)} className="text-xs text-red-300 hover:text-red-100 border border-red-400 hover:border-red-200 px-2 py-1 rounded">Delete Programme</button>
                 </div>
               </div>
 
@@ -6620,19 +6490,6 @@ ${invRows}
                                   <div className="text-xs font-semibold text-gray-600 mb-2">
                                     {c.splitMethod==="section"?"Tag WBS sections (L3) to a funder:":"Tag individual estimate line items to a funder:"}
                                   </div>
-
-                                  {/* Getting-started guide */}
-                                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 mb-3 text-xs text-blue-800">
-                                    <div className="font-semibold mb-1">How to use {c.splitMethod==="section"?"Section":"Item"} Attribution</div>
-                                    <div className="space-y-0.5 text-blue-700">
-                                      <div><span className="font-semibold">EE</span> — tag 100% to EE funding</div>
-                                      <div><span className="font-semibold">Customer</span> — tag 100% to Customer funding</div>
-                                      <div><span className="font-semibold">% Override</span> — split between funders (e.g. 75% EE / 25% Customer)</div>
-                                      <div><span className="font-semibold">Untagged</span> — defaults to 100% Customer</div>
-                                    </div>
-                                    <div className="mt-1.5 text-blue-600">Bulk actions: use All EE, All Cust, or Clear to manage entire groups.</div>
-                                  </div>
-
                                   {tagGroups.length===0?(
                                     <div className="text-xs text-gray-400 italic py-4 text-center bg-gray-50 rounded-lg">No entered quantities found for this investment. Enter quantities and save first.</div>
                                   ):(
@@ -6640,11 +6497,9 @@ ${invRows}
                                       {tagGroups.map(([gk,group])=>{
                                         const isOpen=expandedNodes[`${c.invId}_${gk}`]!==false;
                                         const tagging=c.lineTagging||{};
-                                        const itemPercentages=c.itemPercentages||{};
                                         const eeCount=group.items.filter(t=>tagging[t.key]==="EE").length;
                                         const custCount=group.items.filter(t=>tagging[t.key]==="Customer").length;
-                                        const pctCount=group.items.filter(t=>tagging[t.key]==="%").length;
-                                        const untagged=group.items.length-eeCount-custCount-pctCount;
+                                        const untagged=group.items.length-eeCount-custCount;
                                         return (
                                           <div key={gk} className="border-b last:border-0">
                                             <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 cursor-pointer hover:bg-gray-100"
@@ -6656,52 +6511,29 @@ ${invRows}
                                                 className="text-xs bg-[var(--primary-50)] hover:bg-[var(--primary-100)] text-[var(--primary-700)] border border-[var(--primary-200)] px-2 py-0.5 rounded">All EE</button>
                                               <button onClick={e=>{e.stopPropagation();group.items.forEach(t=>updateChildTagging(c.invId,t.key,"Customer"));}}
                                                 className="text-xs bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 px-2 py-0.5 rounded">All Cust</button>
-                                              <button onClick={e=>{e.stopPropagation();group.items.forEach(t=>updateChildTagging(c.invId,t.key,undefined));}}
-                                                className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 border border-gray-300 px-2 py-0.5 rounded">Clear</button>
                                               <span className="text-xs text-gray-400">
                                                 {eeCount>0&&<span style={{color:EE_BLUE}}>{eeCount} EE </span>}
                                                 {custCount>0&&<span style={{color:CUST_ORG}}>{custCount} Cust </span>}
-                                                {pctCount>0&&<span className="text-purple-600">{pctCount} % </span>}
                                                 {untagged>0&&<span>{untagged} untagged</span>}
                                               </span>
                                             </div>
                                             {isOpen&&group.items.map(t=>{
                                               const tag=tagging[t.key];
-                                              const eePctVal=itemPercentages[t.key]??50;
                                               return (
-                                                <div key={t.key} className={`flex items-center gap-2 px-5 py-1.5 border-t border-gray-100 ${tag==="EE"?"bg-[var(--primary-50)]":tag==="Customer"?"bg-orange-50":tag==="%"?"bg-purple-50":""}`}>
+                                                <div key={t.key} className={`flex items-center gap-2 px-5 py-1.5 border-t border-gray-100 ${tag==="EE"?"bg-[var(--primary-50)]":tag==="Customer"?"bg-orange-50":""}`}>
                                                   <span className="text-xs font-mono text-[var(--primary-700)] min-w-36">{t.key}</span>
                                                   <span className="text-xs text-gray-600 flex-1 truncate">{t.label}</span>
                                                   <div className="flex border border-gray-200 rounded overflow-hidden">
-                                                    {[["EE","EE"],["Customer","Customer"],["%","% Override"]].map(([v,label])=>(
-                                                      <button key={v}
-                                                        onClick={()=>{
-                                                          updateChildTagging(c.invId,t.key,v);
-                                                          if(v==="%"&&itemPercentages[t.key]===undefined) updateItemPercentage(c.invId,t.key,50);
-                                                        }}
-                                                        className={`text-xs px-2.5 py-1 transition-colors ${tag===v
-                                                          ?v==="EE"?"bg-[var(--primary-700)] text-white":v==="Customer"?"bg-orange-600 text-white":"bg-purple-600 text-white"
+                                                    {["EE","Customer",""].map((v,vi)=>(
+                                                      <button key={vi}
+                                                        onClick={()=>updateChildTagging(c.invId,t.key,v||undefined)}
+                                                        className={`text-xs px-2.5 py-1 transition-colors ${tag===(v||undefined)
+                                                          ?v==="EE"?"bg-[var(--primary-700)] text-white":v==="Customer"?"bg-orange-600 text-white":"bg-gray-300 text-gray-700"
                                                           :"text-gray-500 hover:bg-gray-50"}`}>
-                                                        {label}
+                                                        {v||"—"}
                                                       </button>
                                                     ))}
-                                                    <button
-                                                      onClick={()=>updateChildTagging(c.invId,t.key,undefined)}
-                                                      className={`text-xs px-2.5 py-1 transition-colors ${tag===undefined?"bg-gray-300 text-gray-700":"text-gray-500 hover:bg-gray-50"}`}>
-                                                      —
-                                                    </button>
                                                   </div>
-                                                  {tag==="%"&&(
-                                                    <div className="flex items-center gap-1">
-                                                      <input
-                                                        type="number" min="0" max="100" step="5"
-                                                        value={eePctVal}
-                                                        onChange={e=>updateItemPercentage(c.invId,t.key,parseFloat(e.target.value))}
-                                                        className="border border-purple-300 rounded px-2 py-1 w-16 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400 text-center"
-                                                      />
-                                                      <span className="text-xs text-gray-500">% EE</span>
-                                                    </div>
-                                                  )}
                                                 </div>
                                               );
                                             })}
@@ -8063,44 +7895,6 @@ function WBSIntegrityPanel({ wbs, supply, nullApproved, toggleNullApproved }) {
           {allClear?"✓ All critical checks pass":`⚠ ${C.totalIssues} issue${C.totalIssues!==1?"s":""} · ${C.totalWarnings} warning${C.totalWarnings!==1?"s":""}`}
         </div>
       </div>
-      {/* Stat cards */}
-      {(() => {
-        const TOTAL_CHECKS = 6;
-        const passing = [
-          C.brokenInstall.length===0,
-          C.wrongScopeInstall.length===0,
-          C.unexpCommNull.length===0,
-          C.installNullHrs.length===0,
-          C.miscCommNull.length===0,
-          C.installNoComm.length===0,
-        ].filter(Boolean).length;
-        const toReview = C.totalIssues + C.totalWarnings;
-        return (
-          <div className="grid grid-cols-3 gap-3 px-4 py-3 bg-gray-50 border-b flex-shrink-0">
-            <div className="bg-white rounded-lg border border-green-200 p-3 flex items-center gap-3 shadow-sm">
-              <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center text-base">✓</div>
-              <div>
-                <div className="text-lg font-bold font-mono text-green-700">{passing}/{TOTAL_CHECKS}</div>
-                <div className="text-xs text-gray-500 font-semibold">Checks Passing</div>
-              </div>
-            </div>
-            <div className={`bg-white rounded-lg border p-3 flex items-center gap-3 shadow-sm ${toReview>0?"border-amber-200":"border-gray-200"}`}>
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-base ${toReview>0?"bg-amber-100":"bg-gray-100"}`}>⚠</div>
-              <div>
-                <div className={`text-lg font-bold font-mono ${toReview>0?"text-amber-700":"text-gray-400"}`}>{toReview}</div>
-                <div className="text-xs text-gray-500 font-semibold">Items to Review</div>
-              </div>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-3 flex items-center gap-3 shadow-sm">
-              <div className="w-9 h-9 rounded-full bg-[var(--primary-50)] flex items-center justify-center text-base">🕐</div>
-              <div>
-                <div className="text-sm font-mono font-bold text-[var(--primary-800)]">{lastRun?lastRun.toLocaleTimeString("en-AU",{hour:"2-digit",minute:"2-digit"}):"—"}</div>
-                <div className="text-xs text-gray-500 font-semibold">Last Run</div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left nav */}
@@ -8703,6 +8497,7 @@ function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
     {id:"eqpricing",  label:"💲 Equipment Pricing",    count:null},
     {id:"civil",      label:"🏗️ Civil & Building",     count:null},
     {id:"assemblies", label:"🔩 Material Assemblies",  count:null},
+    {id:"inventory",  label:"📦 Inventory Materials",  count:null},
     {id:"escalation", label:"📈 Escalation Rates",     count:null},
     {id:"scaling",    label:"📐 Comm Scaling",          count:WBS_PROFILES.length},
     {id:"people",     label:"👥 People & Roles",        count:people.filter(p=>p.active).length},
@@ -8828,6 +8623,11 @@ function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
       {/* Material Assemblies */}
       {tab==="assemblies"&&(
         <SourcePricingEditor source="Assembly" label="Material Assemblies" managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
+      )}
+
+      {/* Inventory Materials */}
+      {tab==="inventory"&&(
+        <SourcePricingEditor source="Inventory" label="Inventory Materials" managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
       )}
 
       {/* Escalation Rates */}
@@ -11298,9 +11098,8 @@ const defaultInv = {
   complexity:"High", newTech:"Moderate", estimatedBy:"Steven Hannigan",
   reviewedBy:"Daniel Lawrence", startMonth:"Jul", startYear:"2025",
   planStart:"1", planDur:"4", designStart:"1", designDur:"9",
-  constrStart:"6", constrDur:"15", contInt:"5", contComm:"5",
+  constrStart:"6", constrDur:"15", contInt:"10", contComm:"10",
   contIntDollar:"", contCommDollar:"",
-  spendProfile: { type: 'default', customPct: null },
 };
 
 // ── CART — CONTINGENCY & ACCURACY RANGE TOOL (Monte Carlo) ──────
@@ -11582,10 +11381,6 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
       const c=calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, resourceCodes, 0);
       eeInt+=c.eeInt; comm+=c.comm; eeLabCost+=c.eeLabCost||0;
     });
-    // Install row labour (auto-derived)
-    accumulateInstallRows(supply, lines, resourceCodes, isCommercial).forEach(r=>{
-      eeInt+=r.eeInt; comm+=r.comm; eeLabCost+=r.eeLabCost;
-    });
     const commTotals={};
     supply.forEach(item=>{
       const cw=item.commission_wbs;
@@ -11710,9 +11505,8 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
         ))}
         {[["P10",result.raw.p10,"#dc2626"],["P50",result.raw.p50,"#1d4ed8"],["P90",result.raw.p90,"#047857"]].map(([lab,v,col])=>(
           <g key={lab}>
-            <line x1={x(v)} x2={x(v)} y1={34} y2={H} stroke={col} strokeWidth="2" strokeDasharray="6 4"/>
-            <rect x={x(v)-24} y={2} width={48} height={26} rx={6} fill={col} opacity="0.9"/>
-            <text x={x(v)} y={19} textAnchor="middle" style={{fontSize:"16px"}} fill="white" fontWeight="bold">{lab}</text>
+            <line x1={x(v)} x2={x(v)} y1={6} y2={H} stroke={col} strokeWidth="2" strokeDasharray="6 4"/>
+            <text x={x(v)+5} y={26} style={{fontSize:"22px"}} fill={col} fontWeight="bold">{lab}</text>
           </g>
         ))}
         <text x={pad} y={H+30} style={{fontSize:"22px"}} fill="#6b7280">{fmt(lo)}</text>
@@ -11784,7 +11578,7 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
             {/* Base + systemic */}
             <div className="grid grid-cols-2 gap-4">
               <Card className="bg-white">
-                <SectionHeader color="blue" title="Base Estimate" subtitle="Excl. contingency & escalation — matches 'Base Estimate' in Summary (incl. 20% OT uplift)"/>
+                <SectionHeader color="blue" title="Base Estimate" subtitle="Excl. contingency & escalation — live from estimate"/>
                 <div className="p-4">
                   <div className="text-2xl font-bold text-[var(--primary-900)] font-mono">{fmt(baseEstimate)}</div>
                   <div className="text-xs text-gray-500 mt-1">{isCommercial?"Commercial (ANS applied)":"EE Internal"} rate stream · {inv.name||"Untitled"} · Rev {inv.revision||"A"}</div>
@@ -11879,9 +11673,10 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
             {/* Results */}
             {result && (
               <>
-                <div className="grid gap-3 grid-cols-4">
+                <div className={`grid gap-3 ${result.floored?"grid-cols-5":"grid-cols-5"}`}>
                   {[["P10",result.p10,result.raw.p10,"text-red-700","bg-red-50 border-red-200"],
                     ["P50",result.p50,result.raw.p50,"text-[var(--primary-800)]","bg-[var(--primary-50)] border-[var(--primary-200)]"],
+                    ["P80",result.p80,result.raw.p80,"text-purple-700","bg-purple-50 border-purple-200"],
                     ["P90",result.p90,result.raw.p90,"text-green-800","bg-green-50 border-green-200"],
                   ].map(([lab,v,raw,col,box])=>(
                     <div key={lab} className={`rounded-lg border p-3 ${box}`}>
@@ -12807,18 +12602,6 @@ const THEMES = [
     id: "slate", name: "Slate", desc: "Neutral monochrome theme",
     swatches: ["#0f172a", "#334155", "#64748b", "#d97706"],
   },
-  {
-    id: "forest", name: "Forest & Ember", desc: "Deep green with a warm ember accent",
-    swatches: ["#1B4332", "#2D6A4F", "#74C69D", "#E76F51"],
-  },
-  {
-    id: "plum", name: "Midnight Plum", desc: "Rich dark purple with a golden accent",
-    swatches: ["#1A0A2E", "#4A1C6E", "#9B72CF", "#F4A261"],
-  },
-  {
-    id: "steel", name: "Steel & Rust", desc: "Industrial grey-teal with a rust accent",
-    swatches: ["#1C2B3A", "#2E4A62", "#7BAABB", "#C1440E"],
-  },
 ];
 
 // ── USER ACCESS / PINs ──────────────────────────────────────────
@@ -13221,7 +13004,8 @@ export default function App() {
   const handlePriceUpdate = useCallback((key, updatedRow) => {
     setEquipPricing(prev => ({ ...prev, [key]: updatedRow }));
   }, []);
-
+  const [invMats,      setInvMats]      = useState([]);
+  const [matAssemblies,setMatAssemblies]= useState([]);
   const [equipSel,    setEquipSel]    = useState({});
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
@@ -13236,9 +13020,10 @@ export default function App() {
       fetch(`${BASE}data/escalation_rates.json`).then(r=>{if(!r.ok)return null;return r.json();}).catch(()=>null),
       fetch(`${BASE}data/resource_codes.json`).then(r=>{if(!r.ok)return {};return r.json();}).catch(()=>({})),
       fetch(`${BASE}data/equipment_pricing.json`).then(r=>{if(!r.ok)return {};return r.json();}).catch(()=>({})),
-
+      fetch(`${BASE}data/inventory_materials.json`).then(r=>{if(!r.ok)return [];return r.json();}).catch(()=>[]),
+      fetch(`${BASE}data/material_assemblies.json`).then(r=>{if(!r.ok)return [];return r.json();}).catch(()=>[]),
     ])
-    .then(([wbs,supply,equip,lookup,commLookup,escRatesData,resourceCodesData,equipPricingData])=>{
+    .then(([wbs,supply,equip,lookup,commLookup,escRatesData,resourceCodesData,equipPricingData,invMatsData,matAssData])=>{
       setWbsData(wbs.records||[]);
       setSupplyData(supply.items||[]);
       // Normalise equipment items into the shape EquipmentScreen expects
@@ -13278,7 +13063,8 @@ export default function App() {
       setEscRates(escRatesData);
       setResourceCodes(resourceCodesData || {});
       setEquipPricing(equipPricingData || {});
-
+      setInvMats(Array.isArray(invMatsData) ? invMatsData : []);
+      setMatAssemblies(Array.isArray(matAssData) ? matAssData : []);
       setLoading(false);
     })
     .catch(err=>{setError(err.message);setLoading(false);});
@@ -13581,61 +13367,46 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-    <DataCtx.Provider value={{wbs:wbsData,supply:resolvedSupply,equipment:resolvedEquipment,equipLookup,commLookup,commProfiles,escRates,resourceCodes:(Object.keys(activeSnapshot?.resourceCodes||{}).length ? activeSnapshot.resourceCodes : resourceCodes),equipPricing,loading,error}}>
+    <DataCtx.Provider value={{wbs:wbsData,supply:resolvedSupply,equipment:resolvedEquipment,equipLookup,commLookup,commProfiles,escRates,resourceCodes:(Object.keys(activeSnapshot?.resourceCodes||{}).length ? activeSnapshot.resourceCodes : resourceCodes),equipPricing,invMats,matAssemblies,loading,error}}>
       <div className="flex flex-col h-screen font-sans text-sm select-none">
 
-        {/* Top nav — white logo band + accent swoosh + primary nav */}
-        <div className="flex-shrink-0" style={{boxShadow:"0 4px 18px -4px rgba(8,18,45,.32)"}}>
-          {/* White logo band */}
-          <div className="bg-white px-5 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {/* Logo: three skewed bars using theme primary + accent */}
-              <div className="flex items-end gap-[3px]" style={{height:28}}>
-                <div style={{width:7,height:28,background:"var(--primary-900)",transform:"skewX(-12deg)"}}/>
-                <div style={{width:7,height:20,background:"var(--primary-900)",transform:"skewX(-12deg)"}}/>
-                <div style={{width:7,height:28,background:"var(--accent-600)",transform:"skewX(-12deg)"}}/>
-              </div>
-              <div>
-                <div className="text-xs font-extrabold tracking-tight leading-none text-[var(--primary-900)]">Essential Energy</div>
-                <div className="text-[10px] text-gray-400 leading-none mt-0.5">Investment Estimation Tool</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              {inv.name && <span className="text-xs text-gray-500 truncate max-w-64">{inv.name}</span>}
-              {loading&&<span className="text-xs text-gray-400 animate-pulse">⟳ Loading…</span>}
-              {!loading&&!error&&<span className="text-xs font-medium text-[var(--primary-700)]">✓ {wbsData.length} WBS · {supplyData.length} items · {equipData.length} equipment · {Object.keys(resourceCodes||{}).length} rates</span>}
-              {error&&<span className="text-xs text-red-500">⚠ Data error</span>}
-              {currentUser ? (
-                <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
-                  <span className="text-xs font-semibold text-gray-700">👤 {currentUser.name}</span>
-                  <button onClick={handleLogout} className="text-[10px] text-gray-400 hover:text-gray-700 underline">Sign out</button>
-                </div>
-              ) : (
-                <button onClick={()=>setShowLogin(true)}
-                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 pl-3 border-l border-gray-200">
-                  Read-only · <span className="underline font-medium text-[var(--primary-700)]">Sign in</span>
-                </button>
-              )}
-            </div>
+        {/* Top nav */}
+        <div className="bg-[var(--primary-900)] text-white px-4 py-0 flex items-center gap-0 flex-shrink-0 shadow-lg">
+          <div className="flex items-center gap-2 mr-5 py-3">
+            <span className="text-orange-400 text-lg">⚡</span>
+            <span className="font-bold text-sm tracking-wide">IET Demo</span>
+            <span className="text-[var(--primary-500)] text-xs">|</span>
+            <span className="text-[var(--primary-300)] text-xs truncate max-w-48">{inv.name}</span>
           </div>
-          {/* Accent swoosh divider */}
-          <div style={{height:4,background:"linear-gradient(90deg,var(--accent-600) 0%,var(--accent-500) 60%,var(--accent-700) 100%)"}}/>
-          {/* Primary nav bar */}
-          <div className="flex items-center px-4 py-0 bg-[var(--primary-900)]">
-            {APP_TABS.map(tab=>(
-              <button key={tab.id} onClick={()=>{
-                  if (appTab==="estimation" && tab.id!=="estimation" && !estimateLocked && !editLockInfo) releaseLock(currentRecordId);
-                  setAppTab(tab.id);
-                }}
-                className={`px-5 py-2.5 text-xs font-semibold transition-colors border-b-[3px] ${
-                  appTab===tab.id?"border-[var(--accent-600)] text-white bg-[var(--primary-800)]":"border-transparent text-[var(--primary-300)] hover:text-white hover:bg-[var(--primary-800)]"}`}>
-                {tab.label}
-                {tab.id==="saved"&&<span className="ml-1 text-xs bg-[var(--primary-700)] text-[var(--primary-200)] px-1.5 py-0.5 rounded-full font-mono">
-                  {(()=>{try{return JSON.parse(localStorage.getItem("iet_investments")||"[]").length}catch{return 0}})()}
-                </span>}
-              </button>
-            ))}
-          </div>
+          {APP_TABS.map(tab=>(
+            <button key={tab.id} onClick={()=>{
+                if (appTab==="estimation" && tab.id!=="estimation" && !estimateLocked && !editLockInfo) releaseLock(currentRecordId);
+                setAppTab(tab.id);
+              }}
+              className={`px-5 py-3 text-xs font-semibold transition-colors border-b-2 ${
+                appTab===tab.id?"border-orange-400 text-white bg-[var(--primary-800)]":"border-transparent text-[var(--primary-300)] hover:text-white hover:bg-[var(--primary-800)]"}`}>
+              {tab.label}
+              {tab.id==="saved"&&<span className="ml-1 text-xs bg-[var(--primary-700)] text-[var(--primary-200)] px-1.5 py-0.5 rounded-full font-mono">
+                {(()=>{try{return JSON.parse(localStorage.getItem("iet_investments")||"[]").length}catch{return 0}})()}
+              </span>}
+            </button>
+          ))}
+          <div className="flex-1"/>
+          {loading&&<span className="text-xs text-[var(--primary-300)] animate-pulse pr-4">⟳ Loading live data…</span>}
+          {!loading&&!error&&<span className="text-xs text-green-400 pr-4">✓ {wbsData.length} WBS · {supplyData.length} items · {equipData.length} equipment · {Object.keys(resourceCodes||{}).length} rates</span>}
+          {error&&<span className="text-xs text-red-400 pr-4">⚠ Data error — {error}</span>}
+          {currentUser ? (
+            <div className="flex items-center gap-2 pr-4 pl-2 border-l border-[var(--primary-700)] ml-2 h-full">
+              <span className="text-xs text-white font-semibold">👤 {currentUser.name}</span>
+              <span className="text-[10px] text-[var(--primary-300)]">{currentUser.role}</span>
+              <button onClick={handleLogout} className="text-[10px] text-[var(--primary-300)] hover:text-white underline ml-1">Sign out</button>
+            </div>
+          ) : (
+            <button onClick={()=>setShowLogin(true)}
+              className="flex items-center gap-1.5 text-xs text-[var(--primary-200)] hover:text-white pr-4 pl-3 border-l border-[var(--primary-700)] ml-2 h-full">
+              👁 Read-only · <span className="underline">Sign in</span>
+            </button>
+          )}
         </div>
         {showLogin && <LoginModal users={users} onLogin={handleLogin} onClose={()=>setShowLogin(false)}/>}
 
