@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect, useCallback, createContext, useContext, useRef, Component } from "react";
+import { useState, useMemo, useEffect, useCallback, createContext, useContext, useRef, Component } from "react";
 
 // ═══════════════════════════════════════════════════════════════════
 // IET ESTIMATION TOOL — FULL SCALE DEMO
@@ -590,6 +590,15 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
   // Write to Blob
   const wbout = XL.write(wb, { bookType:"xlsx", type:"array", cellDates:true, bookSST:true });
   return new Blob([wbout], { type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // Australian FY: July–June. Month 1 = project start = July of start year.
@@ -5140,7 +5149,17 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
     try {
       const raw = JSON.parse(text.trim());
       // Accept either a single save object or an array
-      const obj = Array.isArray(raw) ? raw[0] : raw;
+      let obj = Array.isArray(raw) ? raw[0] : raw;
+      
+      // Handle NEW export format: { investment: {...}, ... }
+      if (obj && obj.investment && !obj.inv) {
+        // Convert new format to old format for compatibility
+        obj = {
+          ...obj,
+          inv: obj.investment,  // Alias investment as inv for compatibility
+        };
+      }
+      
       if (!obj || !obj.inv) { setImportError("JSON must contain an 'inv' object with investment details."); return; }
       setImportPreview(obj);
     } catch(e) {
