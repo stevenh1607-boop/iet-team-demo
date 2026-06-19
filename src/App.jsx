@@ -3066,9 +3066,10 @@ function doGeneratePDF(ctx) {
       if(contrCost>0){ subCost+=contrCost+plantFact; subANS+=contrCost*ANS_CON; }
       else { eeCost+=eeLabCost+plantFact; eeANS+=eeLabCost*labMargin(resName,resourceCodes); }
     });
-    const contPctF=parseFloat(inv.contingency||'0')/100;
     const base=subCost+matCost+eeCost;
-    const cont=base*contPctF;
+    const contRes=resolveContingency(inv,base,isCommercial);
+    const cont=contRes.amt;
+    const contPctF=contRes.pct/100;
     const totalCost=base+cont;
     const totalANS=subANS+matANS+eeANS;
     const cv=totalCost+totalANS;
@@ -3109,7 +3110,7 @@ function doGeneratePDF(ctx) {
           ${finRowComm('Sub-Contract (Contractor Delivered)',subCost+subANS,false)}
           ${finRowComm('Materials (PCE/Equipment)',matCost+matANS,false)}
           ${finRowComm('EE Internal Works',eeCost+eeANS,false)}
-          ${finRowComm('Contingency ('+parseFloat(inv.contingency||'0')+'%)',cont,false)}
+          ${finRowComm('Contingency ('+contRes.pct.toFixed(3)+'%)',cont,false)}
           ${finRowComm('Contract Value (excl. GST)',cv,true)}
           ${finRowComm('GST (10%)',gst,false)}
           ${finRowComm('Contract Value (incl. GST)',gstInc,true)}
@@ -3128,7 +3129,7 @@ function doGeneratePDF(ctx) {
           ${finRow('Sub-Contract (Contractor Delivered)',subCost,subANS,subCost+subANS,false)}
           ${finRow('Materials (PCE/Equipment)',matCost,matANS,matCost+matANS,false)}
           ${finRow('EE Internal Works',eeCost,eeANS,eeCost+eeANS,false)}
-          ${finRow('Contingency ('+parseFloat(inv.contingency||'0')+'%)',cont,0,cont,false)}
+          ${finRow('Contingency ('+contRes.pct.toFixed(3)+'%)',cont,0,cont,false)}
           ${finRow('Total Estimated Cost',totalCost,null,null,true)}
           ${finRow('Admin / ANS Burden',null,totalANS,null,false)}
           ${finRow('Contract Value (excl. GST)',null,null,cv,true)}
@@ -5168,6 +5169,23 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
             }
             commDirectCount++;
             rpt.commDirect.push([code, cd.description||"", qty, commHrsNote]);
+          } else if (cd && !cd.direct_entry && hasQty) {
+            // Non-direct-entry commission row: qty is derived from supply links,
+            // but the estimator may have overridden the per-unit EE hours (col Z).
+            // Capture that override so the Phase 4 derivation uses the workbook
+            // hours rather than the commission_lookup.json database default.
+            // Example: 4.1.6.02.7.04 changed from 16 hrs/unit to 1 hr/unit.
+            const dz = de[EC({r, c:eeHrsCol})]?.v;
+            if (typeof dz === "number" && dz > 0) {
+              const dbHrsPerUnit = cd.hrs_per_unit || 0;
+              if (Math.abs(dz - dbHrsPerUnit) > 1e-6) {
+                const totHrs = Math.round(dz * qty * 100) / 100;
+                lines[`comm_ovrd_${code}`] = { qty: String(totHrs), _commOvrd: true };
+                overrideCount++;
+                rpt.overrides.push([code, cd.description||"",
+                  "Commission EE Unit Hrs (col Z)", dbHrsPerUnit, dz]);
+              }
+            }
           } else if (hasQty) { unmatched++; rpt.unmatched.push([code, qty]); }
           continue;
         }
