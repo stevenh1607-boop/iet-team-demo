@@ -34,8 +34,9 @@ function exportEstimateJSON(inv, resourceCodes, escalationRates, equipmentSelect
     exportDateDisplay: now.toLocaleString("en-AU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
     filename,
     investment: { ...inv, rateSnapshot, exportedAt: now.toISOString(), exportedBy: "IET Demo User" },
-    equipmentSelection: equipmentSelection || {},
-    commissioning: commissioning || {},
+    supply: JSON.parse(JSON.stringify(supply || [])),
+    equipmentSelection: JSON.parse(JSON.stringify(equipmentSelection || {})),
+    commissioning: JSON.parse(JSON.stringify(commissioning || {})),
     supplyMetadata: { count: (supply || []).length, lastModified: now.toISOString() },
     metadata: { appVersion: "1.0.0", appEnvironment: "demo", exportedOn: now.toISOString(), schema: "IET_1.0" },
   };
