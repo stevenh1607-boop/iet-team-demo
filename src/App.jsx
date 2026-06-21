@@ -4956,6 +4956,23 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
             }
             commDirectCount++;
             rpt.commDirect.push([code, cd.description||"", qty, commHrsNote]);
+          } else if (cd && !cd.direct_entry && hasQty) {
+            // Non-direct-entry commission row: qty is derived from supply links,
+            // but the estimator may have overridden the per-unit EE hours (col Z).
+            // Capture that override so Phase 4 uses the workbook hours rather than
+            // the commission_lookup.json database default.
+            // Example: 4.1.6.02.7.04 changed from 16 hrs/unit to 1 hr/unit.
+            const dz = de[EC({r, c:eeHrsCol})]?.v;
+            if (typeof dz === "number" && dz > 0) {
+              const dbHrsPerUnit = cd.hrs_per_unit || 0;
+              if (Math.abs(dz - dbHrsPerUnit) > 1e-6) {
+                const totHrs = Math.round(dz * qty * 100) / 100;
+                lines[`comm_ovrd_${code}`] = { qty: String(totHrs), _commOvrd: true };
+                overrideCount++;
+                rpt.overrides.push([code, cd.description||"",
+                  "Commission EE Unit Hrs (col Z)", dbHrsPerUnit, dz]);
+              }
+            }
           } else if (hasQty) { unmatched++; rpt.unmatched.push([code, qty]); }
           continue;
         }
