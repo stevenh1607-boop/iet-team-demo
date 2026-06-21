@@ -1,818 +1,254 @@
-{
-  "Supplier": {
-    "resource_name": "Supplier",
-    "ee_internal_rate": null,
-    "ee_commercial_rate": null,
-    "contractor_rate": null,
-    "aer_code": null,
-    "erp_code": null,
-    "wacs_craft": null,
-    "resource_code": "CON",
-    "currency_type": "Dollar",
-    "ans_margin_pct": null,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": null
-  },
-  "Consultant": {
-    "resource_name": "Consultant",
-    "ee_internal_rate": null,
-    "ee_commercial_rate": null,
-    "contractor_rate": null,
-    "aer_code": null,
-    "erp_code": null,
-    "wacs_craft": null,
-    "resource_code": "CON",
-    "currency_type": "Dollar",
-    "ans_margin_pct": null,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": null
-  },
-  "Contractor": {
-    "resource_name": "Contractor",
-    "ee_internal_rate": 200.0,
-    "ee_commercial_rate": 200.0,
-    "contractor_rate": 200.0,
-    "aer_code": null,
-    "erp_code": null,
-    "wacs_craft": null,
-    "resource_code": "CON",
-    "currency_type": "Dollar",
-    "ans_margin_pct": null,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 200.0
-  },
-  "Contractor - Electrical": {
-    "resource_name": "Contractor - Electrical",
-    "ee_internal_rate": 200.0,
-    "ee_commercial_rate": 200.0,
-    "contractor_rate": 200.0,
-    "aer_code": null,
-    "erp_code": null,
-    "wacs_craft": null,
-    "resource_code": "CONE",
-    "currency_type": "Dollar",
-    "ans_margin_pct": null,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 200.0
-  },
-  "Contractor - Civil": {
-    "resource_name": "Contractor - Civil",
-    "ee_internal_rate": 200.0,
-    "ee_commercial_rate": 200.0,
-    "contractor_rate": 200.0,
-    "aer_code": null,
-    "erp_code": null,
-    "wacs_craft": null,
-    "resource_code": "CONC",
-    "currency_type": "Dollar",
-    "ans_margin_pct": null,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 200.0
-  },
-  "Administration Officer": {
+﻿[
+  {
     "resource_name": "Administration Officer",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 138.44,
-    "contractor_rate": null,
-    "aer_code": "R1",
-    "erp_code": "AWD",
-    "wacs_craft": "ADM_OFF_BL",
-    "resource_code": "ADM_OFF_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": -0.0059,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": -0.0059
   },
-  "Ancillary": {
+  {
     "resource_name": "Ancillary",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 218.67,
-    "contractor_rate": null,
-    "aer_code": "R4",
-    "erp_code": "AWD",
-    "wacs_craft": "ANC_STD_BL",
-    "resource_code": "ANC_STD_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.5702,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.5702
   },
-  "Cable Jointer - Distribution": {
+  {
     "resource_name": "Cable Jointer - Distribution",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 218.67,
-    "contractor_rate": null,
-    "aer_code": "R4",
-    "erp_code": "AWD",
-    "wacs_craft": "CBJ_DIS_BL",
-    "resource_code": "CBJ_DIS_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.5702,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "Underground",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.5702
   },
-  "Cable Jointer - Transmission": {
+  {
     "resource_name": "Cable Jointer - Transmission",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 218.67,
-    "contractor_rate": null,
-    "aer_code": "R4",
-    "erp_code": "AWD",
-    "wacs_craft": "CBJ_TRA_BL",
-    "resource_code": "CBJ_TRA_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.5702,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "Transmission",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.5702
   },
-  "Earthing Engineer": {
+  {
     "resource_name": "Earthing Engineer",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 267.83,
-    "contractor_rate": null,
-    "aer_code": "R3a",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_EAR_BL",
-    "resource_code": "TO_EAR_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.9232,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.9232
   },
-  "Electrical Technician - Distribution": {
+  {
     "resource_name": "Electrical Technician - Distribution",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 218.67,
-    "contractor_rate": null,
-    "aer_code": "R4",
-    "erp_code": "AWD",
-    "wacs_craft": "ELT_DIS_BL",
-    "resource_code": "ELT_DIS_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.5702,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "Overhead",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.5702
   },
-  "Electrical Technician - Overhead": {
+  {
     "resource_name": "Electrical Technician - Overhead",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 218.67,
-    "contractor_rate": null,
-    "aer_code": "R4",
-    "erp_code": "AWD",
-    "wacs_craft": "ETO_ETO_BL",
-    "resource_code": "ETO_ETO_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.5702,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "Overhead",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.5702
   },
-  "Electrical Technician - Underground": {
+  {
     "resource_name": "Electrical Technician - Underground",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 218.67,
-    "contractor_rate": null,
-    "aer_code": "R4",
-    "erp_code": "AWD",
-    "wacs_craft": "ETO_ETU_BL",
-    "resource_code": "ETO_ETU_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.5702,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "Underground",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.5702
   },
-  "Electrical Technician - Zone Substation": {
+  {
     "resource_name": "Electrical Technician - Zone Substation",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 218.67,
-    "contractor_rate": null,
-    "aer_code": "R4",
-    "erp_code": "AWD",
-    "wacs_craft": "ELT_ZSS_BL",
-    "resource_code": "ELT_ZSS_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.5702,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "Transmission",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.5702
   },
-  "Electrical Worker - Overhead": {
+  {
     "resource_name": "Electrical Worker - Overhead",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 218.67,
-    "contractor_rate": null,
-    "aer_code": "R4",
-    "erp_code": "AWD",
-    "wacs_craft": "EWO_STD_BL",
-    "resource_code": "EWO_STD_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.5702,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "Overhead",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.5702
   },
-  "Electrical Worker - Transmission": {
+  {
     "resource_name": "Electrical Worker - Transmission",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 218.67,
-    "contractor_rate": null,
-    "aer_code": "R4",
-    "erp_code": "AWD",
-    "wacs_craft": "EWT_STD_BL",
-    "resource_code": "EWT_STD_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.5702,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "Transmission",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.5702
   },
-  "Electrical Worker - Underground": {
+  {
     "resource_name": "Electrical Worker - Underground",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 218.67,
-    "contractor_rate": null,
-    "aer_code": "R4",
-    "erp_code": "AWD",
-    "wacs_craft": "EWU_STD_BL",
-    "resource_code": "EWU_STD_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.5702,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "Underground",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.5702
   },
-  "External Project Manager / Specialist Engineer": {
+  {
     "resource_name": "External Project Manager / Specialist Engineer",
     "ee_internal_rate": 262.43,
     "ee_commercial_rate": 325.38,
-    "contractor_rate": null,
-    "aer_code": "R3b",
-    "erp_code": "MPE",
-    "wacs_craft": "EPM_SE_BL",
-    "resource_code": "EPM_SE_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.2399,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 270.81
+    "ans_margin_pct": 0.2399
   },
-  "Land & Routes Specialist": {
+  {
     "resource_name": "Land & Routes Specialist",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 215.99,
-    "contractor_rate": null,
-    "aer_code": "R2a",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_LRS_BL",
-    "resource_code": "TO_LRS_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.551,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.551
   },
-  "Metering Technician - Zone Substation": {
+  {
     "resource_name": "Metering Technician - Zone Substation",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 246.95,
-    "contractor_rate": null,
-    "aer_code": "R2b",
-    "erp_code": "AWD",
-    "wacs_craft": "ELT_MT_BL",
-    "resource_code": "ELT_MT_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.7733,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.7733
   },
-  "Network Development Officer": {
+  {
     "resource_name": "Network Development Officer",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 215.99,
-    "contractor_rate": null,
-    "aer_code": "R2a",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_ND_BL",
-    "resource_code": "TO_ND_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.551,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.551
   },
-  "Network Planner": {
+  {
     "resource_name": "Network Planner",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 215.99,
-    "contractor_rate": null,
-    "aer_code": "R2a",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_PLNR_BL",
-    "resource_code": "TO_PLNR_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.551,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.551
   },
-  "Power Line Worker": {
+  {
     "resource_name": "Power Line Worker",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 218.67,
-    "contractor_rate": null,
-    "aer_code": "R4",
-    "erp_code": "AWD",
-    "wacs_craft": "PLW_STD_BL",
-    "resource_code": "PLW_STD_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.5702,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "Overhead",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.5702
   },
-  "Power Line Worker - Live Line": {
+  {
     "resource_name": "Power Line Worker - Live Line",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 246.95,
-    "contractor_rate": null,
-    "aer_code": "R2b",
-    "erp_code": "AWD",
-    "wacs_craft": "PLW_LL_BL",
-    "resource_code": "PLW_LL_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.7733,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "Overhead",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.7733
   },
-  "Power Quality Technician - Zone Substation": {
+  {
     "resource_name": "Power Quality Technician - Zone Substation",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 246.95,
-    "contractor_rate": null,
-    "aer_code": "R2b",
-    "erp_code": "AWD",
-    "wacs_craft": "ELT_PQT_BL",
-    "resource_code": "ELT_PQT_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.7733,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.7733
   },
-  "Protection Engineer": {
+  {
     "resource_name": "Protection Engineer",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 267.83,
-    "contractor_rate": null,
-    "aer_code": "R3a",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_PROT_BL",
-    "resource_code": "TO_PROT_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.9232,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.9232
   },
-  "Resource Coordinator - Overhead": {
+  {
     "resource_name": "Resource Coordinator - Overhead",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 246.95,
-    "contractor_rate": null,
-    "aer_code": "R2b",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_RCO_BL",
-    "resource_code": "TO_RCO_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.7733,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "Overhead",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.7733
   },
-  "Resource Coordinator - Transmission": {
+  {
     "resource_name": "Resource Coordinator - Transmission",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 246.95,
-    "contractor_rate": null,
-    "aer_code": "R2b",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_RC_BL",
-    "resource_code": "TO_RC_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.7733,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "Transmission",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.7733
   },
-  "Resource Coordinator - Underground": {
+  {
     "resource_name": "Resource Coordinator - Underground",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 246.95,
-    "contractor_rate": null,
-    "aer_code": "R2b",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_RCU_BL",
-    "resource_code": "TO_RCU_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.7733,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "Underground",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.7733
   },
-  "SCADA Designer": {
+  {
     "resource_name": "SCADA Designer",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 215.99,
-    "contractor_rate": null,
-    "aer_code": "R2a",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_SCD_BL",
-    "resource_code": "TO_SCD_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.551,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.551
   },
-  "Substation Designer Drafter": {
+  {
     "resource_name": "Substation Designer Drafter",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 138.44,
-    "contractor_rate": null,
-    "aer_code": "R1",
-    "erp_code": "AWD",
-    "wacs_craft": "ELT_ZSDD_BL",
-    "resource_code": "ELT_ZSDD_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": -0.0059,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": -0.0059
   },
-  "Substation Designer": {
+  {
     "resource_name": "Substation Designer",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 215.99,
-    "contractor_rate": null,
-    "aer_code": "R2a",
-    "erp_code": "AWD",
-    "wacs_craft": "ELT_ZSD_BL",
-    "resource_code": "ELT_ZSD_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.551,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.551
   },
-  "Subtransmission Mains Designer": {
+  {
     "resource_name": "Subtransmission Mains Designer",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 215.99,
-    "contractor_rate": null,
-    "aer_code": "R2a",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_SMD_BL",
-    "resource_code": "TO_SMD_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.551,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.551
   },
-  "Asset Inspector": {
+  {
     "resource_name": "Asset Inspector",
     "ee_internal_rate": 107.45,
     "ee_commercial_rate": 218.67,
-    "contractor_rate": null,
-    "aer_code": "R4",
-    "erp_code": "AI",
-    "wacs_craft": "TO_AIN_BL",
-    "resource_code": "TO_AIN_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 1.0351,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 110.88
+    "ans_margin_pct": 1.0351
   },
-  "Distribution Designer": {
+  {
     "resource_name": "Distribution Designer",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 215.99,
-    "contractor_rate": null,
-    "aer_code": "R2a",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_DES_BL",
-    "resource_code": "TO_DES_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.551,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.551
   },
-  "Engineer / Technical": {
+  {
     "resource_name": "Engineer / Technical",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 267.83,
-    "contractor_rate": null,
-    "aer_code": "R3a",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_ENG_BL",
-    "resource_code": "TO_ENG_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.9232,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.9232
   },
-  "Network Assurance": {
+  {
     "resource_name": "Network Assurance",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 246.95,
-    "contractor_rate": null,
-    "aer_code": "R2b",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_NET_BL",
-    "resource_code": "TO_NET_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.7733,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.7733
   },
-  "Project Manager": {
+  {
     "resource_name": "Project Manager",
     "ee_internal_rate": 216.25,
     "ee_commercial_rate": 267.83,
-    "contractor_rate": null,
-    "aer_code": "R3a",
-    "erp_code": "MS",
-    "wacs_craft": "TO_ROJ_BL",
-    "resource_code": "TO_ROJ_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.2385,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 223.15
+    "ans_margin_pct": 0.2385
   },
-  "Senior Design": {
+  {
     "resource_name": "Senior Design",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 215.99,
-    "contractor_rate": null,
-    "aer_code": "R2a",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_SED_BL",
-    "resource_code": "TO_SED_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.551,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.551
   },
-  "Supervisor": {
+  {
     "resource_name": "Supervisor",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 246.95,
-    "contractor_rate": null,
-    "aer_code": "R2b",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_SUP_BL",
-    "resource_code": "TO_SUP_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.7733,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.7733
   },
-  "Telecomms Technician": {
+  {
     "resource_name": "Telecomms Technician",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 246.95,
-    "contractor_rate": null,
-    "aer_code": "R2b",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_TEL_BL",
-    "resource_code": "TO_TEL_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.7733,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.7733
   },
-  "Vegetation": {
+  {
     "resource_name": "Vegetation",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 218.67,
-    "contractor_rate": null,
-    "aer_code": "R4",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_VEG_BL",
-    "resource_code": "TO_VEG_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.5702,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.5702
   },
-  "Work Away From Home": {
+  {
     "resource_name": "Work Away From Home",
     "ee_internal_rate": 359.5,
     "ee_commercial_rate": 359.5,
-    "contractor_rate": 345.8256,
-    "aer_code": "WAFHA",
-    "erp_code": "WAFHA",
-    "wacs_craft": null,
-    "resource_code": "WAFHA",
-    "currency_type": "Day",
-    "ans_margin_pct": null,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 359.5
+    "ans_margin_pct": 0.2
   },
-  "Telecoms Designer": {
+  {
     "resource_name": "Telecoms Designer",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 215.99,
-    "contractor_rate": null,
-    "aer_code": "R2a",
-    "erp_code": "AWD",
-    "wacs_craft": "TO_TELD_BL",
-    "resource_code": "TO_TELD_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.551,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.551
   },
-  "Workplace Trainer & Assessor": {
+  {
     "resource_name": "Workplace Trainer & Assessor",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 246.95,
-    "contractor_rate": null,
-    "aer_code": "R2b",
-    "erp_code": "AWD",
-    "wacs_craft": "TRN_ASS_BL",
-    "resource_code": "TRN_ASS_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.7733,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.7733
   },
-  "ZS Electrical Technician": {
+  {
     "resource_name": "ZS Electrical Technician",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 246.95,
-    "contractor_rate": null,
-    "aer_code": "R2b",
-    "erp_code": "AWD",
-    "wacs_craft": "ELT_ZSETT_BL",
-    "resource_code": "ELT_ZSETT_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.7733,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "Transmission",
-    "ee_internal_rate_ot": 143.7
+    "ans_margin_pct": 0.7733
   },
-  "ZS Specialist Technician": {
+  {
     "resource_name": "ZS Specialist Technician",
     "ee_internal_rate": 139.26,
     "ee_commercial_rate": 246.95,
-    "contractor_rate": null,
-    "aer_code": "R2b",
-    "erp_code": "AWD",
-    "wacs_craft": "ELT_ZSPT_BL",
-    "resource_code": "ELT_ZSPT_BL",
-    "currency_type": "Hour",
-    "ans_margin_pct": 0.7733,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "Transmission",
-    "ee_internal_rate_ot": 143.7
-  },
-  "Materials (LLT)": {
-    "resource_name": "Materials (LLT)",
-    "ee_internal_rate": null,
-    "ee_commercial_rate": null,
-    "contractor_rate": null,
-    "aer_code": null,
-    "erp_code": null,
-    "wacs_craft": null,
-    "resource_code": "LLMAT",
-    "currency_type": "Dollar",
-    "ans_margin_pct": null,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": null
-  },
-  "Materials (Non-LLT)": {
-    "resource_name": "Materials (Non-LLT)",
-    "ee_internal_rate": null,
-    "ee_commercial_rate": null,
-    "contractor_rate": null,
-    "aer_code": null,
-    "erp_code": null,
-    "wacs_craft": null,
-    "resource_code": "GMAT",
-    "currency_type": "Dollar",
-    "ans_margin_pct": null,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": null
-  },
-  "Materials (PCE)": {
-    "resource_name": "Materials (PCE)",
-    "ee_internal_rate": null,
-    "ee_commercial_rate": null,
-    "contractor_rate": null,
-    "aer_code": null,
-    "erp_code": null,
-    "wacs_craft": null,
-    "resource_code": "PCEMAT",
-    "currency_type": "Dollar",
-    "ans_margin_pct": null,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": null
-  },
-  "Materials (Non-PCE)": {
-    "resource_name": "Materials (Non-PCE)",
-    "ee_internal_rate": null,
-    "ee_commercial_rate": null,
-    "contractor_rate": null,
-    "aer_code": null,
-    "erp_code": null,
-    "wacs_craft": null,
-    "resource_code": "NPCEMAT",
-    "currency_type": "Dollar",
-    "ans_margin_pct": null,
-    "account_code_internal": "001001",
-    "account_code_external": "001000",
-    "labour_type": "",
-    "ee_internal_rate_ot": null
+    "ans_margin_pct": 0.7733
   }
-}
+]

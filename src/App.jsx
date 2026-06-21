@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 ﻿import { useState, useMemo, useEffect, useCallback, createContext, useContext, useRef } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
+=======
+import { useState, useMemo, useEffect, useCallback, createContext, useContext, useRef, Component } from "react";
+>>>>>>> 6bce754e2de9570c5bc4f8907705ce7bd6d222b2
 
 // ═══════════════════════════════════════════════════════════════════
 // IET ESTIMATION TOOL — FULL SCALE DEMO
@@ -35,8 +39,9 @@ function exportEstimateJSON(inv, resourceCodes, escalationRates, equipmentSelect
     exportDateDisplay: now.toLocaleString("en-AU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
     filename,
     investment: { ...inv, rateSnapshot, exportedAt: now.toISOString(), exportedBy: "IET Demo User" },
-    equipmentSelection: equipmentSelection || {},
-    commissioning: commissioning || {},
+    supply: JSON.parse(JSON.stringify(supply || [])),
+    equipmentSelection: JSON.parse(JSON.stringify(equipmentSelection || {})),
+    commissioning: JSON.parse(JSON.stringify(commissioning || {})),
     supplyMetadata: { count: (supply || []).length, lastModified: now.toISOString() },
     metadata: { appVersion: "1.0.0", appEnvironment: "demo", exportedOn: now.toISOString(), schema: "IET_1.0" },
   };
@@ -695,7 +700,9 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
         : (ratesLookup["Work Away From Home"].ee_internal_rate   || 359.50))
     : (item.ee_labour_rate || 359.50);
   const eeRate     = isWAFHA ? wafhaRate
-                   : (resEntry?.ee_internal_rate ?? item.ee_labour_rate ?? 246.95);
+                   : (isCommercial
+                       ? (resEntry?.ee_commercial_rate ?? item.ee_labour_rate ?? 246.95)
+                       : (resEntry?.ee_internal_rate ?? item.ee_labour_rate ?? 246.95));
   // Percentage-of-total items: cost = pct × total non-prelim base for this L3 group
   const isPctItem  = !!(item.pct_of_total);
   const pctRate    = isPctItem ? ((pctBase || 0) * item.pct_of_total) : 0;
@@ -5141,7 +5148,17 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
     try {
       const raw = JSON.parse(text.trim());
       // Accept either a single save object or an array
-      const obj = Array.isArray(raw) ? raw[0] : raw;
+      let obj = Array.isArray(raw) ? raw[0] : raw;
+      
+      // Handle NEW export format: { investment: {...}, ... }
+      if (obj && obj.investment && !obj.inv) {
+        // Convert new format to old format for compatibility
+        obj = {
+          ...obj,
+          inv: obj.investment,  // Alias investment as inv for compatibility
+        };
+      }
+      
       if (!obj || !obj.inv) { setImportError("JSON must contain an 'inv' object with investment details."); return; }
       setImportPreview(obj);
     } catch(e) {
