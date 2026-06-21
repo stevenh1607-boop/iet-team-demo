@@ -1469,6 +1469,25 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
   ]);
   const updLine = (code, key, val) => setLines(p=>({...p,[code]:{...p[code],[key]:val}}));
 
+  // "Golden cell" guidance — flag rows that silently cost $0 when qty is entered
+  const rowNeedsEntry = (item, ln, c) => {
+    const qty = parseFloat(ln.qty||"0");
+    if (qty <= 1e-6) return false;
+    if (isWAFHAItem(item)) return false;
+    if (item.pct_of_total) return false;
+    if (item.install_wbs) return false;
+    return (c.eeInt||0) <= 1e-6 && (c.comm||0) <= 1e-6 &&
+           (c.installHrs||0) <= 1e-6 && (c.commHrs||0) <= 1e-6 &&
+           (c.contrCost||0) <= 1e-6 && (c.equipCost||0) <= 1e-6 &&
+           (c.plantFact||0) <= 1e-6;
+  };
+  const rowHasNoDefaultDriver = (item, ln) => {
+    const delivery = ln.delivery || item.delivery_method || "EE Delivered";
+    const isContr  = delivery === "Contractor Delivered";
+    if (isContr) return !(item.contractor_rate > 0) && !parseFloat(ln.contrRate||"0");
+    return !(item.install_hrs_per > 0) && !parseFloat(ln.instHrsOvrd||"0");
+  };
+
   const calcItem = useCallback((item)=>{
     const ln = getLine(item.wbs_code);
     return calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, ratesLookup, pctBaseLookup[item.wbs_code] || 0);
@@ -1862,9 +1881,10 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
             const c = calcItem(item);
             const delivery = ln.delivery || item.delivery_method || "EE Delivered";
             const isContr  = delivery === "Contractor Delivered";
+            const needsEntry = rowNeedsEntry(item, ln, c);
             const rowBase  = hasQty?"bg-[var(--primary-50)] border-l-4 border-l-[var(--primary-500)]":idx%2===0?"bg-white":"bg-gray-50";
             return (
-              <div key={item.wbs_code} className={`border-b ${rowBase} transition-colors`}>
+              <div key={item.wbs_code} className={`border-b ${rowBase} transition-colors${needsEntry?" ring-2 ring-inset ring-amber-400":""}`}>
                 <div className="grid items-center px-3 py-2 text-xs"
                   style={{gridTemplateColumns:"16px 1fr 46px 72px 64px 90px 56px"}}>
                   <button onClick={()=>setExpandedRows(p=>({...p,[item.wbs_code]:!p[item.wbs_code]}))}
@@ -1875,6 +1895,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                     <div className={`font-medium truncate ${hasQty?"text-[var(--primary-900)]":"text-gray-800"}`}>{item.description}</div>
                     <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                       <span className="text-gray-400 font-mono text-xs">{item.wbs_code}</span>
+                      {needsEntry && <span className="text-xs text-amber-700 bg-amber-50 border border-amber-400 rounded px-1 font-semibold">⚠ Fill in hrs / cost</span>}
                       {item.scope === "Install" && !item.install_wbs && (
                         MANUAL_HRS_INSTALLS.has(item.wbs_code)
                           ? <span className="text-xs text-amber-700 bg-amber-50 border border-amber-300 rounded px-1 font-semibold">⚠ Hrs required — enter in cost detail</span>
@@ -1894,7 +1915,11 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                   </div>
                   <div className="text-center text-gray-500">{item.uom||"EA"}</div>
                   <div className="flex justify-center">
-                    <input type="number" min="0" value={qty} onChange={e=>updLine(item.wbs_code,"qty",e.target.value)}
+                    <input type="number" min="0" value={qty} onChange={e=>{
+                        updLine(item.wbs_code,"qty",e.target.value);
+                        if (parseFloat(e.target.value||"0")>1e-6 && rowHasNoDefaultDriver(item, ln))
+                          setExpandedRows(p=>({...p,[item.wbs_code]:true}));
+                      }}
                       onKeyDown={e=>e.key==="Enter"&&e.currentTarget.blur()}
                       placeholder="0"
                       className={`w-16 text-center border rounded py-0.5 text-sm font-bold focus:outline-none focus:ring-1 focus:ring-orange-400 ${hasQty?"border-orange-400 bg-orange-50 text-orange-800":"border-gray-300 text-gray-500"}`}/>
@@ -1953,6 +1978,12 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                       </span>
                     </div>
                     <div className="p-3 grid gap-3">
+                      {needsEntry && (
+                        <div className="flex items-center gap-2 rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-800 font-semibold">
+                          <span>⚠</span>
+                          <span>This row has a quantity but will contribute <strong>$0</strong> to the estimate — enter hours or a cost below to clear this warning.</span>
+                        </div>
+                      )}
                       <div className="grid grid-cols-4 gap-3">
                         <div>
                           <label className="text-xs text-gray-500 block mb-0.5">Delivery Method</label>
@@ -2027,7 +2058,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                           {!isWAFHAItem(item) && <input type="number" min="0" value={ln.instHrsOvrd||""} placeholder={String(item.install_hrs_per||0)}
                             onChange={e=>updLine(item.wbs_code,"instHrsOvrd",e.target.value)}
                             onKeyDown={e=>e.key==="Enter"&&e.currentTarget.blur()}
-                            className="w-full text-xs border border-purple-300 bg-purple-50 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-purple-400"/>}
+                            className={`w-full text-xs border rounded px-1.5 py-1 focus:outline-none focus:ring-1 ${needsEntry && !isContr ? "border-amber-400 bg-amber-50 focus:ring-amber-400" : "border-purple-300 bg-purple-50 focus:ring-purple-400"}`}/>}
                         </div>
                         <div>
                           <label className="text-xs text-gray-500 block mb-0.5">Contractor Rate ($/unit)</label>
@@ -2046,7 +2077,7 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                                 placeholder={item.contractor_rate>0?String(Math.round(item.contractor_rate)):"0"}
                                 onChange={e=>updLine(item.wbs_code,"contrRate",e.target.value)}
                                 onKeyDown={e=>e.key==="Enter"&&e.currentTarget.blur()}
-                                className="w-full text-xs border border-teal-300 bg-teal-50 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400"/>
+                                className={`w-full text-xs border rounded px-1.5 py-1 focus:outline-none focus:ring-1 ${needsEntry && isContr ? "border-amber-400 bg-amber-50 focus:ring-amber-400" : "border-teal-300 bg-teal-50 focus:ring-teal-400"}`}/>
                               {item.contractor_rate>0&&<div className="text-xs text-amber-600 mt-0.5">Default: ${Math.round(item.contractor_rate).toLocaleString("en-AU")}</div>}
                             </>
                           )}
