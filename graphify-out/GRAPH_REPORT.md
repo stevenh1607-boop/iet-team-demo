@@ -10,16 +10,16 @@
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
-- [[_COMMUNITY_Community 0|Community 0]]
-- [[_COMMUNITY_Community 1|Community 1]]
-- [[_COMMUNITY_Community 2|Community 2]]
-- [[_COMMUNITY_Community 3|Community 3]]
-- [[_COMMUNITY_Community 4|Community 4]]
-- [[_COMMUNITY_Community 5|Community 5]]
-- [[_COMMUNITY_Community 6|Community 6]]
-- [[_COMMUNITY_Community 7|Community 7]]
-- [[_COMMUNITY_Community 8|Community 8]]
-- [[_COMMUNITY_Community 9|Community 9]]
+- [[_COMMUNITY_Core Application UI|Core Application UI]]
+- [[_COMMUNITY_Estimation Screens & Equipment|Estimation Screens & Equipment]]
+- [[_COMMUNITY_Entry Point & Documentation|Entry Point & Documentation]]
+- [[_COMMUNITY_Package Dependencies|Package Dependencies]]
+- [[_COMMUNITY_Statistical Math Utilities|Statistical Math Utilities]]
+- [[_COMMUNITY_Error Boundary|Error Boundary]]
+- [[_COMMUNITY_App Bootstrap|App Bootstrap]]
+- [[_COMMUNITY_Labour Margin Calc|Labour Margin Calc]]
+- [[_COMMUNITY_File Export Utilities|File Export Utilities]]
+- [[_COMMUNITY_JSON Validation & Reporting|JSON Validation & Reporting]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `useData()` - 19 edges
@@ -50,23 +50,23 @@
 
 ## Communities (13 total, 5 thin omitted)
 
-### Community 0 - "Community 0"
+### Community 0 - "Core Application UI"
 Cohesion: 0.03
 Nodes (42): APP_TABS, CART_DEFAULT_SETTINGS, CART_HELP, CART_LIKELIHOOD, CART_SYS, CATEGORY_COLORS, CLASS_COLOR, COMPLEXITY_DOT (+34 more)
 
-### Community 1 - "Community 1"
+### Community 1 - "Estimation Screens & Equipment"
 Cohesion: 0.11
 Nodes (25): CARTScreen(), ContributionSplitTab(), doGeneratePDF(), EquipmentCatalogueManager(), EquipmentPricingEditor(), EquipmentScreen(), EscalationEditor(), EstimationScreen() (+17 more)
 
-### Community 2 - "Community 2"
+### Community 2 - "Entry Point & Documentation"
 Cohesion: 0.14
 Nodes (18): index.html Entry Point, src/main.jsx Module Entry, React Root Mount (#root), Browser-Only Data Storage (No Persistence), IET Cost Calculation Logic, Estimation Tab, IET Estimation Tool, Investment Setup Tab (+10 more)
 
-### Community 3 - "Community 3"
+### Community 3 - "Package Dependencies"
 Cohesion: 0.11
 Nodes (17): dependencies, react, react-dom, devDependencies, autoprefixer, postcss, tailwindcss, vite (+9 more)
 
-### Community 4 - "Community 4"
+### Community 4 - "Statistical Math Utilities"
 Cohesion: 0.24
 Nodes (10): cartBetaCDF(), cartBetacf(), cartBetaInv(), cartInvGrid(), cartLogGamma(), cartPertAB(), cartPertQuantile(), cartRng() (+2 more)
 
@@ -78,17 +78,17 @@ Nodes (10): cartBetaCDF(), cartBetacf(), cartBetaInv(), cartInvGrid(), cartLogGa
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `ErrorBoundary` connect `Community 5` to `Community 0`?**
+- **Why does `ErrorBoundary` connect `Error Boundary` to `Core Application UI`?**
   _High betweenness centrality (0.037) - this node is a cross-community bridge._
-- **Why does `useData()` connect `Community 1` to `Community 0`?**
+- **Why does `useData()` connect `Estimation Screens & Equipment` to `Core Application UI`?**
   _High betweenness centrality (0.005) - this node is a cross-community bridge._
 - **What connects `name`, `version`, `private` to the rest of the system?**
   _62 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `Community 0` be split into smaller, more focused modules?**
+- **Should `Core Application UI` be split into smaller, more focused modules?**
   _Cohesion score 0.02631578947368421 - nodes in this community are weakly interconnected._
-- **Should `Community 1` be split into smaller, more focused modules?**
+- **Should `Estimation Screens & Equipment` be split into smaller, more focused modules?**
   _Cohesion score 0.11333333333333333 - nodes in this community are weakly interconnected._
-- **Should `Community 2` be split into smaller, more focused modules?**
+- **Should `Entry Point & Documentation` be split into smaller, more focused modules?**
   _Cohesion score 0.13725490196078433 - nodes in this community are weakly interconnected._
-- **Should `Community 3` be split into smaller, more focused modules?**
+- **Should `Package Dependencies` be split into smaller, more focused modules?**
   _Cohesion score 0.1111111111111111 - nodes in this community are weakly interconnected._

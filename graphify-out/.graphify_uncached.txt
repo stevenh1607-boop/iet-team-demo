@@ -1,4 +1,0 @@
-C:\Users\steve\Documents\GitHub\iet-estimation-tool_demo\.github\workflows\deploy.yml
-C:\Users\steve\Documents\GitHub\iet-estimation-tool_demo\README.md
-C:\Users\steve\Documents\GitHub\iet-estimation-tool_demo\index.html
-C:\Users\steve\Documents\GitHub\iet-estimation-tool_demo\public\data\README.md

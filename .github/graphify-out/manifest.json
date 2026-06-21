@@ -1,0 +1,127 @@
+{
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\.github\\.claude\\settings.local.json": {
+    "mtime": 1781869347.663281,
+    "ast_hash": "514d54e7392a74c58e2870bc79d31215",
+    "semantic_hash": "514d54e7392a74c58e2870bc79d31215"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\package.json": {
+    "mtime": 1781604293.4738066,
+    "ast_hash": "c81e2a590ae0d2e5d608b8ec895b631d",
+    "semantic_hash": "c81e2a590ae0d2e5d608b8ec895b631d"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\postcss.config.js": {
+    "mtime": 1781604293.4738066,
+    "ast_hash": "225f0c24e06db1ad4a57e801e617385d",
+    "semantic_hash": "225f0c24e06db1ad4a57e801e617385d"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\public\\data\\commission_lookup.json": {
+    "mtime": 1781604293.477869,
+    "ast_hash": "3d7f92ed3bdbce243be1875dbd213326",
+    "semantic_hash": "3d7f92ed3bdbce243be1875dbd213326"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\public\\data\\commission_scaling.json": {
+    "mtime": 1781604293.4820044,
+    "ast_hash": "8d9c2bccc42b9a6151db04971ed48571",
+    "semantic_hash": "8d9c2bccc42b9a6151db04971ed48571"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\public\\data\\equipment.json": {
+    "mtime": 1781604293.4861026,
+    "ast_hash": "6925c1745aa19c61bda7c82cc4b5ac91",
+    "semantic_hash": "6925c1745aa19c61bda7c82cc4b5ac91"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\public\\data\\equipment_pricing.json": {
+    "mtime": 1781604293.4902365,
+    "ast_hash": "86d21d6744803f39eb918537d5e00fec",
+    "semantic_hash": "86d21d6744803f39eb918537d5e00fec"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\public\\data\\equipment_wbs_lookup.json": {
+    "mtime": 1781604293.4942925,
+    "ast_hash": "c4bc67c1c6dcacc2543f37541e855e78",
+    "semantic_hash": "c4bc67c1c6dcacc2543f37541e855e78"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\public\\data\\escalation_rates.json": {
+    "mtime": 1781604293.4942925,
+    "ast_hash": "c57489915f05a3b979a81ee1c813a6c5",
+    "semantic_hash": "c57489915f05a3b979a81ee1c813a6c5"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\public\\data\\inventory_materials.json": {
+    "mtime": 1781604293.5110133,
+    "ast_hash": "3d2f887a5310f8db2e848f1cd1b8a94a",
+    "semantic_hash": "3d2f887a5310f8db2e848f1cd1b8a94a"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\public\\data\\material_assemblies.json": {
+    "mtime": 1781604293.5154955,
+    "ast_hash": "2f2084ab14c319cc6921bafb3d81dea2",
+    "semantic_hash": "2f2084ab14c319cc6921bafb3d81dea2"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\public\\data\\resource_codes.json": {
+    "mtime": 1781604293.5154955,
+    "ast_hash": "f129b35122dfdf1a34196227a344c6b4",
+    "semantic_hash": "f129b35122dfdf1a34196227a344c6b4"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\public\\data\\resource_rates.json": {
+    "mtime": 1781604293.5196822,
+    "ast_hash": "574184471bb64e40cd458cc3a52542f9",
+    "semantic_hash": "574184471bb64e40cd458cc3a52542f9"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\public\\data\\resource_rates_FULL_44.json": {
+    "mtime": 1781604293.5196822,
+    "ast_hash": "79f8f977130b39e07e601e0dc954633d",
+    "semantic_hash": "79f8f977130b39e07e601e0dc954633d"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\public\\data\\supply_items.json": {
+    "mtime": 1781604293.5361066,
+    "ast_hash": "41e43a17029589151b851d1118ba6b80",
+    "semantic_hash": "41e43a17029589151b851d1118ba6b80"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\public\\data\\wbs_master.json": {
+    "mtime": 1781604293.5442188,
+    "ast_hash": "5151f6a6d1959eee29581ce0370b582b",
+    "semantic_hash": "5151f6a6d1959eee29581ce0370b582b"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\src\\App.jsx": {
+    "mtime": 1781870010.4359572,
+    "ast_hash": "f46e76d4e18bd3fe2bdb0b3e95f28c2e",
+    "semantic_hash": "f46e76d4e18bd3fe2bdb0b3e95f28c2e"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\src\\main.jsx": {
+    "mtime": 1781604293.5629578,
+    "ast_hash": "d667f2a54978de42e5310b02f1ade3e8",
+    "semantic_hash": "d667f2a54978de42e5310b02f1ade3e8"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\supabase\\schema.sql": {
+    "mtime": 1781604293.565495,
+    "ast_hash": "f907671865ecf180e376ac5fd2d7cc62",
+    "semantic_hash": "f907671865ecf180e376ac5fd2d7cc62"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\tailwind.config.js": {
+    "mtime": 1781604293.565495,
+    "ast_hash": "16d9f12dd0f16ec457a61efdc3fb462b",
+    "semantic_hash": "16d9f12dd0f16ec457a61efdc3fb462b"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\vite.config.js": {
+    "mtime": 1781604293.565495,
+    "ast_hash": "9b0b1e0d2c037f22b00a75312b9185cf",
+    "semantic_hash": "9b0b1e0d2c037f22b00a75312b9185cf"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\.github\\workflows\\deploy.yml": {
+    "mtime": 1781604286.242121,
+    "ast_hash": "8b7babd206f3ed5b86b53c075af8a67f",
+    "semantic_hash": "8b7babd206f3ed5b86b53c075af8a67f"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\README.md": {
+    "mtime": 1781604286.2465966,
+    "ast_hash": "d3ad6d89d76d154696dec97d5c9ede02",
+    "semantic_hash": "d3ad6d89d76d154696dec97d5c9ede02"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\index.html": {
+    "mtime": 1781604286.3954506,
+    "ast_hash": "267f092df70cc3f20e92dcedee1f9fa1",
+    "semantic_hash": "267f092df70cc3f20e92dcedee1f9fa1"
+  },
+  "C:\\Users\\steve\\Documents\\GitHub\\iet-estimation-tool_demo\\public\\data\\README.md": {
+    "mtime": 1781604293.477869,
+    "ast_hash": "81051bcc2cf1bedf378224b0a93e2877",
+    "semantic_hash": "81051bcc2cf1bedf378224b0a93e2877"
+  }
+}
