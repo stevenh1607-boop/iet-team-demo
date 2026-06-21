@@ -1,0 +1,332 @@
+{
+  "communities": {
+    "0": [
+      "src_app",
+      "src_app_app_tabs",
+      "src_app_card",
+      "src_app_cart_default_settings",
+      "src_app_cart_help",
+      "src_app_cart_likelihood",
+      "src_app_cart_sys",
+      "src_app_carthighlight",
+      "src_app_cartlhsu",
+      "src_app_cartsystemicparams",
+      "src_app_category_colors",
+      "src_app_class_color",
+      "src_app_commscrolllist",
+      "src_app_complexity_dot",
+      "src_app_datactx",
+      "src_app_default_sme_disciplines",
+      "src_app_default_users",
+      "src_app_defaultinv",
+      "src_app_esc_fy_labels",
+      "src_app_esc_streams",
+      "src_app_escalationindex",
+      "src_app_escpreviewtable",
+      "src_app_escstreamselector",
+      "src_app_est_tabs",
+      "src_app_estimators",
+      "src_app_exportestimatejson",
+      "src_app_exportsummarypdf",
+      "src_app_generatecopperleafxlsx",
+      "src_app_getrecentestimates",
+      "src_app_getscalefactor",
+      "src_app_iet_templates",
+      "src_app_iswafhaitem",
+      "src_app_loadcartsettings",
+      "src_app_loadsmedisciplines",
+      "src_app_loadusers",
+      "src_app_loginmodal",
+      "src_app_resource_types",
+      "src_app_reviewers",
+      "src_app_roles",
+      "src_app_roles_that_can_release_locks",
+      "src_app_sample_people",
+      "src_app_saverecentestimate",
+      "src_app_savesmedisciplines",
+      "src_app_saveusers",
+      "src_app_sectionheader",
+      "src_app_sme_color",
+      "src_app_sme_phase_styles",
+      "src_app_sme_phases",
+      "src_app_smeclassify",
+      "src_app_smephase",
+      "src_app_smestructureeditor",
+      "src_app_status_cfg",
+      "src_app_templatelibrary",
+      "src_app_themes",
+      "src_app_themesettings",
+      "src_app_type_colors",
+      "src_app_unlockpinfield",
+      "src_app_useraccesssettings",
+      "src_app_wbs_fc",
+      "src_app_wbs_group_labels",
+      "src_app_wbs_l4_desc",
+      "src_app_wbs_no_commission",
+      "src_app_wbs_p3_to_p4_suggest",
+      "src_app_wbs_profiles",
+      "src_app_wbs_role_styles",
+      "src_app_wbs_st",
+      "src_app_wbsintegritypanel",
+      "src_app_wbsnavtree",
+      "src_app_wbswizard",
+      "src_app_wiz_aer_types",
+      "src_app_wiz_delivery",
+      "src_app_wiz_phase4_desc",
+      "src_app_wiz_phase4_l4_groups",
+      "src_app_wiz_scaling_profiles",
+      "src_app_wiz_scope_patterns",
+      "src_app_wiz_steps"
+    ],
+    "1": [
+      "src_app_cartscreen",
+      "src_app_contributionsplittab",
+      "src_app_dogeneratepdf",
+      "src_app_equipmentcataloguemanager",
+      "src_app_equipmentpricingeditor",
+      "src_app_equipmentscreen",
+      "src_app_escalationeditor",
+      "src_app_estimationscreen",
+      "src_app_financialscreen",
+      "src_app_fmt",
+      "src_app_fmthrs",
+      "src_app_fmtpct",
+      "src_app_investmenthub",
+      "src_app_investmentsetup",
+      "src_app_invmatslookup",
+      "src_app_rateseditor",
+      "src_app_resolvecontingency",
+      "src_app_reviewlines",
+      "src_app_scalingeditor",
+      "src_app_smereportscreen",
+      "src_app_sourcepricingeditor",
+      "src_app_summaryscreen",
+      "src_app_usedata",
+      "src_app_wbsitemeditor",
+      "src_app_wbsmanager"
+    ],
+    "2": [
+      "index_html_entry",
+      "index_html_main_jsx",
+      "index_html_root_div",
+      "readme_browser_only_data",
+      "readme_cost_calculation_logic",
+      "readme_estimation_tab",
+      "readme_iet_estimation_tool",
+      "readme_investment_setup_tab",
+      "readme_review_lines_tab",
+      "readme_summary_tab",
+      "readme_supabase_integration",
+      "readme_vite_config",
+      "readme_wbs_master_csv",
+      "readme_wbs_navigator",
+      "workflows_deploy_build_and_deploy_job",
+      "workflows_deploy_dist_artifact",
+      "workflows_deploy_github_pages_deployment",
+      "workflows_deploy_npm_build"
+    ],
+    "3": [
+      "package",
+      "package_dependencies",
+      "package_dependencies_react",
+      "package_dependencies_react_dom",
+      "package_devdependencies",
+      "package_devdependencies_autoprefixer",
+      "package_devdependencies_postcss",
+      "package_devdependencies_tailwindcss",
+      "package_devdependencies_vite",
+      "package_devdependencies_vitejs_plugin_react",
+      "package_name",
+      "package_private",
+      "package_scripts",
+      "package_scripts_build",
+      "package_scripts_dev",
+      "package_scripts_preview",
+      "package_type",
+      "package_version"
+    ],
+    "4": [
+      "src_app_cartbetacdf",
+      "src_app_cartbetacf",
+      "src_app_cartbetainv",
+      "src_app_cartinvgrid",
+      "src_app_cartloggamma",
+      "src_app_cartpertab",
+      "src_app_cartpertquantile",
+      "src_app_cartrng",
+      "src_app_cartrun",
+      "src_app_cartsolvebounds"
+    ],
+    "5": [
+      "src_app_errorboundary",
+      "src_app_errorboundary_componentdidcatch",
+      "src_app_errorboundary_constructor",
+      "src_app_errorboundary_getderivedstatefromerror",
+      "src_app_errorboundary_render"
+    ],
+    "6": [
+      "src_app_app",
+      "src_main"
+    ],
+    "7": [
+      "src_app_calcline",
+      "src_app_labmargin"
+    ],
+    "8": [
+      "src_app_downloadblob",
+      "src_app_downloaderrorreport"
+    ],
+    "9": [
+      "src_app_generateerrorreport",
+      "src_app_validateandparsejson"
+    ],
+    "10": [
+      "postcss_config"
+    ],
+    "11": [
+      "tailwind_config"
+    ],
+    "12": [
+      "vite_config"
+    ]
+  },
+  "cohesion": {
+    "0": 0.02631578947368421,
+    "1": 0.11333333333333333,
+    "2": 0.13725490196078433,
+    "3": 0.1111111111111111,
+    "4": 0.24444444444444444,
+    "5": 0.4,
+    "6": 1.0,
+    "7": 1.0,
+    "8": 1.0,
+    "9": 1.0,
+    "10": 1.0,
+    "11": 1.0,
+    "12": 1.0
+  },
+  "gods": [
+    {
+      "id": "src_app_usedata",
+      "label": "useData()",
+      "degree": 19
+    },
+    {
+      "id": "src_app_fmt",
+      "label": "fmt()",
+      "degree": 11
+    },
+    {
+      "id": "readme_iet_estimation_tool",
+      "label": "IET Estimation Tool",
+      "degree": 9
+    },
+    {
+      "id": "src_app_summaryscreen",
+      "label": "SummaryScreen()",
+      "degree": 6
+    },
+    {
+      "id": "src_app_fmthrs",
+      "label": "fmtHrs()",
+      "degree": 5
+    },
+    {
+      "id": "src_app_cartbetacdf",
+      "label": "cartBetaCDF()",
+      "degree": 5
+    },
+    {
+      "id": "src_app_errorboundary",
+      "label": "ErrorBoundary",
+      "degree": 5
+    },
+    {
+      "id": "package_scripts",
+      "label": "scripts",
+      "degree": 4
+    },
+    {
+      "id": "src_app_estimationscreen",
+      "label": "EstimationScreen()",
+      "degree": 4
+    },
+    {
+      "id": "src_app_reviewlines",
+      "label": "ReviewLines()",
+      "degree": 4
+    }
+  ],
+  "surprises": [
+    {
+      "source": "Deploy to GitHub Pages Workflow",
+      "target": "IET Estimation Tool",
+      "source_files": [
+        ".github/workflows/deploy.yml",
+        "README.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "references",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; peripheral node `Deploy to GitHub Pages Workflow` unexpectedly reaches hub `IET Estimation Tool`"
+    },
+    {
+      "source": "vite.config.js",
+      "target": "npm run build Step",
+      "source_files": [
+        "README.md",
+        ".github/workflows/deploy.yml"
+      ],
+      "confidence": "INFERRED",
+      "relation": "conceptually_related_to",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories"
+    },
+    {
+      "source": "dist/ Build Artifact",
+      "target": "index.html Entry Point",
+      "source_files": [
+        ".github/workflows/deploy.yml",
+        "index.html"
+      ],
+      "confidence": "INFERRED",
+      "relation": "references",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `ErrorBoundary` connect `Community 5` to `Community 0`?",
+      "why": "High betweenness centrality (0.037) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `useData()` connect `Community 1` to `Community 0`?",
+      "why": "High betweenness centrality (0.005) - this node is a cross-community bridge."
+    },
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `name`, `version`, `private` to the rest of the system?",
+      "why": "62 weakly-connected nodes found - possible documentation gaps or missing edges."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 0` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.02631578947368421 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 1` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.11333333333333333 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 2` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.13725490196078433 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 3` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.1111111111111111 - nodes in this community are weakly interconnected."
+    }
+  ]
+}
