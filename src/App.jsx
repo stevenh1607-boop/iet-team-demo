@@ -3245,12 +3245,14 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
   const totalWithCont = contBase+contAmt;
 
   // ── ESCALATION ──────────────────────────────────────────────────
-  // Calculate weighted escalation per phase using project timeline
+  // Calculate weighted escalation per phase using project timeline.
+  // Matches MASTER.xlsm behaviour:
+  //   - EE Internal labour: escalated for ALL investment types (internal_ee rates)
+  //   - Contractors / Materials: escalated for Commercially Funded only;
+  //     for Internally Funded projects this is handled externally in Copperleaf.
   const escResult = useMemo(()=>{
-    // EE Internal labour is NOT escalated — EE labour rates are reviewed
-    // annually and already reflect current-year cost, so only Contractor
-    // and Materials costs carry a forward escalation allowance.
-    if (!escRates) return { escContr:0, escMat:0, escTotal:0, escComm:0, byCategory:{} };
+    if (!escRates) return { escEE:0, escContr:0, escMat:0, escTotal:0, escComm:0, byCategory:{} };
+    const rEE    = Object.values(escRates.internal_ee.rates).map(r=>r/100);
     const rContr = Object.values(escRates.contractors.rates).map(r=>r/100);
     const rMat   = Object.values(escRates.materials.rates).map(r=>r/100);
 
@@ -3262,34 +3264,40 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
       "5": { start:parseInt(inv.constrStart||6)+parseInt(inv.constrDur||15)-1, dur:2   },
     };
 
-    let escContr=0, escMat=0;
+    let escEE=0, escContr=0, escMat=0;
     Object.entries(byPhase).forEach(([ph, costs])=>{
       const pd = phaseDefs[ph];
       if (!pd || pd.dur <= 0) return;
-      let avgContr=0, avgMat=0;
+      let avgEE=0, avgContr=0, avgMat=0;
       for (let m=pd.start; m<pd.start+pd.dur; m++) {
+        avgEE    += escalationIndex(m, rEE);
         avgContr += escalationIndex(m, rContr);
         avgMat   += escalationIndex(m, rMat);
       }
+      avgEE    /= pd.dur;
       avgContr /= pd.dur;
       avgMat   /= pd.dur;
-      escContr += (costs.contrCost||0) * avgContr;
-      escMat   += (costs.matCost||0)   * avgMat;
+      escEE    += (costs.eeLabCost||0) * avgEE;
+      // Contractors & Materials escalation: commercial investments only.
+      // Internally funded escalation for these categories is calculated in Copperleaf.
+      if (isCommercial) {
+        escContr += (costs.contrCost||0) * avgContr;
+        escMat   += (costs.matCost||0)   * avgMat;
+      }
     });
 
-    const escTotal = escContr + escMat;
-    // Commercial uplift on escalation: Contractor-escalation uses the
-    // Contractor ANS margin, Materials-escalation uses the Materials ANS
-    // margin. (Previously both were uplifted by the flat labour margin
-    // ANS_LAB — a pre-existing bug unrelated to, but adjacent to, the
-    // per-resource labour margin fix.)
-    const escComm  = escContr * (1 + ANS_CON) + escMat * (1 + ANS_MAT);
+    const escTotal = escEE + escContr + escMat;
+    // escEE needs no ANS uplift — eeLabCost is already computed at ee_commercial_rate
+    // when isCommercial=true, so ANS is embedded. Applying a % on top would double-count.
+    // Contractors and Materials do need uplift as their base costs carry no embedded margin.
+    const escComm  = escEE + escContr * (1 + ANS_CON) + escMat * (1 + ANS_MAT);
     return {
-      escContr, escMat, escTotal,
+      escEE, escContr, escMat, escTotal,
       escComm: isCommercial ? escComm : escTotal,
       byCategory: {
-        "Contractors": { val: escContr, pct: grandEE>0   ? escContr/grandEE*100 : 0 },
-        "Materials":   { val: escMat,   pct: grandEE>0   ? escMat/grandEE*100   : 0 },
+        "EE Labour":   { val: escEE,   pct: grandEE>0 ? escEE/grandEE*100   : 0 },
+        "Contractors": { val: escContr, pct: grandEE>0 ? escContr/grandEE*100 : 0 },
+        "Materials":   { val: escMat,   pct: grandEE>0 ? escMat/grandEE*100   : 0 },
       }
     };
   },[escRates, byPhase, inv, isCommercial]);
@@ -3532,7 +3540,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
                       ↳ {label} <span className="text-teal-400">({v.pct.toFixed(2)}% of base)</span>
                     </div>
                     <div className="py-1 text-right pr-4 text-teal-600 font-medium">{fmt(v.val)}</div>
-                    {isCommercial && <div className="py-1 text-right pr-4 text-teal-500">{fmt(v.val*(1+(label==="Materials"?ANS_MAT:ANS_CON)))}</div>}
+                    {isCommercial && <div className="py-1 text-right pr-4 text-teal-500">{fmt(v.val*(1+(label==="Materials"?ANS_MAT:label==="EE Labour"?0:ANS_CON)))}</div>}
                   </div>
                 ))}
               </div>
