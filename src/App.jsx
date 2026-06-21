@@ -2873,9 +2873,10 @@ function doGeneratePDF(ctx) {
       else{eeCost+=(c.eeLabCost||0)+(c.plantFact||0);eeANS+=(c.eeLabCost||0)*labMargin(c.effectiveResource, resourceCodes);}
       matCost+=c.equipCost||0; matANS+=(c.equipCost||0)*ANS_MAT;
     });
-    const contPctF=parseFloat(inv.contingency||'0')/100;
     const base=subCost+matCost+eeCost;
-    const cont=base*contPctF;
+    const contRes=resolveContingency(inv,base,isCommercial);
+    const cont=contRes.amt;
+    const contPctF=contRes.pct/100;
     const totalCost=base+cont;
     const totalANS=subANS+matANS+eeANS;
     const cv=totalCost+totalANS;
@@ -2916,7 +2917,7 @@ function doGeneratePDF(ctx) {
           ${finRowComm('Sub-Contract (Contractor Delivered)',subCost+subANS,false)}
           ${finRowComm('Materials (PCE/Equipment)',matCost+matANS,false)}
           ${finRowComm('EE Internal Works',eeCost+eeANS,false)}
-          ${finRowComm('Contingency ('+parseFloat(inv.contingency||'0')+'%)',cont,false)}
+          ${finRowComm('Contingency ('+contRes.pct.toFixed(3)+'%)',cont,false)}
           ${finRowComm('Contract Value (excl. GST)',cv,true)}
           ${finRowComm('GST (10%)',gst,false)}
           ${finRowComm('Contract Value (incl. GST)',gstInc,true)}
@@ -2935,7 +2936,7 @@ function doGeneratePDF(ctx) {
           ${finRow('Sub-Contract (Contractor Delivered)',subCost,subANS,subCost+subANS,false)}
           ${finRow('Materials (PCE/Equipment)',matCost,matANS,matCost+matANS,false)}
           ${finRow('EE Internal Works',eeCost,eeANS,eeCost+eeANS,false)}
-          ${finRow('Contingency ('+parseFloat(inv.contingency||'0')+'%)',cont,0,cont,false)}
+          ${finRow('Contingency ('+contRes.pct.toFixed(3)+'%)',cont,0,cont,false)}
           ${finRow('Total Estimated Cost',totalCost,null,null,true)}
           ${finRow('Admin / ANS Burden',null,totalANS,null,false)}
           ${finRow('Contract Value (excl. GST)',null,null,cv,true)}
