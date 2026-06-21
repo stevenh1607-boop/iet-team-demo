@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-﻿import { useState, useMemo, useEffect, useCallback, createContext, useContext, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback, createContext, useContext, useRef } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
-=======
-import { useState, useMemo, useEffect, useCallback, createContext, useContext, useRef, Component } from "react";
->>>>>>> 6bce754e2de9570c5bc4f8907705ce7bd6d222b2
 
 // ═══════════════════════════════════════════════════════════════════
 // IET ESTIMATION TOOL — FULL SCALE DEMO
