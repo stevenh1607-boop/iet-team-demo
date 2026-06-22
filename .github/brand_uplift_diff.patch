@@ -1,0 +1,268 @@
+﻿commit b32653a35c754a752001ddd281cf65c63b54752d
+Author: Steven <stevenh1607@gmail.com>
+Date:   Thu Jun 18 21:03:06 2026 +1000
+
+    design: EE brand uplift — programme header, CART P-cards, integrity stat-cards, assembly card grid
+    
+    - ContributionSplitTab: replace white programme header with navy #002266 card (PROGRAMME eyebrow, white name, #93B0DA mono meta, commercial total metric, 14px EE/customer split bar with legend, RIT-D amber note, report/delete toolbar in dark footer strip)
+    - CART: remove P80 card; grid-cols-5 → grid-cols-4 (P10/P50/P90/Deterministic only per spec)
+    - CART histogram: replace plain <text> P-marker labels with filled label chips (rounded rect + white text) at top of each dashed line
+    - WBSIntegrityPanel: add 3 stat-cards after toolbar (Checks Passing n/6 green, Items to Review amber, Last Run time)
+    - SourcePricingEditor Assembly: early-return 2-col card grid from matAssemblies data (mono code chip, Approved pill, name, section·n items, total_cost value)
+    - FinancialScreen: header card + table/PA/SVG colours updated to var(--primary-900) / #002266 (previously hardcoded #1e3a5f)
+    - ContributionSplitTab colour constants: EE_BLUE → #1F478A, CUST_ORG → #FF5300 (EE brand tokens)
+    
+    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+diff --git a/src/App.jsx b/src/App.jsx
+index 983e560..fbf6206 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -3915,9 +3915,13 @@ function FinancialScreen({ inv, lines, isCommercial }) {
+ 
+   return (
+     <div className="flex flex-col gap-4 p-4 overflow-y-auto h-full bg-gray-50">
+-      <div className="flex items-center justify-between">
+-        <h2 className="text-sm font-bold text-[#1e3a5f]">Financial Report — {inv.name||"Current Estimate"}</h2>
+-        <span className="text-xs text-gray-400 italic">All escalation costs excluded · {isCommercial?"Commercial (ANS) rates":"EE Internal rates"}</span>
++      {/* Header card */}
++      <div className="bg-white rounded-lg border border-[#e8edf3] shadow-sm px-5 py-3 flex items-center justify-between">
++        <div>
++          <h2 className="text-sm font-bold text-[var(--primary-900)]">Financial Report — {inv.name||"Current Estimate"}</h2>
++          <div className="text-xs text-gray-500 mt-0.5">{isCommercial?"Commercial (ANS) rates":"EE Internal rates"} · all escalation costs excluded</div>
++        </div>
++        <span className="text-xs font-semibold bg-[var(--primary-100)] text-[var(--primary-800)] px-2.5 py-1 rounded-full">{inv.estClass||"Class 5"} · Rev {inv.revision||"A"}</span>
+       </div>
+ 
+       {/* Cost summary + PA breakdown side by side */}
+@@ -3927,7 +3931,7 @@ function FinancialScreen({ inv, lines, isCommercial }) {
+         <div className="flex-1 min-w-[460px] bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+           <table className="w-full text-xs border-collapse">
+             <thead>
+-              <tr className="bg-[#1e3a5f] text-white">
++              <tr className="bg-[var(--primary-900)] text-white">
+                 {["Item","Cost* ($)","Admin / ANS Burden ($)","Contract Value ($)","EE Internal ERP** ($)","EE Internal ERP incl overheads*** ($)","Comments"].map(h=>(
+                   <th key={h} className="px-2 py-2 font-semibold text-left whitespace-nowrap first:text-left text-right [&:first-child]:text-left">{h}</th>
+                 ))}
+@@ -3960,7 +3964,7 @@ function FinancialScreen({ inv, lines, isCommercial }) {
+                 <td className="px-2 py-1.5 text-right tabular-nums">{fmtD(totals.cont*1.866)}</td>
+                 <td></td>
+               </tr>
+-              <tr className="bg-[#1e3a5f] text-white font-bold">
++              <tr className="bg-[var(--primary-900)] text-white font-bold">
+                 <td className="px-2 py-2">Total Estimated Cost</td>
+                 <td className="px-2 py-2 text-right tabular-nums">{fmtD(totals.totalCost)}</td>
+                 <td className="px-2 py-2 text-right tabular-nums">{fmtD(totals.totalANS)}</td>
+@@ -3982,7 +3986,7 @@ function FinancialScreen({ inv, lines, isCommercial }) {
+ 
+         {/* Commercial PA breakdown */}
+         <div className="w-72 bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+-          <div className="bg-[#1e3a5f] text-white px-3 py-2 text-xs font-bold">Commercial Project Agreement Cost Breakdown</div>
++          <div className="bg-[var(--primary-900)] text-white px-3 py-2 text-xs font-bold">Commercial Project Agreement Cost Breakdown</div>
+           <table className="w-full text-xs border-collapse">
+             <thead>
+               <tr className="bg-gray-100">
+@@ -4042,16 +4046,16 @@ function FinancialScreen({ inv, lines, isCommercial }) {
+           <line x1={PL} y1={PT} x2={PL} y2={PT+H} stroke="#9ca3af" strokeWidth="1"/>
+           <line x1={PL} y1={PT+H} x2={PL+W} y2={PT+H} stroke="#9ca3af" strokeWidth="1"/>
+           <polyline points={pts("cumM")} fill="none" stroke="#eab308" strokeWidth="2"/>
+-          <polyline points={pts("cumC")} fill="none" stroke="#1e3a5f" strokeWidth="2"/>
+-          <polyline points={pts("cumE")} fill="none" stroke="#16a34a" strokeWidth="2"/>
++          <polyline points={pts("cumC")} fill="none" stroke="#002266" strokeWidth="2"/>
++          <polyline points={pts("cumE")} fill="none" stroke="#15803d" strokeWidth="2"/>
+           {cashFlow.map((r,i)=>i%step!==0?null:(
+             <text key={i} x={PL+i*sx} y={PT+H+13} textAnchor="end" fontSize="8" fill="#6b7280"
+                   transform={`rotate(-45,${PL+i*sx},${PT+H+13})`}>{r.lbl}</text>
+           ))}
+           {[
+             {c:"#eab308",l:"Milestone Payments (Incoming Money)"},
+-            {c:"#1e3a5f",l:"Cost + Contingency"},
+-            {c:"#16a34a",l:"EE Internal ERP Costing incl overheads***"},
++            {c:"#002266",l:"Cost + Contingency"},
++            {c:"#15803d",l:"EE Internal ERP Costing incl overheads***"},
+           ].map(({c,l},i)=>(
+             <g key={i} transform={`translate(${PL+i*210},${CH-10})`}>
+               <line x1={0} y1={0} x2={16} y2={0} stroke={c} strokeWidth="2"/>
+@@ -6151,8 +6155,8 @@ function ContributionSplitTab({ saved, setSaved }) {
+   const { supply } = useData();
+   const fmt  = (n) => `$${Math.round(n||0).toLocaleString("en-AU")}`;
+   const pct  = (a,b) => b>0 ? Math.round(a/b*100) : 0;
+-  const EE_BLUE  = "#1e3a5f";
+-  const CUST_ORG = "#ea580c";
++  const EE_BLUE  = "#1F478A";
++  const CUST_ORG = "#FF5300";
+ 
+   // ID comparison: saved ids are numbers, select values are strings
+   const findById = (invId) => saved.find(s=>String(s.id)===String(invId));
+@@ -6546,20 +6550,43 @@ ${invRows}
+           <div className="flex-1 overflow-y-auto p-4">
+             <div className="max-w-5xl mx-auto space-y-3">
+ 
+-              {/* Programme header */}
+-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+-                <div className="flex items-start justify-between">
+-                  <div>
+-                    <div className="text-lg font-bold text-gray-900">{prog.name}</div>
+-                    {prog.number&&<div className="text-xs text-gray-400 font-mono">{prog.number} · Created {prog.createdAt}</div>}
++              {/* Programme header — navy card per spec */}
++              <div className="rounded-lg overflow-hidden shadow-sm" style={{background:"#002266"}}>
++                <div className="px-5 py-4">
++                  <div className="flex items-start justify-between">
++                    <div className="flex-1 min-w-0">
++                      <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{color:"#93B0DA"}}>PROGRAMME</div>
++                      <div className="text-lg font-extrabold text-white leading-tight truncate">{prog.name}</div>
++                      {prog.number&&<div className="text-xs font-mono mt-1" style={{color:"#93B0DA"}}>{prog.number} · {summary.children.length} investment{summary.children.length!==1?"s":""} · Created {prog.createdAt}</div>}
++                    </div>
++                    <div className="flex-shrink-0 text-right ml-4">
++                      <div className="text-[10px] uppercase tracking-wide mb-0.5" style={{color:"#93B0DA"}}>Programme Commercial Total</div>
++                      <div className="text-xl font-extrabold font-mono text-white">{fmt(summary.totalComm||summary.totalEE)}</div>
++                    </div>
+                   </div>
++                  {/* Programme split bar */}
++                  {summary.children.length>0&&(
++                    <div className="mt-3">
++                      <div className="h-3.5 rounded-full flex overflow-hidden" style={{background:"rgba(255,255,255,0.15)"}}>
++                        <div style={{width:`${pct(summary.totalEESplit,progTotal)}%`,background:"#4A7BC1"}} className="h-full transition-all rounded-l-full"/>
++                        <div style={{width:`${pct(summary.totalCustSplit,progTotal)}%`,background:"#FF5300"}} className="h-full transition-all rounded-r-full"/>
++                      </div>
++                      <div className="flex justify-between mt-1.5 text-xs font-semibold">
++                        <span style={{color:"#cfe0f5"}}>EE {fmt(summary.totalEESplit)} ({pct(summary.totalEESplit,progTotal)}%)</span>
++                        <span style={{color:"#ffa07a"}}>Customer {fmt(summary.totalCustSplit)} ({pct(summary.totalCustSplit,progTotal)}%)</span>
++                      </div>
++                    </div>
++                  )}
++                </div>
++                <div className="px-5 py-2 flex items-center justify-between" style={{background:"rgba(0,0,0,0.2)"}}>
+                   <div className="flex items-center gap-2">
+                     <button onClick={generateReport} disabled={!summary.children.length}
+-                      className="text-xs bg-[var(--primary-700)] hover:bg-[var(--primary-600)] disabled:opacity-40 text-white px-3 py-1.5 rounded font-semibold flex items-center gap-1.5 shadow">
++                      className="text-xs bg-[var(--accent-600)] hover:bg-[var(--accent-700)] disabled:opacity-40 text-white px-3 py-1.5 rounded font-semibold flex items-center gap-1.5 shadow">
+                       🖨️ Produce Report
+                     </button>
+-                    <button onClick={()=>deleteProg(prog.id)} className="text-xs text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 px-2 py-1 rounded">Delete</button>
++                    {anyRitD&&<span className="text-xs bg-amber-200 text-amber-900 px-2 py-1 rounded font-semibold">⚠ RIT-D required on one or more investments</span>}
+                   </div>
++                  <button onClick={()=>deleteProg(prog.id)} className="text-xs text-red-300 hover:text-red-100 border border-red-400 hover:border-red-200 px-2 py-1 rounded">Delete Programme</button>
+                 </div>
+               </div>
+ 
+@@ -8149,6 +8176,44 @@ function WBSIntegrityPanel({ wbs, supply, nullApproved, toggleNullApproved }) {
+           {allClear?"✓ All critical checks pass":`⚠ ${C.totalIssues} issue${C.totalIssues!==1?"s":""} · ${C.totalWarnings} warning${C.totalWarnings!==1?"s":""}`}
+         </div>
+       </div>
++      {/* Stat cards */}
++      {(() => {
++        const TOTAL_CHECKS = 6;
++        const passing = [
++          C.brokenInstall.length===0,
++          C.wrongScopeInstall.length===0,
++          C.unexpCommNull.length===0,
++          C.installNullHrs.length===0,
++          C.miscCommNull.length===0,
++          C.installNoComm.length===0,
++        ].filter(Boolean).length;
++        const toReview = C.totalIssues + C.totalWarnings;
++        return (
++          <div className="grid grid-cols-3 gap-3 px-4 py-3 bg-gray-50 border-b flex-shrink-0">
++            <div className="bg-white rounded-lg border border-green-200 p-3 flex items-center gap-3 shadow-sm">
++              <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center text-base">✓</div>
++              <div>
++                <div className="text-lg font-bold font-mono text-green-700">{passing}/{TOTAL_CHECKS}</div>
++                <div className="text-xs text-gray-500 font-semibold">Checks Passing</div>
++              </div>
++            </div>
++            <div className={`bg-white rounded-lg border p-3 flex items-center gap-3 shadow-sm ${toReview>0?"border-amber-200":"border-gray-200"}`}>
++              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-base ${toReview>0?"bg-amber-100":"bg-gray-100"}`}>⚠</div>
++              <div>
++                <div className={`text-lg font-bold font-mono ${toReview>0?"text-amber-700":"text-gray-400"}`}>{toReview}</div>
++                <div className="text-xs text-gray-500 font-semibold">Items to Review</div>
++              </div>
++            </div>
++            <div className="bg-white rounded-lg border border-gray-200 p-3 flex items-center gap-3 shadow-sm">
++              <div className="w-9 h-9 rounded-full bg-[var(--primary-50)] flex items-center justify-center text-base">🕐</div>
++              <div>
++                <div className="text-sm font-mono font-bold text-[var(--primary-800)]">{lastRun?lastRun.toLocaleTimeString("en-AU",{hour:"2-digit",minute:"2-digit"}):"—"}</div>
++                <div className="text-xs text-gray-500 font-semibold">Last Run</div>
++              </div>
++            </div>
++          </div>
++        );
++      })()}
+ 
+       <div className="flex flex-1 overflow-hidden">
+         {/* Left nav */}
+@@ -8397,7 +8462,7 @@ function WBSIntegrityPanel({ wbs, supply, nullApproved, toggleNullApproved }) {
+ // base_price / esc_rate / escalated_price fields — this one component
+ // handles all three, filtered by source tag.
+ function SourcePricingEditor({ source, label, managerMode, onUnlock }) {
+-  const { equipPricing: ctxPricing } = useData();
++  const { equipPricing: ctxPricing, matAssemblies } = useData();
+   const [localPricing, setLocalPricing] = useState(null);
+   const [search,       setSearch]       = useState("");
+   const [editingKey,   setEditingKey]   = useState(null);
+@@ -8488,6 +8553,41 @@ function SourcePricingEditor({ source, label, managerMode, onUnlock }) {
+     Inventory: "bg-teal-100 text-teal-800 border-teal-300",
+   }[source] || "bg-gray-100 text-gray-700 border-gray-300";
+ 
++  // Assembly source: render 2-col card grid from matAssemblies data
++  if (source === "Assembly") {
++    const asmFmt = v => v != null ? "$"+Number(v).toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2}) : "—";
++    const assemblies = (matAssemblies || []).sort((a,b)=>(a.wbs_code||"").localeCompare(b.wbs_code||""));
++    const section = wbsCode => (wbsCode||"").split(".").slice(0,3).join(".");
++    return (
++      <div className="flex-1 flex flex-col overflow-hidden">
++        <div className="bg-white border-b px-3 py-2 flex items-center gap-2 flex-shrink-0">
++          <span className="text-xs text-gray-500 font-semibold">{assemblies.length} material assemblies</span>
++          <div className="flex-1"/>
++          {managerMode ? (
++            <span className="text-xs bg-orange-100 text-orange-700 border border-orange-300 px-3 py-1.5 rounded font-semibold">🔓 Manager Mode</span>
++          ) : (
++            <button onClick={onUnlock} className="text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 px-3 py-1.5 rounded flex items-center gap-1.5">🔒 Manager Mode</button>
++          )}
++        </div>
++        <div className="flex-1 overflow-auto p-4">
++          <div className="grid grid-cols-2 gap-3 max-w-4xl">
++            {assemblies.map(asm=>(
++              <div key={asm.wbs_code} className="bg-white rounded-lg border border-[#e8edf3] shadow-sm p-4 flex flex-col gap-2">
++                <div className="flex items-center justify-between gap-2">
++                  <span className="text-[10px] font-mono font-bold bg-[var(--primary-50)] text-[var(--primary-700)] border border-[var(--primary-200)] px-2 py-0.5 rounded">{asm.wbs_code}</span>
++                  <span className="text-[10px] font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Approved</span>
++                </div>
++                <div className="text-xs font-semibold text-gray-800 leading-tight">{asm.description}</div>
++                <div className="text-[11px] text-gray-500">{section(asm.wbs_code)} · {(asm.components||[]).length} item{(asm.components||[]).length!==1?"s":""}</div>
++                <div className="text-sm font-mono font-bold text-[var(--primary-800)] mt-auto pt-1 border-t border-gray-100">{asmFmt(asm.total_cost)}</div>
++              </div>
++            ))}
++          </div>
++        </div>
++      </div>
++    );
++  }
++
+   return (
+     <div className="flex-1 flex flex-col overflow-hidden">
+       {/* Toolbar */}
+@@ -11758,8 +11858,9 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
+         ))}
+         {[["P10",result.raw.p10,"#dc2626"],["P50",result.raw.p50,"#1d4ed8"],["P90",result.raw.p90,"#047857"]].map(([lab,v,col])=>(
+           <g key={lab}>
+-            <line x1={x(v)} x2={x(v)} y1={6} y2={H} stroke={col} strokeWidth="2" strokeDasharray="6 4"/>
+-            <text x={x(v)+5} y={26} style={{fontSize:"22px"}} fill={col} fontWeight="bold">{lab}</text>
++            <line x1={x(v)} x2={x(v)} y1={34} y2={H} stroke={col} strokeWidth="2" strokeDasharray="6 4"/>
++            <rect x={x(v)-24} y={2} width={48} height={26} rx={6} fill={col} opacity="0.9"/>
++            <text x={x(v)} y={19} textAnchor="middle" style={{fontSize:"16px"}} fill="white" fontWeight="bold">{lab}</text>
+           </g>
+         ))}
+         <text x={pad} y={H+30} style={{fontSize:"22px"}} fill="#6b7280">{fmt(lo)}</text>
+@@ -11926,10 +12027,9 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
+             {/* Results */}
+             {result && (
+               <>
+-                <div className={`grid gap-3 ${result.floored?"grid-cols-5":"grid-cols-5"}`}>
++                <div className="grid gap-3 grid-cols-4">
+                   {[["P10",result.p10,result.raw.p10,"text-red-700","bg-red-50 border-red-200"],
+                     ["P50",result.p50,result.raw.p50,"text-[var(--primary-800)]","bg-[var(--primary-50)] border-[var(--primary-200)]"],
+-                    ["P80",result.p80,result.raw.p80,"text-purple-700","bg-purple-50 border-purple-200"],
+                     ["P90",result.p90,result.raw.p90,"text-green-800","bg-green-50 border-green-200"],
+                   ].map(([lab,v,raw,col,box])=>(
+                     <div key={lab} className={`rounded-lg border p-3 ${box}`}>
