@@ -1,0 +1,232 @@
+﻿commit 3f19b963295399733b2204704472e989cac985a8
+Author: Steven <stevenh1607@gmail.com>
+Date:   Thu Jun 18 19:54:12 2026 +1000
+
+    feat: add per-item % split override to Contribution Split tab
+    
+    - Add % Override button to item/section tag rows (alongside EE / Customer / —)
+    - When % Override is active, show inline EE% input (0-100, default 50)
+    - Update resolveChildSplit() to handle % tags for both section and item methods
+    - Fix section method: deduplicate section keys to avoid double-counting
+    - Add updateItemPercentage() helper; update updateChildTagging() to clean up percentages on tag change
+    - Add Clear bulk-action button to group headers (alongside All EE / All Cust)
+    - Add getting-started guide box above tag groups (shown for section/item methods)
+    - Update generateReport() to include per-item/section attribution table in HTML output
+    - itemPercentages persisted to localStorage alongside lineTagging
+    
+    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+diff --git a/src/App.jsx b/src/App.jsx
+index 201fd09..983e560 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -6205,25 +6205,32 @@ function ContributionSplitTab({ saved, setSaved }) {
+       return {eeSplit,custSplit,eePct:pct(eeSplit,base),custPct:pct(custSplit,base),overCap:custSplit,ritD:custSplit>0};
+     }
+     if(method==="section"||method==="item"){
+-      // Sum tagged: lineTagging is per child, keyed by wbs_code (item) or l3 (section)
+       const tagging=child.lineTagging||{};
++      const itemPercentages=child.itemPercentages||{};
+       const rec=findById(child.invId);
+       if(!rec) return {eeSplit:0,custSplit:0,eePct:0,custPct:0,overCap:0,ritD:false};
+       const lines=rec.lines||{};
+       const entered=supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
+-      let eeAmt=0, custAmt=0, untagAmt=0;
++      if(!entered.length) return {eeSplit:0,custSplit:0,eePct:0,custPct:0,overCap:0,ritD:false};
++      let eeAmt=0, custAmt=0;
++      const share=1/entered.length*base;
++      // Deduplicate section keys so each section only contributes one share
++      const seenKeys=new Set();
+       entered.forEach(item=>{
+         const key=method==="section"?item.wbs_code.split(".").slice(0,3).join("."):item.wbs_code;
+-        const ln=lines[item.wbs_code]||{};
+-        // Use simple proportion of total based on qty — approximation for demo
++        if(method==="section"&&seenKeys.has(key)) return;
++        seenKeys.add(key);
+         const tag=tagging[key];
+-        const share=1/entered.length*base;
+-        if(tag==="EE") eeAmt+=share;
+-        else if(tag==="Customer") custAmt+=share;
+-        else untagAmt+=share;
++        if(tag==="%"){
++          const eePct=(itemPercentages[key]??50)/100;
++          eeAmt+=share*eePct;
++          custAmt+=share*(1-eePct);
++        } else if(tag==="EE"){
++          eeAmt+=share;
++        } else {
++          custAmt+=share; // Customer tag or untagged → Customer
++        }
+       });
+-      // Untagged defaults to Customer
+-      custAmt+=untagAmt;
+       return {eeSplit:eeAmt,custSplit:custAmt,eePct:pct(eeAmt,base),custPct:pct(custAmt,base),overCap:0,ritD:false};
+     }
+     return {eeSplit:0,custSplit:0,eePct:0,custPct:0,overCap:0,ritD:false};
+@@ -6264,10 +6271,25 @@ function ContributionSplitTab({ saved, setSaved }) {
+     const child=(prog?.children||[]).find(c=>String(c.invId)===String(invId));
+     if(!child) return;
+     const tagging={...child.lineTagging||{}};
++    // If switching away from "%", clean up the stored percentage
++    if(child.lineTagging?.[key]==="%"&&value!=="%"){
++      const percentages={...child.itemPercentages||{}};
++      delete percentages[key];
++      updateChild(invId,{itemPercentages:percentages});
++    }
+     if(value===undefined) delete tagging[key]; else tagging[key]=value;
+     updateChild(invId,{lineTagging:tagging});
+   };
+ 
++  const updateItemPercentage = (invId, key, pct)=>{
++    const child=(prog?.children||[]).find(c=>String(c.invId)===String(invId));
++    if(!child) return;
++    const percentages={...child.itemPercentages||{}};
++    if(pct!==undefined&&!isNaN(pct)) percentages[key]=Math.min(100,Math.max(0,pct));
++    else delete percentages[key];
++    updateChild(invId,{itemPercentages:percentages});
++  };
++
+   const createProg = ()=>{
+     if(!newProgName.trim()) return;
+     const np={id:`prog_${Date.now()}`,name:newProgName.trim(),number:newProgNum.trim(),
+@@ -6282,7 +6304,7 @@ function ContributionSplitTab({ saved, setSaved }) {
+     if(!addInvId||!prog) return;
+     const sId=String(addInvId);
+     if((prog.children||[]).find(c=>String(c.invId)===sId)){setShowAddInv(false);return;}
+-    updateProg({children:[...(prog.children||[]),{invId:sId,role:addInvRole,splitMethod:"percentage",eePct:25,eeCap:7000000,lineTagging:{}}]});
++    updateProg({children:[...(prog.children||[]),{invId:sId,role:addInvRole,splitMethod:"percentage",eePct:25,eeCap:7000000,lineTagging:{},itemPercentages:{}}]});
+     setShowAddInv(false); setAddInvId(""); setExpandedChild(sId);
+   };
+   const removeChild = (invId)=>{
+@@ -6360,6 +6382,38 @@ function ContributionSplitTab({ saved, setSaved }) {
+             <th style="text-align:right;padding:5px 10px">Install Hrs</th>
+           </tr></thead><tbody>${phaseRows}</tbody>
+         </table>`:`<p style="font-size:11px;color:#9ca3af;margin:8px 10px">No phase breakdown — save from Summary tab to populate.</p>`}
++        ${(()=>{
++          const method=c.splitMethod||"percentage";
++          if(method!=="section"&&method!=="item") return "";
++          const rec=findById(c.invId);
++          if(!rec) return "";
++          const lines=rec.lines||{};
++          const tagging=c.lineTagging||{};
++          const itemPercentages=c.itemPercentages||{};
++          const entered=supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
++          const seen=new Set();
++          const itemRows=entered.map(item=>{
++            const key=method==="section"?item.wbs_code.split(".").slice(0,3).join("."):item.wbs_code;
++            if(seen.has(key)) return "";
++            seen.add(key);
++            const tag=tagging[key];
++            let tagLabel,splitLabel;
++            if(tag==="EE"){tagLabel="EE";splitLabel="100% EE / 0% Customer";}
++            else if(tag==="Customer"){tagLabel="Customer";splitLabel="0% EE / 100% Customer";}
++            else if(tag==="%"){const ep=itemPercentages[key]??50;tagLabel="% Override";splitLabel=`${ep}% EE / ${100-ep}% Customer`;}
++            else{tagLabel="Untagged (default)";splitLabel="0% EE / 100% Customer";}
++            return `<tr><td style="padding:5px 10px;font-family:monospace">${key}</td><td style="padding:5px 10px">${item.description||key}</td><td style="padding:5px 10px;font-weight:600">${tagLabel}</td><td style="padding:5px 10px">${splitLabel}</td></tr>`;
++          }).join("");
++          if(!itemRows) return "";
++          return `<table style="width:100%;border-collapse:collapse;margin:10px 0;font-size:11px">
++            <thead><tr style="background:#4b5563;color:#fff">
++              <th style="text-align:left;padding:5px 10px">${method==="section"?"Section":"Item"}</th>
++              <th style="text-align:left;padding:5px 10px">Description</th>
++              <th style="text-align:left;padding:5px 10px">Tag</th>
++              <th style="text-align:left;padding:5px 10px">Split Allocation</th>
++            </tr></thead><tbody>${itemRows}</tbody>
++          </table>`;
++        })()}
+       </div>`;
+     }).join("");
+ 
+@@ -6652,6 +6706,19 @@ ${invRows}
+                                   <div className="text-xs font-semibold text-gray-600 mb-2">
+                                     {c.splitMethod==="section"?"Tag WBS sections (L3) to a funder:":"Tag individual estimate line items to a funder:"}
+                                   </div>
++
++                                  {/* Getting-started guide */}
++                                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 mb-3 text-xs text-blue-800">
++                                    <div className="font-semibold mb-1">How to use {c.splitMethod==="section"?"Section":"Item"} Attribution</div>
++                                    <div className="space-y-0.5 text-blue-700">
++                                      <div><span className="font-semibold">EE</span> — tag 100% to EE funding</div>
++                                      <div><span className="font-semibold">Customer</span> — tag 100% to Customer funding</div>
++                                      <div><span className="font-semibold">% Override</span> — split between funders (e.g. 75% EE / 25% Customer)</div>
++                                      <div><span className="font-semibold">Untagged</span> — defaults to 100% Customer</div>
++                                    </div>
++                                    <div className="mt-1.5 text-blue-600">Bulk actions: use All EE, All Cust, or Clear to manage entire groups.</div>
++                                  </div>
++
+                                   {tagGroups.length===0?(
+                                     <div className="text-xs text-gray-400 italic py-4 text-center bg-gray-50 rounded-lg">No entered quantities found for this investment. Enter quantities and save first.</div>
+                                   ):(
+@@ -6659,9 +6726,11 @@ ${invRows}
+                                       {tagGroups.map(([gk,group])=>{
+                                         const isOpen=expandedNodes[`${c.invId}_${gk}`]!==false;
+                                         const tagging=c.lineTagging||{};
++                                        const itemPercentages=c.itemPercentages||{};
+                                         const eeCount=group.items.filter(t=>tagging[t.key]==="EE").length;
+                                         const custCount=group.items.filter(t=>tagging[t.key]==="Customer").length;
+-                                        const untagged=group.items.length-eeCount-custCount;
++                                        const pctCount=group.items.filter(t=>tagging[t.key]==="%").length;
++                                        const untagged=group.items.length-eeCount-custCount-pctCount;
+                                         return (
+                                           <div key={gk} className="border-b last:border-0">
+                                             <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 cursor-pointer hover:bg-gray-100"
+@@ -6673,29 +6742,52 @@ ${invRows}
+                                                 className="text-xs bg-[var(--primary-50)] hover:bg-[var(--primary-100)] text-[var(--primary-700)] border border-[var(--primary-200)] px-2 py-0.5 rounded">All EE</button>
+                                               <button onClick={e=>{e.stopPropagation();group.items.forEach(t=>updateChildTagging(c.invId,t.key,"Customer"));}}
+                                                 className="text-xs bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 px-2 py-0.5 rounded">All Cust</button>
++                                              <button onClick={e=>{e.stopPropagation();group.items.forEach(t=>updateChildTagging(c.invId,t.key,undefined));}}
++                                                className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 border border-gray-300 px-2 py-0.5 rounded">Clear</button>
+                                               <span className="text-xs text-gray-400">
+                                                 {eeCount>0&&<span style={{color:EE_BLUE}}>{eeCount} EE </span>}
+                                                 {custCount>0&&<span style={{color:CUST_ORG}}>{custCount} Cust </span>}
++                                                {pctCount>0&&<span className="text-purple-600">{pctCount} % </span>}
+                                                 {untagged>0&&<span>{untagged} untagged</span>}
+                                               </span>
+                                             </div>
+                                             {isOpen&&group.items.map(t=>{
+                                               const tag=tagging[t.key];
++                                              const eePctVal=itemPercentages[t.key]??50;
+                                               return (
+-                                                <div key={t.key} className={`flex items-center gap-2 px-5 py-1.5 border-t border-gray-100 ${tag==="EE"?"bg-[var(--primary-50)]":tag==="Customer"?"bg-orange-50":""}`}>
++                                                <div key={t.key} className={`flex items-center gap-2 px-5 py-1.5 border-t border-gray-100 ${tag==="EE"?"bg-[var(--primary-50)]":tag==="Customer"?"bg-orange-50":tag==="%"?"bg-purple-50":""}`}>
+                                                   <span className="text-xs font-mono text-[var(--primary-700)] min-w-36">{t.key}</span>
+                                                   <span className="text-xs text-gray-600 flex-1 truncate">{t.label}</span>
+                                                   <div className="flex border border-gray-200 rounded overflow-hidden">
+-                                                    {["EE","Customer",""].map((v,vi)=>(
+-                                                      <button key={vi}
+-                                                        onClick={()=>updateChildTagging(c.invId,t.key,v||undefined)}
+-                                                        className={`text-xs px-2.5 py-1 transition-colors ${tag===(v||undefined)
+-                                                          ?v==="EE"?"bg-[var(--primary-700)] text-white":v==="Customer"?"bg-orange-600 text-white":"bg-gray-300 text-gray-700"
++                                                    {[["EE","EE"],["Customer","Customer"],["%","% Override"]].map(([v,label])=>(
++                                                      <button key={v}
++                                                        onClick={()=>{
++                                                          updateChildTagging(c.invId,t.key,v);
++                                                          if(v==="%"&&itemPercentages[t.key]===undefined) updateItemPercentage(c.invId,t.key,50);
++                                                        }}
++                                                        className={`text-xs px-2.5 py-1 transition-colors ${tag===v
++                                                          ?v==="EE"?"bg-[var(--primary-700)] text-white":v==="Customer"?"bg-orange-600 text-white":"bg-purple-600 text-white"
+                                                           :"text-gray-500 hover:bg-gray-50"}`}>
+-                                                        {v||"—"}
++                                                        {label}
+                                                       </button>
+                                                     ))}
++                                                    <button
++                                                      onClick={()=>updateChildTagging(c.invId,t.key,undefined)}
++                                                      className={`text-xs px-2.5 py-1 transition-colors ${tag===undefined?"bg-gray-300 text-gray-700":"text-gray-500 hover:bg-gray-50"}`}>
++                                                      —
++                                                    </button>
+                                                   </div>
++                                                  {tag==="%"&&(
++                                                    <div className="flex items-center gap-1">
++                                                      <input
++                                                        type="number" min="0" max="100" step="5"
++                                                        value={eePctVal}
++                                                        onChange={e=>updateItemPercentage(c.invId,t.key,parseFloat(e.target.value))}
++                                                        className="border border-purple-300 rounded px-2 py-1 w-16 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400 text-center"
++                                                      />
++                                                      <span className="text-xs text-gray-500">% EE</span>
++                                                    </div>
++                                                  )}
+                                                 </div>
+                                               );
+                                             })}
