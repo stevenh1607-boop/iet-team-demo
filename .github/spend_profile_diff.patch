@@ -1,0 +1,248 @@
+﻿commit 433d70ef72534cf8ed2faec6b6eaf9062b87894b
+Author: stevenh1607-boop <stevenh1607@gmail.com>
+Date:   Wed Jun 17 19:30:36 2026 +1000
+
+    Add Spend Profile selector and custom per-phase monthly editor (#2)
+    
+    - Add spendProfile field to defaultInv: { type:'default', customPct:null }
+    - Add buildSpendWeights() pure helper before generateCopperleafXLSX, resolving
+      per-month weights from preset curves (S-curve/front/balanced/back-loaded)
+      or custom per-phase percentage arrays
+    - Replace all four flat perMonth = total/phMonths.length divisions in
+      generateCopperleafXLSX with profile-weighted distributions:
+      labour/contractor rows, non-LLT materials, LLT materials, commissioning rows
+    - Add Spend Profile Card to InvestmentSetup between Timeline and Invoicing
+      Milestones: five radio options (Default/WBS1/WBS2/WBS3/Custom), info note
+      for preset profiles, and a five-tab custom editor with month-by-month % inputs,
+      live bar visualisation, Even split/S-curve/Clear helpers, and sum validation
+    
+    Base estimate totals are unchanged — spend profile only redistributes monthly
+    timing in the Copperleaf export, not the underlying cost calculations.
+
+diff --git a/src/App.jsx b/src/App.jsx
+index 28336db..97ec46b 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -81,6 +81,34 @@ const WBS_GROUP_LABELS = {
+ 
+ // Generate Copperleaf-format XLSX (matches Spend_Template exactly)
+ // Returns a Blob for download — uses SheetJS (xlsx) loaded at runtime
++function buildSpendWeights(spendProfile, phaseKey, phaseMonths) {
++  const n = phaseMonths.length;
++  if (n === 0) return [];
++  const type = spendProfile?.type || 'default';
++  if (type === 'custom' && spendProfile?.customPct?.[phaseKey]) {
++    const pcts = spendProfile.customPct[phaseKey];
++    const total = pcts.reduce((a, b) => a + b, 0);
++    if (total > 0 && pcts.length === n) {
++      return phaseMonths.map((m, i) => [m, pcts[i] / total]);
++    }
++  }
++  const makeCurve = (n, shape) => {
++    const raw = Array.from({ length: n }, (_, i) => {
++      const x = (i + 0.5) / n;
++      if (shape === 'front')    return Math.pow(1 - x, 0.6);
++      if (shape === 'back')     return Math.pow(x, 0.6);
++      if (shape === 'balanced') return Math.sin(Math.PI * x);
++      return 1 / (1 + Math.exp(-10 * (x - 0.5)));
++    });
++    const sum = raw.reduce((a, b) => a + b, 0);
++    return raw.map(v => v / sum);
++  };
++  const shapeMap = { default: 'scurve', wbs1: 'front', wbs2: 'balanced', wbs3: 'back' };
++  const shape = shapeMap[type] || 'scurve';
++  const weights = makeCurve(n, shape);
++  return phaseMonths.map((m, i) => [m, weights[i]]);
++}
++
+ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfiles, escRates, resourceCodes, isCommercial, equipLookup) {
+   // Dynamically load SheetJS if not already present
+   if (!window.XLSX) {
+@@ -287,8 +315,9 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
+       if (totalVal <= 0) return;
+       const cat = currType !== "Hour" ? "contractors" : "internal_ee";
+       const ef  = escFactor(phase, cat);
+-      const perMonth = (totalVal * (1+ef)) / phMonths.length;
+-      const monthSpend = phMonths.map(m => [m, parseFloat(perMonth.toFixed(6))]);
++      const scaledTotal = totalVal * (1 + ef);
++      const weights = buildSpendWeights(inv.spendProfile, phase, phMonths);
++      const monthSpend = weights.map(([m, w]) => [m, parseFloat((scaledTotal * w).toFixed(6))]);
+       writeSpend(l3, resName, isWAFHA ? "Day" : currType,
+                  getResCode(resName), getLabourType(resName), monthSpend);
+     });
+@@ -322,15 +351,15 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
+     });
+ 
+     if (nonLLTTotal > 0) {
+-      const perMonth = nonLLTTotal / phMonths.length;
++      const weights = buildSpendWeights(inv.spendProfile, phase, phMonths);
+       writeSpend(l3, "Materials (Non-LLT)", "Dollar", "GMAT", "",
+-                 phMonths.map(m=>[m, parseFloat(perMonth.toFixed(6))]));
++                 weights.map(([m, w]) => [m, parseFloat((nonLLTTotal * w).toFixed(6))]));
+     }
+ 
+     lltRows.forEach(({totalMat, effQty, desc, category, makeModel, contractNo, voltage}) => {
+-      const perMonth = totalMat / phMonths.length;
++      const lltWeights = buildSpendWeights(inv.spendProfile, phase, phMonths);
+       writeSpend(l3, "Materials (LLT)", "Dollar", "LLMAT", "",
+-                 phMonths.map(m=>[m, parseFloat(perMonth.toFixed(6))]),
++                 lltWeights.map(([m, w]) => [m, parseFloat((totalMat * w).toFixed(6))]),
+                  { lltDesc:desc, lltItem:category, lltQty:String(effQty),
+                    makeModel, contractNo, voltage });
+     });
+@@ -359,9 +388,10 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
+     Object.entries(hrsByRes).forEach(([resName, totalHrs]) => {
+       if (totalHrs <= 0) return;
+       const ef = escFactor("4", "internal_ee");
+-      const perMonth = (totalHrs * (1+ef)) / phMonths.length;
++      const scaledHrs = totalHrs * (1 + ef);
++      const commWeights = buildSpendWeights(inv.spendProfile, "4", phMonths);
+       writeSpend(l3, resName, "Hour", getResCode(resName), getLabourType(resName),
+-                 phMonths.map(m=>[m, parseFloat(perMonth.toFixed(6))]));
++                 commWeights.map(([m, w]) => [m, parseFloat((scaledHrs * w).toFixed(6))]));
+     });
+   });
+ 
+@@ -730,6 +760,7 @@ function resolveContingency(inv, base, isCommercial, tolerance=1){
+ function InvestmentSetup({ inv, onChange }) {
+   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+   const upd = (k,v) => onChange({...inv, [k]:v});
++  const [spendTab, setSpendTab] = useState("1");
+   return (
+     <div className="flex-1 overflow-y-auto bg-orange-50 p-4">
+       <div className="max-w-5xl mx-auto space-y-4">
+@@ -915,6 +946,126 @@ function InvestmentSetup({ inv, onChange }) {
+           </div>
+         </Card>
+ 
++        {/* Spend Profile Card */}
++        <Card>
++          <SectionHeader color="teal" title="Spend Profile" subtitle="Controls monthly cost distribution in Copperleaf export" />
++          <div className="p-4 bg-white">
++            {(()=>{
++              const sp = inv.spendProfile || { type: 'default', customPct: null };
++              const PROFILES = [
++                { id:'default', label:'Default (S-curve)',    note:'Spend accelerates through mid-project then slows — typical project S-curve.' },
++                { id:'wbs1',    label:'WBS 1 — Front-loaded', note:'Higher spend in early months, tapering toward project end.' },
++                { id:'wbs2',    label:'WBS 2 — Balanced',     note:'Bell-curve distribution — spend peaks in the middle of each phase.' },
++                { id:'wbs3',    label:'WBS 3 — Back-loaded',  note:'Low spend early, ramping up toward the end of each phase.' },
++                { id:'custom',  label:'Custom',               note:'' },
++              ];
++              const phaseDefs = [
++                { key:'1', label:'Planning',      n:Math.max(1,parseInt(inv.planDur||4)) },
++                { key:'2', label:'Design',        n:Math.max(1,parseInt(inv.designDur||9)) },
++                { key:'3', label:'Construction',  n:Math.max(1,parseInt(inv.constrDur||15)) },
++                { key:'4', label:'Commissioning', n:Math.max(1,parseInt(inv.constrDur||15)) },
++                { key:'5', label:'M&C',           n:2 },
++              ];
++              const makeSCurvePcts = (n) => {
++                const raw = Array.from({length:n},(_,i)=>{const x=(i+0.5)/n; return 1/(1+Math.exp(-10*(x-0.5)));});
++                const sum = raw.reduce((a,b)=>a+b,0);
++                const normed = raw.map(v=>parseFloat(((v/sum)*100).toFixed(2)));
++                const diff = parseFloat((100-normed.reduce((a,b)=>a+b,0)).toFixed(2));
++                if (normed.length>0) normed[normed.length-1]=parseFloat((normed[normed.length-1]+diff).toFixed(2));
++                return normed;
++              };
++              const makeEvenPcts = (n) => {
++                const base = parseFloat((100/n).toFixed(2));
++                const arr = Array(n).fill(base);
++                const diff = parseFloat((100-arr.reduce((a,b)=>a+b,0)).toFixed(2));
++                if (arr.length>0) arr[arr.length-1]=parseFloat((arr[arr.length-1]+diff).toFixed(2));
++                return arr;
++              };
++              const getCustomPcts = (phKey, n) => {
++                const stored = sp.customPct?.[phKey];
++                return (stored && stored.length===n) ? stored : Array(n).fill(0);
++              };
++              const setCustomPct = (phKey, newPcts) => {
++                upd("spendProfile", {...sp, type:'custom', customPct:{...(sp.customPct||{}), [phKey]:newPcts}});
++              };
++              const phaseSum = (phKey, n) => parseFloat(getCustomPcts(phKey,n).reduce((a,b)=>a+b,0).toFixed(2));
++
++              return (
++                <>
++                  <div className="flex gap-2 flex-wrap mb-4">
++                    {PROFILES.map(p=>(
++                      <label key={p.id} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border cursor-pointer text-xs transition-colors ${sp.type===p.id?"border-teal-500 bg-teal-50 text-teal-800 font-semibold":"border-gray-200 hover:border-teal-300 text-gray-700"}`}>
++                        <input type="radio" name="spendProfile" className="accent-teal-600" checked={sp.type===p.id}
++                          onChange={()=>upd("spendProfile",{...sp, type:p.id})} />
++                        {p.label}
++                      </label>
++                    ))}
++                  </div>
++
++                  {sp.type!=='custom' && (
++                    <div className="text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded px-3 py-2">
++                      {PROFILES.find(p=>p.id===sp.type)?.note}
++                    </div>
++                  )}
++
++                  {sp.type==='custom' && (
++                    <div className="border border-gray-200 rounded-lg overflow-hidden">
++                      <div className="flex border-b bg-gray-50 overflow-x-auto">
++                        {phaseDefs.map(ph=>{
++                          const sum = phaseSum(ph.key, ph.n);
++                          const ok  = Math.abs(sum-100)<0.1;
++                          return (
++                            <button key={ph.key} onClick={()=>setSpendTab(ph.key)}
++                              className={`text-xs px-3 py-2 border-b-2 transition-colors flex items-center gap-1 whitespace-nowrap ${spendTab===ph.key?"border-teal-600 text-teal-700 bg-white font-semibold":"border-transparent text-gray-500 hover:text-gray-700"}`}>
++                              {ph.label} <span className={`text-[10px] font-bold ${ok?"text-green-600":"text-amber-500"}`}>{ok?"✓":"⚠"}</span>
++                            </button>
++                          );
++                        })}
++                      </div>
++                      {phaseDefs.filter(ph=>ph.key===spendTab).map(ph=>{
++                        const pcts = getCustomPcts(ph.key, ph.n);
++                        const sum  = parseFloat(pcts.reduce((a,b)=>a+b,0).toFixed(2));
++                        const ok   = Math.abs(sum-100)<0.1;
++                        return (
++                          <div key={ph.key} className="p-3">
++                            <div className="flex gap-2 mb-3">
++                              <button onClick={()=>setCustomPct(ph.key, makeEvenPcts(ph.n))}
++                                className="text-xs bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 font-medium">Even split</button>
++                              <button onClick={()=>setCustomPct(ph.key, makeSCurvePcts(ph.n))}
++                                className="text-xs bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded px-2 py-1 font-medium">Copy from S-curve</button>
++                              <button onClick={()=>setCustomPct(ph.key, Array(ph.n).fill(0))}
++                                className="text-xs text-red-500 hover:bg-red-50 border border-red-200 rounded px-2 py-1 font-medium">Clear</button>
++                              <span className="text-xs text-gray-400 ml-auto self-center">{ph.n} months</span>
++                            </div>
++                            <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
++                              {pcts.map((v,i)=>(
++                                <div key={i} className="flex items-center gap-2">
++                                  <span className="text-[10px] text-gray-400 w-14 flex-shrink-0">Month {i+1}</span>
++                                  <input type="number" min="0" max="100" step="0.01" value={v}
++                                    onChange={e=>{const next=[...pcts]; next[i]=parseFloat(e.target.value)||0; setCustomPct(ph.key,next);}}
++                                    className="w-20 border border-gray-200 rounded px-2 py-0.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-teal-400" />
++                                  <span className="text-[10px] text-gray-400">%</span>
++                                  <div className="flex-1 bg-gray-100 rounded-full h-2">
++                                    <div className="bg-teal-400 h-2 rounded-full transition-all" style={{width:`${Math.min(100,Math.max(0,v))}%`}}/>
++                                  </div>
++                                </div>
++                              ))}
++                            </div>
++                            <div className={`mt-3 text-xs font-semibold rounded px-2 py-1.5 flex items-center gap-2 ${ok?"bg-green-50 text-green-700 border border-green-200":"bg-amber-50 text-amber-700 border border-amber-200"}`}>
++                              <span>{ok?"✓":"⚠"}</span>
++                              <span>Total: {sum.toFixed(2)}% {ok?"(sums to 100%)":"— must sum to 100% before Copperleaf export"}</span>
++                            </div>
++                          </div>
++                        );
++                      })}
++                    </div>
++                  )}
++                </>
++              );
++            })()}
++          </div>
++        </Card>
++
+         {/* Invoicing Milestones Card */}
+         <Card>
+           <SectionHeader color="orange" title="Invoicing Milestones" subtitle="Milestone payment schedule (incoming money) — must sum to 100%" />
+@@ -11105,6 +11256,7 @@ const defaultInv = {
+   planStart:"1", planDur:"4", designStart:"1", designDur:"9",
+   constrStart:"6", constrDur:"15", contInt:"5", contComm:"5",
+   contIntDollar:"", contCommDollar:"",
++  spendProfile: { type: 'default', customPct: null },
+ };
+ 
+ // ── CART — CONTINGENCY & ACCURACY RANGE TOOL (Monte Carlo) ──────
