@@ -1707,6 +1707,10 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
     const ln = getLine(item.wbs_code);
     return calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, ratesLookup, pctBaseLookup[item.wbs_code] || 0);
   },[lines, isCommercial]);
+  const allInstallAgg = useMemo(
+    () => aggregateInstallRows(supply, lines, ratesLookup),
+    [supply, lines, ratesLookup]
+  );
 
   const groupTotals = useMemo(()=>{
     const t = items.reduce((a,it)=>{
@@ -1718,17 +1722,16 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
     // Add derived install-row costs for the current L4 group.
     // Supply items carry ee_labour_rate=0 so eeLabCost=0 in calcLine — no double-count.
     // Install hours are already counted from supply items' c.installHrs above.
-    Object.values(installAgg).forEach(agg => {
-      t.eeTotal   += agg.eeInt;
-      t.commTotal += agg.comm;
-    });
+    // allInstallAgg (declared above) uses aggregateInstallRows (!install_wbs filter) —
+    // the correct match for this dataset. Filter to the current selectedL4 group.
+    Object.values(allInstallAgg)
+      .filter(agg => agg.inst.wbs_code.startsWith(selectedL4 + '.'))
+      .forEach(agg => {
+        t.eeTotal   += agg.eeInt;
+        t.commTotal += agg.comm;
+      });
     return t;
-  },[items,calcItem,installAgg]);
-
-  const allInstallAgg = useMemo(
-    () => aggregateInstallRows(supply, lines, ratesLookup),
-    [supply, lines, ratesLookup]
-  );
+  },[items,calcItem,allInstallAgg,selectedL4]);
 
   const investTotals = useMemo(()=>{
     const t = supply.reduce((a,it)=>{
