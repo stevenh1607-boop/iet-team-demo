@@ -753,76 +753,13 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
            instHrsOverridden: installHrsOvrd !== "" && installHrsOvrd != null, instHrsPU,
            effectiveResource };
 }
-// ── DERIVED INSTALL-ROW LABOUR COST (shared) ─────────────────────
-// "Derived install rows" carry their labour on a linked install row, not the
-// supply row: EE-delivered supply rows with an install_wbs are priced at $0
-// labour by calcLine (ee_labour_rate:0 / no resolvable resource), deferring the
-// cost to the install row. installAgg (inside EstimationScreen) prices that, but
-// it is L4-scoped and local — so SummaryScreen / FinancialScreen / doGeneratePDF
-// / CART see the install HOURS (calcLine still emits installHrs) but $0 of the
-// labour. This pure fn recomputes the SAME derivation globally so every total
-// can fold the missing DOLLARS in. Rules: (1) COST ONLY, never hours — hours are
-// already counted by calcLine; (2) a double-count guard skips any linked supply
-// row that calcLine already prices (non-zero resolved rate), so it can never sum
-// the same labour twice. Install-row resource overrides are EstimationScreen-
-// local/unpersisted, so globally we use the data default inst.resource_main —
-// matching today's behaviour everywhere outside EstimationScreen (no regression).
-function computeInstallCost(supply, lines, isCommercial, ratesLookup) {
-  const byPhase = {}; // phase -> { eeInt, comm, eeLabCost, contrCost, eeANS, contrANS }
-  const byWbs   = {}; // install wbs -> { eeInt, comm, eeLabCost, contrCost, activeHrs }
-  const linkedByInstall = {};
-  supply.forEach(s => {
-    if (s.scope === "Install") return;
-    if (!s.install_wbs) return;
-    (linkedByInstall[s.install_wbs] = linkedByInstall[s.install_wbs] || []).push(s);
-  });
-  supply.forEach(inst => {
-    if (inst.scope !== "Install" || !inst.install_wbs) return; // derived install rows only
-    const linked = linkedByInstall[inst.wbs_code] || [];
-    let derivedHrs = 0, derivedQty = 0;
-    linked.forEach(sup => {
-      const ln = lines[sup.wbs_code] || {};
-      const q  = parseFloat(ln.qty || "0");
-      const f  = parseFloat(ln.factor || "1");
-      const h  = sup.install_hrs_per || 0;
-      // Double-count guard: if calcLine already prices this supply row's labour
-      // (non-zero resolved rate), its install hours are already in the totals.
-      const supRes  = ln.resourceOvrd || sup.resource_main || "";
-      const supRate = ratesLookup?.[supRes]?.ee_internal_rate ?? sup.ee_labour_rate ?? 0;
-      if (supRate > 0) return;
-      derivedHrs += q * f * h;
-      derivedQty += q * f;
-    });
-    if (derivedHrs <= 0 && derivedQty <= 0) return;
-    const instLn  = lines[inst.wbs_code] || {};
-    const ovrdHrs = instLn.instHrsOvrd !== "" && instLn.instHrsOvrd != null
-      ? parseFloat(instLn.instHrsOvrd) || 0 : null;
-    const activeHrs = ovrdHrs !== null ? ovrdHrs : derivedHrs;
-    const delivery  = instLn.delivery || inst.delivery_method || "EE Delivered";
-    const isContr   = delivery === "Contractor Delivered";
-    const resName   = inst.resource_main || "ZS Electrical Technician";
-    const resData   = ratesLookup[resName];
-    const eeRate    = resData?.ee_internal_rate || inst.ee_labour_rate || 246.95;
-    const contrRate = parseFloat(instLn.contrRate || "") || inst.contractor_rate || 0;
-    const eeLabCost = isContr ? 0 : activeHrs * eeRate;
-    const contrCost = isContr ? derivedQty * contrRate : 0;
-    const eeInt     = eeLabCost + contrCost;
-    const comm      = isContr ? contrCost * (1 + ANS_CON)
-                              : eeLabCost * (1 + labMargin(resName, ratesLookup));
-    const eeANS     = isContr ? 0 : (comm - eeLabCost);
-    const contrANS  = isContr ? (comm - contrCost) : 0;
-    const phase = inst.wbs_code.split(".")[0];
-    if (!byPhase[phase]) byPhase[phase] = { eeInt:0, comm:0, eeLabCost:0, contrCost:0, eeANS:0, contrANS:0 };
-    byPhase[phase].eeInt     += eeInt;
-    byPhase[phase].comm      += comm;
-    byPhase[phase].eeLabCost += eeLabCost;
-    byPhase[phase].contrCost += contrCost;
-    byPhase[phase].eeANS     += eeANS;
-    byPhase[phase].contrANS  += contrANS;
-    byWbs[inst.wbs_code] = { eeInt, comm, eeLabCost, contrCost, activeHrs };
-  });
-  return { byPhase, byWbs };
-}
+// ── DERIVED INSTALL-ROW LABOUR COST — REMOVED ───────────────────
+// Removed: install-row labour is booked exactly once by calcLine on the .4 install
+// rows (which carry their own imported qty + ee_unit_hrs), matching the Option 2C
+// workbook line-for-line (e.g. 3.1.3.02.4.01 = $316,096 @ 1,280 hrs). The former
+// computeInstallCost() fold was structurally inert — 0 of 330 install rows carry
+// install_wbs, so its `inst.install_wbs` guard never fired and it returned {} at all
+// five call sites. Removal is numerically a no-op against the Option 2C baseline.
 
 // ── SHARED UI ───────────────────────────────────────────────────
 
@@ -3122,9 +3059,7 @@ function doGeneratePDF(ctx) {
       else{eeCost+=(c.eeLabCost||0)+(c.plantFact||0);eeANS+=(c.eeLabCost||0)*labMargin(c.effectiveResource, resourceCodes);}
       matCost+=c.equipCost||0; matANS+=(c.equipCost||0)*ANS_MAT;
     });
-    // Fold derived install-row labour (cost only — see computeInstallCost)
-    const _icPdf = computeInstallCost(supply, lines, isCommercial, resourceCodes).byPhase;
-    Object.values(_icPdf).forEach(p=>{ eeCost+=p.eeLabCost; eeANS+=p.eeANS; subCost+=p.contrCost; subANS+=p.contrANS; });
+    // install-row labour is booked once by calcLine on the .4 rows — prior inert computeInstallCost fold removed
     const base=subCost+matCost+eeCost;
     const contRes=resolveContingency(inv,base,isCommercial);
     const cont=contRes.amt;
@@ -3394,20 +3329,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
     byPhase[ph].contrCost  += c.contrCost  || 0;
     byPhase[ph].matCost    += c.equipCost  || 0; // PCE/materials
   });
-  // ── Fold derived install-row labour COST into phase totals ──────
-  // calcLine already counted the install HOURS on each supply row but priced
-  // the labour at $0 (deferred to the linked install row). Add the dollars here
-  // — cost only, never hours. eeLabCost also feeds eeLabCostExWAFHA so the 20%
-  // OT base picks it up (install resources are never WAFHA).
-  const _instCost = computeInstallCost(supply, lines, isCommercial, resourceCodes).byPhase;
-  Object.entries(_instCost).forEach(([ph, ic])=>{
-    if(!byPhase[ph]) byPhase[ph]={eeInt:0,comm:0,installHrs:0,commHrs:0,lines:0,eeLabCost:0,eeLabCostExWAFHA:0,contrCost:0,matCost:0};
-    byPhase[ph].eeInt            += ic.eeInt;
-    byPhase[ph].comm             += ic.comm;
-    byPhase[ph].eeLabCost        += ic.eeLabCost;
-    byPhase[ph].eeLabCostExWAFHA += ic.eeLabCost;
-    byPhase[ph].contrCost        += ic.contrCost;
-  });
+  // install-row labour is booked once by calcLine on the .4 rows — prior inert computeInstallCost fold removed
   // Phase 4 derived (skip direct_entry items — those use estimator-entered qty)
   const commTotals = {};
   entered.forEach(item=>{
@@ -3866,13 +3788,7 @@ function FinancialScreen({ inv, lines, isCommercial }) {
       matCost += c.equipCost||0;
       matANS  += (c.equipCost||0)*ANS_MAT;
     });
-    // Fold derived install-row labour (cost only — see computeInstallCost).
-    // EE-delivered → EE Internal Works bucket; Contractor-delivered → Sub-Contract.
-    const _ic = computeInstallCost(supply, lines, isCommercial, resourceCodes).byPhase;
-    Object.values(_ic).forEach(p=>{
-      eeCost  += p.eeLabCost;  eeANS  += p.eeANS;
-      subCost += p.contrCost;  subANS += p.contrANS;
-    });
+    // install-row labour is booked once by calcLine on the .4 rows — prior inert computeInstallCost fold removed
     // Cost* column = base cost (no ANS, no contingency)
     const base      = subCost + matCost + eeCost;
 
@@ -11889,10 +11805,7 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
       const e=hrs*(data.ee_labour_rate||139.26);
       eeInt+=e; comm+=e*(1+labMargin(data.resource_type, resourceCodes)); eeLabCost+=e;
     });
-    // Fold derived install-row labour (cost only — see computeInstallCost) so the
-    // Monte Carlo base — and therefore the P50 contingency — includes it.
-    const _icCart = computeInstallCost(supply, lines, isCommercial, resourceCodes).byPhase;
-    Object.values(_icCart).forEach(p=>{ eeInt+=p.eeInt; comm+=p.comm; eeLabCost+=p.eeLabCost; });
+    // install-row labour is booked once by calcLine on the .4 rows — prior inert computeInstallCost fold removed
     if (isCommercial) return comm;
     return eeInt + eeLabCost*otRatio;  // + 20% OT for Internal Resources, matching contBase
   },[supply,lines,isCommercial,commLookup,commProfiles,otRatio,resourceCodes]);
@@ -13553,14 +13466,7 @@ export default function App() {
       bp[ph].eeInt+=c.eeInt; bp[ph].comm+=c.comm;
       return {eeInt:a.eeInt+c.eeInt,comm:a.comm+c.comm,installHrs:a.installHrs+c.installHrs,byPhase:bp};
     },{eeInt:0,comm:0,installHrs:0,byPhase:{}});
-    // Fold derived install-row labour (cost only — see computeInstallCost) into
-    // the saved Hub totals so they match SummaryScreen.
-    const _icSave = computeInstallCost(supply, lines, isCommercial, resourceCodes).byPhase;
-    Object.entries(_icSave).forEach(([ph, ic])=>{
-      if(!totals.byPhase[ph]) totals.byPhase[ph]={eeInt:0,comm:0};
-      totals.byPhase[ph].eeInt+=ic.eeInt; totals.byPhase[ph].comm+=ic.comm;
-      totals.eeInt+=ic.eeInt; totals.comm+=ic.comm;
-    });
+    // install-row labour is booked once by calcLine on the .4 rows — prior inert computeInstallCost fold removed
     const now = new Date();
     const record = {
       id: currentRecordId || Date.now(),
