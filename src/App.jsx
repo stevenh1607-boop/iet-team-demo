@@ -1673,12 +1673,19 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
       // Cost calc
       const eeLabCost   = isContr ? 0 : activeHrs * eeRate;
       const contrCost   = isContr ? derivedQty * contrRate : 0;
-      const eeInt       = eeLabCost + contrCost;
-      const comm        = isContr ? contrCost * (1+ANS_CON) : eeLabCost * (1+labMargin(resName, ratesLookup));
+      // Plant: DB per-unit default (inst.plant_cost) × derived quantity,
+      // or import override (instLn.plant from Fix 2). No ANS uplift — matches calcLine.
+      const plantPerUnit = parseFloat(instLn.plant || "") || (inst.plant_cost || 0);
+      const plantFact    = plantPerUnit * derivedQty;
+      const eeInt        = eeLabCost + contrCost + plantFact;
+      const comm         = isContr ?
+        contrCost * (1 + ANS_CON) + plantFact
+        : eeLabCost * (1 + labMargin(resName, ratesLookup)) + plantFact;
       agg[inst.wbs_code] = {
         item: inst, linked, derivedHrs, derivedQty,
         ovrdHrs, activeHrs, delivery, isContr,
-        resName, eeRate, contrRate, eeLabCost, contrCost, eeInt, comm,
+        resName, eeRate, contrRate, eeLabCost, contrCost,
+        plantFact, plantPerUnit, eeInt, comm,
         isOverridden: ovrdHrs !== null,
       };
     });
@@ -2405,6 +2412,12 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                                       <span className="font-medium">{fmt(iagg.contrCost)}</span>
                                     </div>
                                   )}
+                                  {(iagg.plantFact||0) > 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-gray-500">Plant &amp; Machinery</span>
+                                      <span className="font-medium">{fmt(iagg.plantFact)}</span>
+                                    </div>
+                                  )}
                                 </>;
                               })() : (
                                 !isContr
@@ -2575,6 +2588,15 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                               <div className="font-medium text-gray-700">{agg.isContr?fmt(agg.contrRate)+" /unit":fmt(agg.eeRate)+" /hr · "+fmt(agg.eeLabCost)+" total"}</div>
                             </div>
                           </div>
+                          {(agg.plantFact||0) > 0 && (
+                            <div className="bg-amber-50 rounded border border-amber-200 px-2 py-1.5 text-xs mt-1">
+                              <div className="text-[9px] text-amber-600 uppercase tracking-wide mb-0.5">Plant &amp; Machinery</div>
+                              <div className="font-medium text-amber-800">
+                                {fmt(agg.plantFact)}
+                                <span className="text-amber-500 font-normal ml-1">({fmt(agg.plantPerUnit)}/{inst.uom||"unit"} × {agg.derivedQty.toFixed(1)})</span>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Commission link summary — shows Phase 4 hrs that will be derived */}
                           {(()=>{
