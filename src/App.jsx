@@ -712,13 +712,20 @@ function aggregateInstallRows(supply, lines, resourceCodes) {
       const resData   = resourceCodes[resName];
       const eeRate    = resData?.ee_internal_rate || inst.ee_labour_rate || 246.95;
       const contrRate = parseFloat(instLn.contrRate || "") || inst.contractor_rate || 0;
-      const eeLabCost = isContr ? 0 : activeHrs * eeRate;
-      const contrCost = isContr ? derivedQty * contrRate : 0;
-      const eeInt     = eeLabCost + contrCost;
-      const comm      = isContr
-        ? contrCost * (1 + ANS_CON)
-        : eeLabCost * (1 + labMargin(resName, resourceCodes));
-      result[inst.wbs_code] = { inst, derivedHrs, derivedQty, activeHrs, isContr, eeLabCost, contrCost, eeInt, comm };
+      const eeLabCost    = isContr ? 0 : activeHrs * eeRate;
+      const contrCost    = isContr ? derivedQty * contrRate : 0;
+      // Plant: use DB per-unit default (inst.plant_cost $/UOM) scaled by derived quantity.
+      // An import override stored in instLn.plant (Fix 2) takes precedence when set.
+      // derivedQty already carries supply-row factor — no additional multiplication needed.
+      // No ANS uplift in either stream — plant passes straight through (same as calcLine).
+      const plantPerUnit = parseFloat(instLn.plant || "") || (inst.plant_cost || 0);
+      const plantFact    = plantPerUnit * derivedQty;
+      const eeInt        = eeLabCost + contrCost + plantFact;
+      const comm         = isContr
+        ? contrCost * (1 + ANS_CON) + plantFact
+        : eeLabCost * (1 + labMargin(resName, resourceCodes)) + plantFact;
+      result[inst.wbs_code] = { inst, derivedHrs, derivedQty, activeHrs, isContr,
+                                eeLabCost, contrCost, plantFact, plantPerUnit, eeInt, comm };
     });
   return result;
 }
