@@ -680,6 +680,49 @@ function labMargin(resourceName, ratesLookup) {
   return (r && r.ans_margin_pct != null) ? r.ans_margin_pct : ANS_LAB_DEFAULT;
 }
 
+// Compute derived install-row costs across the full investment.
+// Mirrors installAgg logic in EstimationScreen but operates over the complete
+// supply array rather than a single L4 group. Called by SummaryScreen,
+// ReviewLines, and EstimationScreen to include install labour in global totals.
+function aggregateInstallRows(supply, lines, resourceCodes) {
+  const result = {};
+  supply
+    .filter(s => s.scope === "Install" && !s.install_wbs)
+    .forEach(inst => {
+      const linked = supply.filter(s => s.scope !== "Install" && s.install_wbs === inst.wbs_code);
+      let derivedHrs = 0, derivedQty = 0;
+      linked.forEach(sup => {
+        const ln = lines[sup.wbs_code] || {};
+        const q  = parseFloat(ln.qty    || "0");
+        const f  = parseFloat(ln.factor || "1");
+        const h  = (ln.instHrsOvrd !== "" && ln.instHrsOvrd != null)
+          ? (parseFloat(ln.instHrsOvrd) || 0)
+          : (sup.install_hrs_per || 0);
+        derivedHrs += q * f * h;
+        derivedQty += q * f;
+      });
+      if (derivedHrs === 0 && derivedQty === 0) return;
+      const instLn    = lines[inst.wbs_code] || {};
+      const ovrdHrs   = (instLn.instHrsOvrd !== "" && instLn.instHrsOvrd != null)
+        ? (parseFloat(instLn.instHrsOvrd) || 0) : null;
+      const activeHrs = ovrdHrs !== null ? ovrdHrs : derivedHrs;
+      const delivery  = instLn.delivery || inst.delivery_method || "EE Delivered";
+      const isContr   = delivery === "Contractor Delivered";
+      const resName   = instLn.resourceOvrd || inst.resource_main || "ZS Electrical Technician";
+      const resData   = resourceCodes[resName];
+      const eeRate    = resData?.ee_internal_rate || inst.ee_labour_rate || 246.95;
+      const contrRate = parseFloat(instLn.contrRate || "") || inst.contractor_rate || 0;
+      const eeLabCost = isContr ? 0 : activeHrs * eeRate;
+      const contrCost = isContr ? derivedQty * contrRate : 0;
+      const eeInt     = eeLabCost + contrCost;
+      const comm      = isContr
+        ? contrCost * (1 + ANS_CON)
+        : eeLabCost * (1 + labMargin(resName, resourceCodes));
+      result[inst.wbs_code] = { inst, derivedHrs, derivedQty, activeHrs, isContr, eeLabCost, contrCost, eeInt, comm };
+    });
+  return result;
+}
+
 const RESOURCE_TYPES = [
   "ZS Electrical Technician","ZS Specialist Technician","Metering Technician - Zone Substation",
   "Electrical Worker - Transmission","Electrical Worker - Underground",
@@ -1665,17 +1708,39 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
     return calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, ratesLookup, pctBaseLookup[item.wbs_code] || 0);
   },[lines, isCommercial]);
 
-  const groupTotals = useMemo(()=>items.reduce((a,it)=>{
-    const c=calcItem(it);
-    // commHrs from supply items must NOT appear in construction totals —
-    // commissioning hours are accounted for separately via Phase 4 commTotals
-    return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs,eeTotal:a.eeTotal+c.eeInt,commTotal:a.commTotal+c.comm};
-  },{installHrs:0,commHrs:0,eeTotal:0,commTotal:0}),[items,calcItem]);
+  const groupTotals = useMemo(()=>{
+    const t = items.reduce((a,it)=>{
+      const c=calcItem(it);
+      // commHrs from supply items must NOT appear in construction totals —
+      // commissioning hours are accounted for separately via Phase 4 commTotals
+      return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs,eeTotal:a.eeTotal+c.eeInt,commTotal:a.commTotal+c.comm};
+    },{installHrs:0,commHrs:0,eeTotal:0,commTotal:0});
+    // Add derived install-row costs for the current L4 group.
+    // Supply items carry ee_labour_rate=0 so eeLabCost=0 in calcLine — no double-count.
+    // Install hours are already counted from supply items' c.installHrs above.
+    Object.values(installAgg).forEach(agg => {
+      t.eeTotal   += agg.eeInt;
+      t.commTotal += agg.comm;
+    });
+    return t;
+  },[items,calcItem,installAgg]);
 
-  const investTotals = useMemo(()=>supply.reduce((a,it)=>{
-    const c=calcItem(it);
-    return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs,eeTotal:a.eeTotal+c.eeInt,commTotal:a.commTotal+c.comm};
-  },{installHrs:0,commHrs:0,eeTotal:0,commTotal:0}),[supply,calcItem]);
+  const allInstallAgg = useMemo(
+    () => aggregateInstallRows(supply, lines, ratesLookup),
+    [supply, lines, ratesLookup]
+  );
+
+  const investTotals = useMemo(()=>{
+    const t = supply.reduce((a,it)=>{
+      const c=calcItem(it);
+      return {installHrs:a.installHrs+c.installHrs,commHrs:a.commHrs,eeTotal:a.eeTotal+c.eeInt,commTotal:a.commTotal+c.comm};
+    },{installHrs:0,commHrs:0,eeTotal:0,commTotal:0});
+    Object.values(allInstallAgg).forEach(agg => {
+      t.eeTotal   += agg.eeInt;
+      t.commTotal += agg.comm;
+    });
+    return t;
+  },[supply,calcItem,allInstallAgg]);
 
   const linesEntered = Object.values(lines).filter(l=>parseFloat(l.qty)>0 && !l._commOvrd).length;
 
@@ -2618,11 +2683,25 @@ function ReviewLines({ lines, isCommercial }) {
   const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
 
   const pctBaseRL = buildPctBase(supply, lines, isCommercial, resourceCodes);
-  const totals = entered.reduce((a,item)=>{
+  // Derive install-row costs and group by L1 phase for subtotal injection
+  const installAggRL = aggregateInstallRows(supply, lines, resourceCodes);
+  const installByPhaseRL = {};
+  Object.values(installAggRL).forEach(agg => {
+    const ph = agg.inst.wbs_code.split('.')[0];
+    if (!installByPhaseRL[ph]) installByPhaseRL[ph] = { eeInt: 0, comm: 0 };
+    installByPhaseRL[ph].eeInt += agg.eeInt;
+    installByPhaseRL[ph].comm  += agg.comm;
+  });
+  const supplyTotals = entered.reduce((a,item)=>{
     const ln=lines[item.wbs_code]||{};
     const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,pctBaseRL[item.wbs_code]||0);
     return {installHrs:a.installHrs+c.installHrs,eeInt:a.eeInt+c.eeInt,comm:a.comm+c.comm};
   },{installHrs:0,eeInt:0,comm:0});
+  const totals = {
+    installHrs: supplyTotals.installHrs,
+    eeInt: supplyTotals.eeInt + Object.values(installByPhaseRL).reduce((s,p)=>s+p.eeInt,0),
+    comm:  supplyTotals.comm  + Object.values(installByPhaseRL).reduce((s,p)=>s+p.comm,0),
+  };
 
   // ── Build Phase 4 commissioning rows ──────────────────────────
   // Step 1: aggregate derived quantities from supply items (skip direct_entry items)
@@ -2768,14 +2847,14 @@ function ReviewLines({ lines, isCommercial }) {
                       const ln=lines[item.wbs_code]||{};
                       const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,pctBaseRL[item.wbs_code]||0);
                       return a+c.eeInt;
-                    },0))}
+                    },0) + (installByPhaseRL[phase]?.eeInt || 0))}
                   </td>
                   {isCommercial && <td className="px-3 py-1.5 text-right font-bold text-orange-800">
                     {fmt(items.reduce((a,item)=>{
                       const ln=lines[item.wbs_code]||{};
                       const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,pctBaseRL[item.wbs_code]||0);
                       return a+c.comm;
-                    },0))}
+                    },0) + (installByPhaseRL[phase]?.comm || 0))}
                   </td>}
                   <td/>
                 </tr>
@@ -3368,7 +3447,19 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
     byPhase[ph].contrCost  += c.contrCost  || 0;
     byPhase[ph].matCost    += c.equipCost  || 0; // PCE/materials
   });
-  // install-row labour is booked once by calcLine on the .4 rows — prior inert computeInstallCost fold removed
+  // Add derived install-row costs to byPhase.
+  // Supply items carry ee_labour_rate=0, so their calcLine contribution is $0 for labour — no double-count.
+  // Install hours are already counted from supply items' c.installHrs above.
+  const installAggSS = aggregateInstallRows(supply, lines, resourceCodes);
+  Object.values(installAggSS).forEach(agg => {
+    const ph = agg.inst.wbs_code.split('.')[0];
+    if (ph === '4' || !byPhase[ph]) return;
+    byPhase[ph].eeInt            += agg.eeInt;
+    byPhase[ph].comm             += agg.comm;
+    byPhase[ph].eeLabCost        += agg.eeLabCost;
+    byPhase[ph].eeLabCostExWAFHA += agg.eeLabCost;
+    byPhase[ph].contrCost        += agg.contrCost;
+  });
   // Phase 4 derived (skip direct_entry items — those use estimator-entered qty)
   const commTotals = {};
   entered.forEach(item=>{
@@ -3519,6 +3610,18 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
       const ln=lines[item.wbs_code]||{};
       const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,pctBaseSS2[item.wbs_code]||0);
       accum(item.wbs_code, c);
+    });
+    // Add install-row costs to WBS tree (labour not booked via supply items' calcLine)
+    const installAggNR = aggregateInstallRows(supply, lines, resourceCodes);
+    Object.values(installAggNR).forEach(agg => {
+      if (agg.eeInt === 0 && agg.comm === 0) return;
+      const parts = agg.inst.wbs_code.split('.');
+      for (let d = 1; d <= parts.length; d++) {
+        const anc = parts.slice(0, d).join('.');
+        if (!m[anc]) m[anc] = { eeInt:0, comm:0, installHrs:0, commHrs:0, lines:0 };
+        m[anc].eeInt += agg.eeInt;
+        m[anc].comm  += agg.comm;
+      }
     });
     // Phase 4 commission nodes — derived from commission links with scaling
     Object.entries(commTotals).forEach(([commWbs, ct])=>{
