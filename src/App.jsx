@@ -5377,6 +5377,25 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
           // count). Comments below are still captured.
           derivedSkipped++;
           rpt.derivedSkip.push([code, item.description||"", qty]);
+          // Plant/Machinery per-unit rate: capture even though qty is skipped.
+          // aggregateInstallRows uses inst.plant_cost (DB export rate) by default,
+          // but the workbook may carry a site-specific or escalated rate.
+          // Store the workbook value into instLn.plant so aggregateInstallRows
+          // uses it in preference to the DB default.
+          const wbPlant = de[EC({r, c:plantCol})]?.v;
+          if (typeof wbPlant==="number" && wbPlant>1e-6) {
+            const dbPlant = item.plant_cost || 0;
+            // Always store if present — 6% tolerance noted in report for context only
+            const isEscalation = dbPlant > 1e-6 && Math.abs(wbPlant-dbPlant)/dbPlant <= 0.06;
+            entry.plant = String(Math.round(wbPlant*100)/100);
+            overrideCount++;
+            rpt.overrides.push([code, item.description||"",
+              "Plant/Machinery Cost — install row (col AE)",
+              dbPlant > 1e-6 ? dbPlant : "(no db default)",
+              wbPlant,
+              isEscalation ? "(routine escalation)" : "(estimator override)"]);
+            lines[code] = entry;
+          }
         }
         if (hasQty && !isDerivedInstall){
           entry.qty = String(Math.round(qty*10000)/10000);
