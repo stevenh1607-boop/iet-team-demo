@@ -3803,7 +3803,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
         {grandEE>0 && (
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
             {/* 20% OT for internal resources */}
-            {otCost>0 && (
+            {otCost>0 && !isCommercial && (
               <div className="grid text-xs border-b bg-amber-50" style={{gridTemplateColumns: isCommercial?"1fr 100px 100px":"1fr 100px"}}>
                 <div className="px-4 py-2 text-amber-800 font-medium flex items-center gap-1.5">
                   Cost of 20% OT for Internal Resources
