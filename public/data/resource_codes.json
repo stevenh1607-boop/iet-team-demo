@@ -1,253 +1,295 @@
-﻿[
+[
   {
     "resource_name": "Administration Officer",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 138.44,
     "ans_margin_pct": -0.0059
   },
   {
     "resource_name": "Ancillary",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 218.67,
     "ans_margin_pct": 0.5702
   },
   {
     "resource_name": "Cable Jointer - Distribution",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 218.67,
     "ans_margin_pct": 0.5702
   },
   {
     "resource_name": "Cable Jointer - Transmission",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 218.67,
     "ans_margin_pct": 0.5702
   },
   {
     "resource_name": "Earthing Engineer",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 267.83,
     "ans_margin_pct": 0.9232
   },
   {
     "resource_name": "Electrical Technician - Distribution",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 218.67,
     "ans_margin_pct": 0.5702
   },
   {
     "resource_name": "Electrical Technician - Overhead",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 218.67,
     "ans_margin_pct": 0.5702
   },
   {
     "resource_name": "Electrical Technician - Underground",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 218.67,
     "ans_margin_pct": 0.5702
   },
   {
     "resource_name": "Electrical Technician - Zone Substation",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 218.67,
     "ans_margin_pct": 0.5702
   },
   {
     "resource_name": "Electrical Worker - Overhead",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 218.67,
     "ans_margin_pct": 0.5702
   },
   {
     "resource_name": "Electrical Worker - Transmission",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 218.67,
     "ans_margin_pct": 0.5702
   },
   {
     "resource_name": "Electrical Worker - Underground",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 218.67,
     "ans_margin_pct": 0.5702
   },
   {
     "resource_name": "External Project Manager / Specialist Engineer",
     "ee_internal_rate": 262.43,
+    "ee_internal_rate_ot": 270.81,
     "ee_commercial_rate": 325.38,
     "ans_margin_pct": 0.2399
   },
   {
     "resource_name": "Land & Routes Specialist",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 215.99,
     "ans_margin_pct": 0.551
   },
   {
     "resource_name": "Metering Technician - Zone Substation",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 246.95,
     "ans_margin_pct": 0.7733
   },
   {
     "resource_name": "Network Development Officer",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 215.99,
     "ans_margin_pct": 0.551
   },
   {
     "resource_name": "Network Planner",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 215.99,
     "ans_margin_pct": 0.551
   },
   {
     "resource_name": "Power Line Worker",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 218.67,
     "ans_margin_pct": 0.5702
   },
   {
     "resource_name": "Power Line Worker - Live Line",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 246.95,
     "ans_margin_pct": 0.7733
   },
   {
     "resource_name": "Power Quality Technician - Zone Substation",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 246.95,
     "ans_margin_pct": 0.7733
   },
   {
     "resource_name": "Protection Engineer",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 267.83,
     "ans_margin_pct": 0.9232
   },
   {
     "resource_name": "Resource Coordinator - Overhead",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 246.95,
     "ans_margin_pct": 0.7733
   },
   {
     "resource_name": "Resource Coordinator - Transmission",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 246.95,
     "ans_margin_pct": 0.7733
   },
   {
     "resource_name": "Resource Coordinator - Underground",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 246.95,
     "ans_margin_pct": 0.7733
   },
   {
     "resource_name": "SCADA Designer",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 215.99,
     "ans_margin_pct": 0.551
   },
   {
     "resource_name": "Substation Designer Drafter",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 138.44,
     "ans_margin_pct": -0.0059
   },
   {
     "resource_name": "Substation Designer",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 215.99,
     "ans_margin_pct": 0.551
   },
   {
     "resource_name": "Subtransmission Mains Designer",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 215.99,
     "ans_margin_pct": 0.551
   },
   {
     "resource_name": "Asset Inspector",
     "ee_internal_rate": 107.45,
+    "ee_internal_rate_ot": 110.88,
     "ee_commercial_rate": 218.67,
     "ans_margin_pct": 1.0351
   },
   {
     "resource_name": "Distribution Designer",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 215.99,
     "ans_margin_pct": 0.551
   },
   {
     "resource_name": "Engineer / Technical",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 267.83,
     "ans_margin_pct": 0.9232
   },
   {
     "resource_name": "Network Assurance",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 246.95,
     "ans_margin_pct": 0.7733
   },
   {
     "resource_name": "Project Manager",
     "ee_internal_rate": 216.25,
+    "ee_internal_rate_ot": 223.15,
     "ee_commercial_rate": 267.83,
     "ans_margin_pct": 0.2385
   },
   {
     "resource_name": "Senior Design",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 215.99,
     "ans_margin_pct": 0.551
   },
   {
     "resource_name": "Supervisor",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 246.95,
     "ans_margin_pct": 0.7733
   },
   {
     "resource_name": "Telecomms Technician",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 246.95,
     "ans_margin_pct": 0.7733
   },
   {
     "resource_name": "Vegetation",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 218.67,
     "ans_margin_pct": 0.5702
   },
   {
     "resource_name": "Work Away From Home",
     "ee_internal_rate": 359.5,
+    "ee_internal_rate_ot": 359.5,
     "ee_commercial_rate": 359.5,
     "ans_margin_pct": 0.2
   },
   {
     "resource_name": "Telecoms Designer",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 215.99,
     "ans_margin_pct": 0.551
   },
   {
     "resource_name": "Workplace Trainer & Assessor",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 246.95,
     "ans_margin_pct": 0.7733
   },
   {
     "resource_name": "ZS Electrical Technician",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 246.95,
     "ans_margin_pct": 0.7733
   },
   {
     "resource_name": "ZS Specialist Technician",
     "ee_internal_rate": 139.26,
+    "ee_internal_rate_ot": 143.7,
     "ee_commercial_rate": 246.95,
     "ans_margin_pct": 0.7733
   }
