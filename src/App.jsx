@@ -1583,7 +1583,9 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
         const ln = lines[sup.wbs_code] || {};
         const q  = parseFloat(ln.qty || "0");
         const f  = parseFloat(ln.factor || "1");
-        const h  = sup.install_hrs_per || 0;
+        const h  = (ln.instHrsOvrd !== "" && ln.instHrsOvrd != null)
+          ? (parseFloat(ln.instHrsOvrd) || 0)
+          : (sup.install_hrs_per || 0);
         derivedHrs += q * f * h;
         derivedQty += q * f;
       });
@@ -2449,7 +2451,9 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                                     const sl=lines[sup.wbs_code]||{};
                                     const sq=parseFloat(sl.qty||"0");
                                     const sf=parseFloat(sl.factor||"1");
-                                    const sh=sup.install_hrs_per||0;
+                                    const sh=(sl.instHrsOvrd!==""&&sl.instHrsOvrd!=null)
+                                      ?(parseFloat(sl.instHrsOvrd)||0)
+                                      :(sup.install_hrs_per||0);
                                     const hrs=sq*sf*sh;
                                     return (
                                       <tr key={sup.wbs_code} className={`border-b border-gray-100 ${sq>0?"bg-purple-50/40":""}`}>
