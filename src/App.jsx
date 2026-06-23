@@ -1606,13 +1606,24 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
   // items — civil earthworks, cable trenching, conductor stringing etc. are priced this way.
   // "Derived" Install rows (have supply items that propagate qty to them) sit in the install
   // section at the bottom and are shown auto-derived, not directly enterable.
-  const isDerivedInstall = (s) => s.scope === "Install" && !!s.install_wbs;
+  // derivedInstallSet: Set of WBS codes that are install-row targets, built from
+  // supply-side install_wbs links. Mirrors the pattern in the import handler (~line 5248).
+  // Install rows always have install_wbs:"" on themselves — the link is on the supply row.
+  // !!s.install_wbs on the install row is therefore always false and cannot be used.
+  const derivedInstallSet = useMemo(()=>
+    new Set(allL4Items.map(s => s.install_wbs).filter(Boolean)),
+  [allL4Items]);
+  const isDerivedInstall = (s) => derivedInstallSet.has(s.wbs_code);
+  // items: supply rows + any "direct-entry" install rows (civil, earthworks, trenching —
+  // install rows with no supply parent in this L4 group, not in derivedInstallSet).
   const items = useMemo(()=>
-    allL4Items.filter(s => s.scope !== "Install" || !s.install_wbs),
-  [allL4Items]);
+    allL4Items.filter(s => !derivedInstallSet.has(s.wbs_code)),
+  [allL4Items, derivedInstallSet]);
+  // installItems: "derived" install rows only — those whose WBS code appears as an
+  // install_wbs target on at least one supply row in this L4 group.
   const installItems = useMemo(()=>
-    allL4Items.filter(s => s.scope === "Install" && !!s.install_wbs),
-  [allL4Items]);
+    allL4Items.filter(s => derivedInstallSet.has(s.wbs_code)),
+  [allL4Items, derivedInstallSet]);
 
   // Build install aggregation: installWbsCode → { item, derivedHrs, derivedQty, linkedSupply[] }
   // derivedHrs = sum of (enteredQty × factor × install_hrs_per) for each supply item → this install
