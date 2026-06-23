@@ -769,11 +769,12 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
   const q   = parseFloat(qty)   || 0;
   const f   = parseFloat(factor)|| 1;
   const isContr = (delivery || item.delivery_method || "EE Delivered") === "Contractor Delivered";
-  // install_hrs_per: used for supply items (propagated from linked install row)
-  // ee_unit_hrs: used for install-scope rows shown directly (e.g. 3.1.1.12.4.01)
+  // install_hrs_per: used for supply items linked to install rows (always > 0 when set)
+  // ee_unit_hrs: used for supply rows with no linked install row but own hour standard
+  // Zero install_hrs_per falls through to ee_unit_hrs (0 is not a valid install rate)
   const instHrsPU = (installHrsOvrd !== "" && installHrsOvrd != null)
     ? (parseFloat(installHrsOvrd) || 0)
-    : (item.install_hrs_per != null ? item.install_hrs_per : (item.ee_unit_hrs || 0));
+    : (item.install_hrs_per > 0 ? item.install_hrs_per : (item.ee_unit_hrs || 0));
   const commHrsPU = item.comm_hrs_per || 0;
   const installHrs = q * f * instHrsPU;
   const commHrs    = q * commHrsPU;
@@ -5383,7 +5384,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
           const EPS = 1e-6;
           const eeHrs = de[EC({r, c:eeHrsCol})]?.v;
           if (typeof eeHrs==="number" && eeHrs>EPS){
-            const dbHrs = item.install_hrs_per!=null ? item.install_hrs_per : (item.ee_unit_hrs||0);
+            const dbHrs = item.install_hrs_per>0 ? item.install_hrs_per : (item.ee_unit_hrs||0);
             if (Math.abs(eeHrs-dbHrs)>EPS){
               entry.instHrsOvrd = String(Math.round(eeHrs*10000)/10000); overrideCount++;
               rpt.overrides.push([code, item.description||"", "EE Unit Labour Hours (col Z)", dbHrs, eeHrs]);
