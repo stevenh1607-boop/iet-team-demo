@@ -436,11 +436,12 @@ async function generateCopperleafXLSX(inv, lines, supply, commLookup, commProfil
     ensureGroups(l3);
 
     // Aggregate labour/contractor by resource name
+    const pctBaseCL = buildPctBase(items, lines, isCommercial, resourceCodes);
     const costByRes = {};
     items.forEach(item => {
       const ln = lines[item.wbs_code] || {};
       const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd,
-                         ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, resourceCodes, 0);
+                         ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, resourceCodes, pctBaseCL[item.wbs_code]||0);
       const isContr = (ln.delivery||item.delivery_method||"") === "Contractor Delivered";
       const res = isContr ? "Contractor" : (item.resource_main || "ZS Electrical Technician");
       if (!costByRes[res]) costByRes[res] = {hours:0, dollars:0};
@@ -693,6 +694,34 @@ const RESOURCE_TYPES = [
 ];
 const MAT_BURDEN = 0.0752;
 
+// ── PCT BASE LOOKUP (module-level — callable from any consumer) ─────────────
+// Builds a wbs_code → pctBase lookup for all pct_of_total Preliminaries rows.
+// pctBase = sum of contrCost (or eeLabCost for 'ee' basis) of all non-pct items
+// in the same L3 group. Called by EstimationScreen useMemo, SummaryScreen,
+// FinancialScreen, doGeneratePDF, CART, Save, ReviewLines, and Copperleaf.
+function buildPctBase(supply, lines, isCommercial, ratesLookup) {
+  const groupContr = {}; // l3 → total contractor cost
+  const groupEE    = {}; // l3 → total EE labour cost
+  supply.forEach(item => {
+    if (item.pct_of_total) return; // never include pct items in their own base
+    const ln  = lines[item.wbs_code] || {};
+    if (!parseFloat(ln.qty || "0")) return;
+    const l3 = item.wbs_code.split(".").slice(0, 3).join(".");
+    const c  = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery,
+                        ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats,
+                        isCommercial, ln.resourceOvrd, ratesLookup, 0);
+    groupContr[l3] = (groupContr[l3] || 0) + (c.contrCost || 0);
+    groupEE[l3]    = (groupEE[l3]    || 0) + (c.eeLabCost || 0);
+  });
+  const lookup = {};
+  supply.forEach(item => {
+    if (!item.pct_of_total) return;
+    const l3   = item.wbs_code.split(".").slice(0, 3).join(".");
+    const base = item.pct_basis === "ee" ? (groupEE[l3]||0) : (groupContr[l3]||0);
+    lookup[item.wbs_code] = base;
+  });
+  return lookup;
+}
 function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvrd, plantCostVal, materialsCostOvrd, isCommercial, resourceOvrd, ratesLookup, pctBase) {
   const q   = parseFloat(qty)   || 0;
   const f   = parseFloat(factor)|| 1;
@@ -716,21 +745,27 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
   // resource name isn't found in the lookup (shouldn't happen post resource-
   // codes retirement, but keeps the calc safe during any transition period).
   const resEntry   = ratesLookup?.[effectiveResource];
-  // WAFHA rate: use manager-edited rate from ratesLookup if available, else item rate, else workbook default
+  // WAFHA is a day-rate allowance — same value for both internal and commercial streams.
   const wafhaRate  = ratesLookup?.["Work Away From Home"]
-    ? (isCommercial
-        ? (ratesLookup["Work Away From Home"].ee_commercial_rate || 359.50)
-        : (ratesLookup["Work Away From Home"].ee_internal_rate   || 359.50))
+    ? (ratesLookup["Work Away From Home"].ee_internal_rate || 359.50)
     : (item.ee_labour_rate || 359.50);
-  const eeRate     = isWAFHA ? wafhaRate
-                   : (isCommercial
-                       ? (resEntry?.ee_commercial_rate ?? item.ee_labour_rate ?? 246.95)
-                       : (resEntry?.ee_internal_rate ?? item.ee_labour_rate ?? 246.95));
-  // Percentage-of-total items: cost = pct × total non-prelim base for this L3 group
+  // FIX A: eeInt always uses ee_internal_rate regardless of isCommercial.
+  // FIX B: comm always uses ee_commercial_rate (ANS already embedded in that rate —
+  //   ee_commercial_rate = ee_internal_rate × (1+ans_margin_pct) for all 44 resources,
+  //   so applying labMargin() on top would double-count the ANS margin).
+  const eeIntRate  = isWAFHA ? wafhaRate
+                   : (resEntry?.ee_internal_rate  ?? item.ee_labour_rate ?? 139.26);
+  const eeCommRate = isWAFHA ? wafhaRate
+                   : (resEntry?.ee_commercial_rate ?? item.ee_labour_rate ?? 246.95);
+  // FIX C: pct_of_total items — honour contractorRateOvrd when set (Option A: import
+  //   stores override only when workbook value diverges >1% from live pct calculation).
+  //   Fall through to live pct calculation when no override is present.
   const isPctItem  = !!(item.pct_of_total);
   const pctRate    = isPctItem ? ((pctBase || 0) * item.pct_of_total) : 0;
   const contrRate  = isPctItem
-    ? pctRate   // derived from group total
+    ? (contractorRateOvrd !== "" && contractorRateOvrd != null
+        ? (parseFloat(contractorRateOvrd) || 0)   // genuine estimator override (stored by import)
+        : pctRate)                                  // live pct calculation
     : (contractorRateOvrd !== "" && contractorRateOvrd != null)
       ? (parseFloat(contractorRateOvrd) || 0)
       : item.contractor_rate || 0;
@@ -740,16 +775,17 @@ function calcLine(item, qty, factor, delivery, installHrsOvrd, contractorRateOvr
   const pce        = item.pce_price || 0;
   const equipCost  = q * (matOvrd !== null ? matOvrd : pce);
   const eeLabHrs   = isContr ? 0 : (isWAFHA ? 0 : q * f * instHrsPU);
-  const eeLabCost  = isContr ? 0 : (isWAFHA ? q * f * eeRate : eeLabHrs * eeRate);
+  const eeLabCost  = isContr ? 0 : (isWAFHA ? q * f * eeIntRate  : eeLabHrs * eeIntRate);
+  const eeLabComm  = isContr ? 0 : (isWAFHA ? q * f * eeCommRate : eeLabHrs * eeCommRate);
   const contrCost  = isContr ? q * f * contrRate : 0;
   const plantFact  = plant * f;
   const matBurden  = isCommercial ? 0 : equipCost * MAT_BURDEN;
-  const eeInt  = eeLabCost + contrCost + plantFact + equipCost + matBurden;
-  const comm   = eeLabCost*(1+labMargin(effectiveResource, ratesLookup)) + contrCost*(1+ANS_CON) + plantFact + equipCost*(1+ANS_MAT);
+  const eeInt  = eeLabCost  + contrCost + plantFact + equipCost + matBurden;
+  const comm   = eeLabComm  + contrCost*(1+ANS_CON) + plantFact + equipCost*(1+ANS_MAT);
   // WAFHA items: installHrs must always be 0 — they are day-rated, not hour-rated
   const finalInstallHrs = isWAFHA ? 0 : installHrs;
   return { q, f, isContr, isWAFHA, installHrs: finalInstallHrs, commHrs, eeLabHrs, eeLabCost,
-           contrCost, plantFact, equipCost, matBurden, eeInt, comm,
+           eeLabComm, contrCost, plantFact, equipCost, matBurden, eeInt, comm,
            instHrsOverridden: installHrsOvrd !== "" && installHrsOvrd != null, instHrsPU,
            effectiveResource };
 }
@@ -1477,31 +1513,10 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
   // Pre-compute L3 group base totals for percentage-of-total prelim items.
   // For each L3 group, sum contractor costs of all non-prelim items.
   // "ee" basis: sum EE labour costs of all non-prelim items.
-  const pctBaseLookup = useMemo(() => {
-    const groupContr = {}; // l3 → total contractor cost
-    const groupEE    = {}; // l3 → total EE labour cost
-    supply.forEach(item => {
-      if (item.pct_of_total) return; // skip the prelim items themselves
-      const ln  = lines[item.wbs_code] || {};
-      const qty = parseFloat(ln.qty || "0");
-      if (!qty) return;
-      const l3 = item.wbs_code.split(".").slice(0, 3).join(".");
-      const c  = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery,
-                          ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats,
-                          isCommercial, ln.resourceOvrd, ratesLookup, 0);
-      groupContr[l3] = (groupContr[l3] || 0) + (c.contrCost || 0);
-      groupEE[l3]    = (groupEE[l3]    || 0) + (c.eeLabCost || 0);
-    });
-    // Return lookup: wbs_code → pctBase value
-    const lookup = {};
-    supply.forEach(item => {
-      if (!item.pct_of_total) return;
-      const l3   = item.wbs_code.split(".").slice(0, 3).join(".");
-      const base = item.pct_basis === "ee" ? (groupEE[l3] || 0) : (groupContr[l3] || 0);
-      lookup[item.wbs_code] = base;
-    });
-    return lookup;
-  }, [supply, lines, isCommercial, ratesLookup]);
+  const pctBaseLookup = useMemo(
+    () => buildPctBase(supply, lines, isCommercial, ratesLookup),
+    [supply, lines, isCommercial, ratesLookup]
+  );
   const [activePhase, setActivePhase]   = useState(3);
   const [selectedL4, setSelectedL4]     = useState("3.1.3.04");
   const [selectedCommGroup, setSelectedCommGroup] = useState(null);
@@ -2218,14 +2233,31 @@ function EstimationScreen({ isCommercial, lines, setLines }) {
                         <div>
                           <label className="text-xs text-gray-500 block mb-0.5">Contractor Rate ($/unit)</label>
                           {item.pct_of_total ? (
-                            // Percentage-of-total: auto-derived from L3 group total
-                            <>
-                              <div className="w-full text-xs border border-teal-200 bg-teal-50/50 rounded px-1.5 py-1 text-teal-800 font-semibold flex items-center justify-between">
-                                <span className="text-teal-600">{(item.pct_of_total*100).toFixed(0)}% of {item.pct_basis==="ee"?"EE labour":"contractor"} total</span>
-                                <span>= ${Math.round((pctBaseLookup[item.wbs_code]||0)*item.pct_of_total).toLocaleString("en-AU")}</span>
-                              </div>
-                              <div className="text-xs text-gray-400 mt-0.5">L3 {item.pct_basis==="ee"?"EE labour":"contractor"} base: ${Math.round(pctBaseLookup[item.wbs_code]||0).toLocaleString("en-AU")}</div>
-                            </>
+                            <div className="text-xs bg-teal-50 border border-teal-200 rounded px-2 py-1">
+                              {(() => {
+                                const liveBase  = pctBaseLookup[item.wbs_code] || 0;
+                                const liveVal   = Math.round(liveBase * item.pct_of_total);
+                                const ovrdRaw   = parseFloat(ln.contrRate || "");
+                                const hasOvrd   = !isNaN(ovrdRaw) && ln.contrRate !== "" && ln.contrRate != null;
+                                const isStale   = hasOvrd && liveBase > 0 &&
+                                  Math.abs(ovrdRaw - liveBase * item.pct_of_total) / (liveBase * item.pct_of_total) > 0.01;
+                                return (<>
+                                  <div className="flex items-center gap-1 flex-wrap">
+                                    <span className="font-semibold text-teal-700">{(item.pct_of_total*100).toFixed(0)}% of {item.pct_basis==="ee"?"EE labour":"contractor"} total</span>
+                                    {!hasOvrd && <span className="text-teal-600">= ${liveVal.toLocaleString("en-AU")} (live)</span>}
+                                    {hasOvrd && !isStale && <span className="text-amber-700">= ${Math.round(ovrdRaw).toLocaleString("en-AU")} <span className="font-normal">(estimator override — live would give ${liveVal.toLocaleString("en-AU")})</span></span>}
+                                    {isStale && <span className="text-red-700 font-semibold">⚠ Stale override: ${Math.round(ovrdRaw).toLocaleString("en-AU")} — live now gives ${liveVal.toLocaleString("en-AU")}</span>}
+                                  </div>
+                                  {isStale && (
+                                    <button onClick={()=>updLine(item.wbs_code,"contrRate","")}
+                                      className="mt-1 text-xs bg-red-100 hover:bg-red-200 text-red-800 border border-red-300 rounded px-2 py-0.5">
+                                      Recalculate (clear override)
+                                    </button>
+                                  )}
+                                  <div className="text-gray-400 mt-0.5">L3 base: ${Math.round(liveBase).toLocaleString("en-AU")}</div>
+                                </>);
+                              })()}
+                            </div>
                           ) : (
                             <>
                               <input type="number" min="0" value={ln.contrRate||""}
@@ -2581,9 +2613,10 @@ function ReviewLines({ lines, isCommercial }) {
   const { supply, commLookup, commProfiles, resourceCodes } = useData();
   const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
 
+  const pctBaseRL = buildPctBase(supply, lines, isCommercial, resourceCodes);
   const totals = entered.reduce((a,item)=>{
     const ln=lines[item.wbs_code]||{};
-    const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
+    const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,pctBaseRL[item.wbs_code]||0);
     return {installHrs:a.installHrs+c.installHrs,eeInt:a.eeInt+c.eeInt,comm:a.comm+c.comm};
   },{installHrs:0,eeInt:0,comm:0});
 
@@ -2700,7 +2733,7 @@ function ReviewLines({ lines, isCommercial }) {
               <tbody>
                 {items.map((item,i)=>{
                   const ln=lines[item.wbs_code]||{};
-                  const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
+                  const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,pctBaseRL[item.wbs_code]||0);
                   return (
                     <tr key={item.wbs_code} className={`border-b ${i%2===0?"bg-white":"bg-gray-50"} hover:bg-[var(--primary-50)]`}>
                       <td className="px-3 py-1.5 font-mono text-[var(--primary-600)] whitespace-nowrap text-[11px]">{item.wbs_code}</td>
@@ -2722,21 +2755,21 @@ function ReviewLines({ lines, isCommercial }) {
                   <td className="px-3 py-1.5 text-right font-bold text-purple-700">
                     {fmtHrs(items.reduce((a,item)=>{
                       const ln=lines[item.wbs_code]||{};
-                      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
+                      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,pctBaseRL[item.wbs_code]||0);
                       return a+c.installHrs;
                     },0))||"—"}
                   </td>
                   <td className="px-3 py-1.5 text-right font-bold text-[var(--primary-900)]">
                     {fmt(items.reduce((a,item)=>{
                       const ln=lines[item.wbs_code]||{};
-                      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
+                      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,pctBaseRL[item.wbs_code]||0);
                       return a+c.eeInt;
                     },0))}
                   </td>
                   {isCommercial && <td className="px-3 py-1.5 text-right font-bold text-orange-800">
                     {fmt(items.reduce((a,item)=>{
                       const ln=lines[item.wbs_code]||{};
-                      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
+                      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,pctBaseRL[item.wbs_code]||0);
                       return a+c.comm;
                     },0))}
                   </td>}
@@ -3050,13 +3083,14 @@ function doGeneratePDF(ctx) {
   let financialSection = '';
   if (includeFinancial) {
     let subCost=0,matCost=0,eeCost=0,subANS=0,matANS=0,eeANS=0;
+    const pctBasePDF = buildPctBase(supply, lines, isCommercial, resourceCodes);
     supply.forEach(item => {
       const ln = lines[item.wbs_code]||{};
       if(!parseFloat(ln.qty||'0')) return;
-      const c = calcLine(item,ln.qty||'',ln.factor||'1',ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
+      const c = calcLine(item,ln.qty||'',ln.factor||'1',ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,pctBasePDF[item.wbs_code]||0);
       const isContr=(ln.delivery||item.delivery_method||'')==='Contractor Delivered';
       if(isContr){subCost+=(c.contrCost||0)+(c.plantFact||0);subANS+=(c.contrCost||0)*ANS_CON;}
-      else{eeCost+=(c.eeLabCost||0)+(c.plantFact||0);eeANS+=(c.eeLabCost||0)*labMargin(c.effectiveResource, resourceCodes);}
+      else{eeCost+=(c.eeLabCost||0)+(c.plantFact||0);eeANS+=(c.eeLabComm||c.eeLabCost||0)*0;}
       matCost+=c.equipCost||0; matANS+=(c.equipCost||0)*ANS_MAT;
     });
     // install-row labour is booked once by calcLine on the .4 rows — prior inert computeInstallCost fold removed
@@ -3312,13 +3346,14 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
 
   // Phase 1-3, 5 rollups
   const phaseNames = {"1":"Planning","2":"Design","3":"Construction","4":"Commissioning","5":"M&C"};
+  const pctBaseSS = buildPctBase(supply, lines, isCommercial, resourceCodes);
   const byPhase = {};
   entered.forEach(item=>{
     const ph=item.wbs_code.split(".")[0];
     if(ph==="4") return;
     if(!byPhase[ph]) byPhase[ph]={eeInt:0,comm:0,installHrs:0,commHrs:0,lines:0,eeLabCost:0,eeLabCostExWAFHA:0,contrCost:0,matCost:0};
     const ln=lines[item.wbs_code]||{};
-    const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
+    const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,pctBaseSS[item.wbs_code]||0);
     byPhase[ph].eeInt+=c.eeInt; byPhase[ph].comm+=c.comm;
     byPhase[ph].installHrs+=c.installHrs;
     // commHrs from supply items excluded from construction phase —
@@ -3475,9 +3510,10 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
         m[ancestor].lines      += 1;
       }
     };
+    const pctBaseSS2 = buildPctBase(supply, lines, isCommercial, resourceCodes);
     entered.forEach(item=>{
       const ln=lines[item.wbs_code]||{};
-      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
+      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,pctBaseSS2[item.wbs_code]||0);
       accum(item.wbs_code, c);
     });
     // Phase 4 commission nodes — derived from commission links with scaling
@@ -3764,12 +3800,13 @@ function FinancialScreen({ inv, lines, isCommercial }) {
     let subCost=0, matCost=0, eeCost=0;
     let subANS=0,  matANS=0,  eeANS=0;
 
+    const pctBaseFS = buildPctBase(supply, lines, isCommercial, resourceCodes);
     supply.forEach(item => {
       const ln = lines[item.wbs_code] || {};
       if (!parseFloat(ln.qty||"0")) return;
       const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery,
                          ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial,
-                         ln.resourceOvrd, resourceCodes, 0);
+                         ln.resourceOvrd, resourceCodes, pctBaseFS[item.wbs_code]||0);
       const isContr = (ln.delivery||item.delivery_method||"") === "Contractor Delivered";
 
       if (isContr) {
@@ -5123,6 +5160,33 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
       rpt.gi.push(["Milestones",              inv.milestones?.length ? `${inv.milestones.length} found` : "none found"]);
       (inv.milestones||[]).forEach(m=>rpt.gi.push(["  · "+m.stage.slice(0,60), `month ${m.month} · ${m.pct}%`]));
 
+      // ── Option A pre-pass: build pct base from non-pct contractor items ──
+      // Used to compare workbook col-X values for pct_of_total rows against
+      // what the app would compute live, within 1% tolerance.
+      const importPctBase = {};
+      for (let r=5; r<=deRange.e.r; r++){
+        const wbsc0 = de[EC({r, c:wbsCol})]?.v;
+        if (wbsc0==null) continue;
+        const code0 = String(wbsc0).trim();
+        if (!/^\d+(\.\w+)+$/.test(code0)) continue;
+        const item0 = itemByCode.get(code0);
+        if (!item0 || item0.pct_of_total) continue;
+        const qty0 = de[EC({r, c:qtyCol})]?.v;
+        if (typeof qty0!=="number" || qty0<=1e-6) continue;
+        if ((item0.delivery_method||"") !== "Contractor Delivered") continue;
+        const cRate0 = de[EC({r, c:cRateCol})]?.v;
+        const contrRate0 = (typeof cRate0==="number" && cRate0>1e-6)
+          ? cRate0 : (item0.contractor_rate||0);
+        const l3_0 = code0.split(".").slice(0,3).join(".");
+        importPctBase[l3_0] = (importPctBase[l3_0]||0) + qty0 * contrRate0;
+      }
+      // Map pct item wbs_code → its L3 pct base value
+      (snapSupply||[]).forEach(it => {
+        if (it.pct_of_total) {
+          const l3 = it.wbs_code.split(".").slice(0,3).join(".");
+          importPctBase[it.wbs_code] = (it.pct_basis==="ee" ? 0 : (importPctBase[l3]||0));
+        }
+      });
       for (let r=5; r<=deRange.e.r; r++){
         const wbsc = de[EC({r, c:wbsCol})]?.v;
         if (wbsc==null) continue;
@@ -5206,10 +5270,32 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
           }
           const cRate = de[EC({r, c:cRateCol})]?.v;
           if (typeof cRate==="number" && cRate>EPS){
-            const dbRate = item.contractor_rate||0;
-            if (Math.abs(cRate-dbRate)>0.005){
-              entry.contrRate = String(Math.round(cRate*100)/100); overrideCount++;
-              rpt.overrides.push([code, item.description||"", "Contractor Unit Rate (col X)", dbRate, cRate]);
+            if (item.pct_of_total) {
+              // Option A: pct_of_total rows — compare workbook col-X value to what
+              // the app would calculate live from the pct base. If within 1% it's just
+              // a formula result — skip storing and let the app compute it live.
+              // If it diverges >1% it's a genuine estimator override — store it.
+              const pctBase = importPctBase[code] || 0;
+              const expectedRate = pctBase * item.pct_of_total;
+              const divergePct = expectedRate > EPS
+                ? Math.abs(cRate - expectedRate) / expectedRate
+                : 1.0;
+              if (divergePct > 0.01) {
+                entry.contrRate = String(Math.round(cRate*100)/100); overrideCount++;
+                rpt.overrides.push([code, item.description||"",
+                  "Contractor Unit Rate — PRELIM OVERRIDE (col X)",
+                  `live pct would give $${Math.round(expectedRate).toLocaleString()}`,
+                  cRate,
+                  `⚠ Diverges ${(divergePct*100).toFixed(1)}% from live calculation`]);
+              } else {
+                rpt.pctFormulaMatches = (rpt.pctFormulaMatches||0) + 1;
+              }
+            } else {
+              const dbRate = item.contractor_rate||0;
+              if (Math.abs(cRate-dbRate)>0.005){
+                entry.contrRate = String(Math.round(cRate*100)/100); overrideCount++;
+                rpt.overrides.push([code, item.description||"", "Contractor Unit Rate (col X)", dbRate, cRate]);
+              }
             }
           }
           const plant = de[EC({r, c:plantCol})]?.v;
@@ -11780,10 +11866,11 @@ function CARTScreen({ inv, lines, isCommercial, onChange, onSave, lastSaved, est
 
   const baseEstimate = useMemo(()=>{
     let eeInt=0, comm=0, eeLabCost=0;
+    const pctBaseCART = buildPctBase(supply, lines, isCommercial, resourceCodes);
     supply.forEach(item=>{
       const ln=lines[item.wbs_code];
       if(!ln||parseFloat(ln.qty||"0")<=0) return;
-      const c=calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, resourceCodes, 0);
+      const c=calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, resourceCodes, pctBaseCART[item.wbs_code]||0);
       eeInt+=c.eeInt; comm+=c.comm; eeLabCost+=c.eeLabCost||0;
     });
     const commTotals={};
@@ -12562,11 +12649,12 @@ function SMEReportScreen({ inv, lines, isCommercial }) {
   // Every estimate row, tagged with discipline + phase
   const allRows = useMemo(()=>{
     const out = [];
+    const pctBaseSME = buildPctBase(supply, lines, isCommercial, resourceCodes);
     // Supply / install / direct lines (Phases 1, 2, 3, 5)
     supply.forEach(item=>{
       const ln = lines[item.wbs_code];
       if (!ln || parseFloat(ln.qty||"0")<=0) return;
-      const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, resourceCodes, 0);
+      const c = calcLine(item, ln.qty||"", ln.factor||"1", ln.delivery, ln.instHrsOvrd, ln.contrRate, ln.plant, ln.mats, isCommercial, ln.resourceOvrd, resourceCodes, pctBaseSME[item.wbs_code]||0);
       out.push({ wbs:item.wbs_code, desc:item.description, qty:c.q,
         phase:smePhase(item.wbs_code), disc:smeClassify(item.wbs_code, discs),
         supplyCost:c.equipCost, installHrs:c.installHrs, commHrs:0, eeInt:c.eeInt, comm:c.comm });
@@ -13463,9 +13551,10 @@ export default function App() {
   const saveInvestment = useCallback(()=>{
     const supply = supplyData;
     const entered = supply.filter(s=>parseFloat(lines[s.wbs_code]?.qty||"0")>0);
+    const pctBaseSave = buildPctBase(supply, lines, isCommercial, resourceCodes);
     const totals = entered.reduce((a,item)=>{
       const ln=lines[item.wbs_code]||{};
-      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,0);
+      const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,ln.resourceOvrd,resourceCodes,pctBaseSave[item.wbs_code]||0);
       const ph=item.wbs_code.split(".")[0];
       const bp={...a.byPhase};
       if(!bp[ph]) bp[ph]={eeInt:0,comm:0};
