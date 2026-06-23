@@ -13445,7 +13445,13 @@ export default function App() {
       setCommLookup(commLookup.lookup || {});
       setCommProfiles(commLookup.profiles || {});
       setEscRates(escRatesData);
-      setResourceCodes(resourceCodesData || {});
+      // resource_codes.json is a JSON array — re-index into a plain object keyed
+      // by resource_name so ratesLookup["Substation Designer"] etc. resolve correctly.
+      // labMargin(), calcLine(), and RatesEditor all expect this name-keyed shape.
+      const rcByName = Array.isArray(resourceCodesData)
+        ? Object.fromEntries(resourceCodesData.map(r => [r.resource_name, r]))
+        : (resourceCodesData || {});
+      setResourceCodes(rcByName);
       setEquipPricing(equipPricingData || {});
       setInvMats(Array.isArray(invMatsData) ? invMatsData : []);
       setMatAssemblies(Array.isArray(matAssData) ? matAssData : []);
