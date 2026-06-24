@@ -5275,6 +5275,12 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
       if (plantCol===-1) plantCol = 30; // col AE fallback
       let matsCol  = deFindCol(t=>t.startsWith("materials cost") && !t.includes("of ee delivered"));
       if (matsCol===-1) matsCol = 32; // col AG fallback
+      // Resource type (col N) and delivery method (col R) — estimator-changeable per investment.
+      // Col N header: "Resource Type" (row 2). Col R header: "Delivery Method" (row 2).
+      let resourceCol = deFindCol(t=>t.startsWith("resource type") || t==="resource type");
+      if (resourceCol===-1) resourceCol = 13; // col N fallback
+      let deliveryCol = deFindCol(t=>t.startsWith("delivery method"));
+      if (deliveryCol===-1) deliveryCol = 17; // col R fallback
 
       const itemByCode = new Map((snapSupply||[]).map(s=>[s.wbs_code,s]));
       const known = itemByCode;
@@ -5485,6 +5491,34 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
               rpt.overrides.push([code, item.description||"", "Materials Cost per unit (col AG)", dbPce, matsUnit]);
             }
           }
+          // Resource type override — captured when the estimator has changed the resource from
+          // the database default for this investment. Examples in Kings Plains:
+          //   2.6.1.02.1.03: SCADA Designer → Engineer / Technical (AEMO ICCP, 768 hrs)
+          //   3.5.1.08.1.01–14: Contractor → Telecomms Technician (Misc Works)
+          //   3.5.1.08.1.15–19: Contractor → ZS Specialist Technician
+          // Stored as entry.resourceOvrd → feeds calcLine effectiveResource chain (param 10).
+          const wbResource = de[EC({r, c:resourceCol})]?.v;
+          if (typeof wbResource==="string" && wbResource.trim()) {
+            const wbRes = wbResource.trim();
+            const dbRes = item.resource_main||"";
+            if (wbRes !== dbRes && wbRes !== "N.A." && wbRes !== "-" && wbRes !== "") {
+              entry.resourceOvrd = wbRes; overrideCount++;
+              rpt.overrides.push([code, item.description||"", "Resource Type (col N)", dbRes||"(none)", wbRes]);
+            }
+          }
+          // Delivery method override — captured when the estimator has changed delivery from
+          // the database default. Example in Kings Plains:
+          //   3.5.1.08.1.01–19: Contractor Delivered → EE Delivered (with EE resource override above)
+          // Stored as entry.delivery → feeds calcLine deliveryMethod/isContr flag (param 4).
+          const wbDelivery = de[EC({r, c:deliveryCol})]?.v;
+          if (typeof wbDelivery==="string" && wbDelivery.trim()) {
+            const wbDel = wbDelivery.trim();
+            const dbDel = item.delivery_method || "EE Delivered";
+            if (wbDel !== dbDel) {
+              entry.delivery = wbDel; overrideCount++;
+              rpt.overrides.push([code, item.description||"", "Delivery Method (col R)", dbDel, wbDel]);
+            }
+          }
         }
         if (comment){
           entry.comments = comment; commentCount++;  // methodology notes — incl. rows without qty
@@ -5513,7 +5547,8 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
       L.push("Parsed:      "+new Date().toLocaleString("en-AU"));
       L.push("Columns detected — WBS:"+XL.utils.encode_col(wbsCol)+" Qty:"+XL.utils.encode_col(qtyCol)+" Factor:"+XL.utils.encode_col(facCol)
             +" Comments:"+XL.utils.encode_col(comCol)+" EE Hrs:"+XL.utils.encode_col(eeHrsCol)+" Contr Rate:"+XL.utils.encode_col(cRateCol)
-            +" Plant:"+XL.utils.encode_col(plantCol)+" Materials:"+XL.utils.encode_col(matsCol));
+            +" Plant:"+XL.utils.encode_col(plantCol)+" Materials:"+XL.utils.encode_col(matsCol)
+            +" Resource:"+XL.utils.encode_col(resourceCol)+" Delivery:"+XL.utils.encode_col(deliveryCol));
 
       sec("GENERAL INFORMATION → INVESTMENT SETUP");
       rpt.gi.forEach(([k,v])=>L.push(k.padEnd(32)+": "+v));
