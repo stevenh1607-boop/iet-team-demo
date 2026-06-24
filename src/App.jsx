@@ -3434,10 +3434,10 @@ function doGeneratePDF(ctx) {
         ${commercialOnly?'':`<td style="padding:5px 8px;text-align:right;">${fmt(contAmt*(grandEEwithOTV/(grandComm||grandEEwithOTV)))}</td>`}
         ${isCommercial?`<td style="padding:5px 8px;text-align:right;">${fmt(contAmt)}</td>`:''}
       </tr>
-      ${escResult.escTotal>0?`
+      ${(isCommercial && escResult.escComm>0)?`
       <tr class="esc-row"><td style="padding:5px 8px;font-size:10px;">📈 Escalation (weighted avg)</td>
-        ${commercialOnly?'':`<td style="padding:5px 8px;text-align:right;color:#0f766e;font-weight:600;">${fmt(escResult.escTotal)}</td>`}
-        ${isCommercial?`<td style="padding:5px 8px;text-align:right;color:#0f766e;font-weight:600;">${fmt(escResult.escComm)}</td>`:''}
+        ${commercialOnly?'':`<td style="padding:5px 8px;text-align:right;color:#0f766e;font-weight:600;">${fmt(escResult.escComm)}</td>`}
+        <td style="padding:5px 8px;text-align:right;color:#0f766e;font-weight:600;">${fmt(escResult.escComm)}</td>
       </tr>`:''}
       <tr class="final-row">
         <td>TOTAL — Base + Contingency + Escalation &nbsp;·&nbsp; ${inv.estClass} Rev ${inv.revision||'A'}</td>
@@ -3641,7 +3641,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
     };
   },[escRates, byPhase, inv, isCommercial]);
 
-  const finalTotal = (isCommercial ? grandComm : grandEEwithOT) + contAmt + (isCommercial ? escResult.escComm : escResult.escTotal);
+  const finalTotal = (isCommercial ? grandComm : grandEEwithOT) + contAmt + (isCommercial ? escResult.escComm : 0);
 
   // Build WBS tree down to L5 for each entered supply item + Phase 4 commission
   const nodeRollup = useMemo(()=>{
@@ -3872,7 +3872,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
             </div>
 
             {/* Escalation breakdown */}
-            {escResult.escTotal > 0 && (
+            {isCommercial && escResult.escComm > 0 && (
               <div className="border-b">
                 <div className="grid text-xs bg-teal-50" style={{gridTemplateColumns: isCommercial?"1fr 100px 100px":"1fr 100px"}}>
                   <div className="px-4 py-2 font-semibold text-teal-800 flex items-center gap-2">
@@ -3881,7 +3881,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
                       (weighted avg across project timeline)
                     </span>
                   </div>
-                  <div className="py-2 text-right pr-4 font-bold text-teal-700">{fmt(escResult.escTotal)}</div>
+                  <div className="py-2 text-right pr-4 font-bold text-teal-700">{fmt(escResult.escComm)}</div>
                   {isCommercial && <div className="py-2 text-right pr-4 font-bold text-teal-700">{fmt(escResult.escComm)}</div>}
                 </div>
                 {/* Category breakdown */}
