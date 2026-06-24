@@ -1166,6 +1166,15 @@ function InvestmentSetup({ inv, onChange }) {
 
               return (
                 <>
+                  {(inv.spendProfile?.importWarnings?.length > 0) && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-800 mb-3">
+                      <div className="font-semibold mb-1">⚠ Spend profile import warning</div>
+                      {inv.spendProfile.importWarnings.map((w,i)=>(
+                        <div key={i} className="mb-0.5">• {w}</div>
+                      ))}
+                      <div className="mt-1.5 text-amber-600">Adjust the phase durations or custom spend profile distribution above to resolve.</div>
+                    </div>
+                  )}
                   <div className="flex gap-2 flex-wrap mb-4">
                     {PROFILES.map(p=>(
                       <label key={p.id} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border cursor-pointer text-xs transition-colors ${sp.type===p.id?"border-teal-500 bg-teal-50 text-teal-800 font-semibold":"border-gray-200 hover:border-teal-300 text-gray-700"}`}>
@@ -5154,7 +5163,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
         });
       }
       const XL = window.XLSX;
-      const wbk = XL.read(buf, { type:"array", cellStyles:false, sheets:["General Information","Database & Estimate"] });
+      const wbk = XL.read(buf, { type:"array", cellStyles:false, sheets:["General Information","Database & Estimate","Spend Profile"] });
       const gi = wbk.Sheets["General Information"];
       const de = wbk.Sheets["Database & Estimate"];
       if (!gi || !de) { setImportError("Workbook doesn't look like an IET estimate — needs 'General Information' and 'Database & Estimate' sheets."); setImportBusy(false); return; }
@@ -5206,6 +5215,81 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
       inv.planStart   = giVal(starts("Planning Phase"))   || "1"; inv.planDur   = giVal(starts("Planning Phase"),2)   || "4";
       inv.designStart = giVal(starts("Design Phase"))     || "1"; inv.designDur = giVal(starts("Design Phase"),2)     || "9";
       inv.constrStart = giVal(starts("Construction"))     || "6"; inv.constrDur = giVal(starts("Construction"),2)     || "15";
+      // ── Spend Profile ────────────────────────────────────────────
+      // Read profile name from GI D18 ("Spend Profile:" label → value offset 1).
+      // MASTER options: 'Default (Automatic)' → 'default';
+      //                 any 'Manual' variant  → 'custom' (read per-phase distribution).
+      // IET wbs1/wbs2/wbs3 algorithmic profiles have no MASTER equivalent — they
+      // remain selectable in the UI but are never set by import.
+      {
+        const _rawName = giVal(starts("Spend Profile:")) || 'Default (Automatic)';
+        const _rawLow  = _rawName.toLowerCase();
+        let _spType = 'default';
+        let _spCPct = null;
+        const _spWarn = [];
+        if (!_rawLow.includes('default') && !_rawLow.includes('automatic')) {
+          // All Manual / unrecognised profile names → custom
+          _spType = 'custom';
+          const _spSheet = wbk.Sheets["Spend Profile"];
+          if (_spSheet) {
+            try {
+              const _EC   = XL.utils.encode_cell;
+              const _ref  = _spSheet['!ref'];
+              const _rng  = _ref ? XL.utils.decode_range(_ref) : null;
+              const _maxR = _rng ? _rng.e.r : 400;
+              const _phDefs = {
+                '1': { start: parseInt(inv.planStart||1),   dur: parseInt(inv.planDur||4),   label: 'Planning' },
+                '2': { start: parseInt(inv.designStart||1),  dur: parseInt(inv.designDur||9),  label: 'Design' },
+                '3': { start: parseInt(inv.constrStart||6),  dur: parseInt(inv.constrDur||15), label: 'Construction' },
+              };
+              const _found = {};
+              _spCPct = {};
+              // Scan for Level=1 aggregate rows (Col C = integer 1).
+              // Col C = c:2, Col D (L3 WBS) = c:3, Month 1 = c:8 (Col I).
+              for (let _r = 4; _r <= Math.min(_maxR, 800); _r++) {
+                const _lvl = _spSheet[_EC({r:_r, c:2})];
+                if (!_lvl || _lvl.v !== 1) continue; // Skip non-aggregate rows fast
+                const _l3v  = _spSheet[_EC({r:_r, c:3})]?.v;
+                const _phK  = String(_l3v ?? '').split('.')[0]; // '1', '2', or '3'
+                if (!['1','2','3'].includes(_phK) || _found[_phK]) continue;
+                _found[_phK] = true;
+                // Read 48 monthly percentage values (Col I = Month 1, Col J = Month 2, …)
+                const _allM = Array.from({length:48}, (_,m)=>{
+                  const _c = _spSheet[_EC({r:_r, c:8+m})];
+                  return typeof _c?.v === 'number' ? _c.v : 0;
+                });
+                // Slice to the phase window (phaseStart is 1-based)
+                const _ph    = _phDefs[_phK];
+                const _slice = _allM.slice(_ph.start - 1, _ph.start - 1 + _ph.dur);
+                _spCPct[_phK] = _slice;
+                // Validate: sum should be ≈ 1.0 (100% of spend accounted for)
+                const _tot = parseFloat(_slice.reduce((a,b)=>a+b,0).toFixed(6));
+                if (_tot < 0.01) {
+                  _spWarn.push(`${_ph.label}: no spend allocated in the months ${_ph.start}–${_ph.start+_ph.dur-1} window — check phase duration matches spend profile`);
+                } else if (_tot < 0.98) {
+                  _spWarn.push(`${_ph.label}: spend profile covers only ${(_tot*100).toFixed(1)}% over the ${_ph.dur}-month window — phase duration may not match profile`);
+                }
+                if (Object.keys(_found).length === 3) break; // All phases found — stop early
+              }
+              // Flag phases whose aggregate row was not found in the sheet
+              ['1','2','3'].forEach(k => {
+                if (!_found[k]) _spWarn.push(`${_phDefs[k].label}: aggregate row not found in Spend Profile sheet — S-curve will be used for this phase`);
+              });
+            } catch(_err) {
+              _spWarn.push(`Could not parse Spend Profile sheet: ${_err.message} — S-curve fallback applied`);
+              _spCPct = null;
+            }
+          } else {
+            _spWarn.push('Spend Profile sheet not present in workbook — S-curve fallback applied');
+          }
+        }
+        inv.spendProfile = {
+          type:           _spType,
+          customPct:      _spCPct,
+          importRawName:  _rawName,
+          importWarnings: _spWarn,
+        };
+      }
       const ci = giNum(starts("Investment Contingency (Internally"));
       const cc = giNum(starts("Investment Contingency (Commercially"));
       // General Information D40/D41 hold the contingency. In the MASTER the
@@ -5552,6 +5636,23 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
 
       sec("GENERAL INFORMATION → INVESTMENT SETUP");
       rpt.gi.forEach(([k,v])=>L.push(k.padEnd(32)+": "+v));
+      sec("SPEND PROFILE");
+      {
+        const _sp = inv.spendProfile || {};
+        L.push("Profile in workbook".padEnd(32)+": "+(_sp.importRawName||"Default (Automatic)"));
+        L.push("IET profile type".padEnd(32)+": "+(_sp.type==='default'?'Default (S-curve)':'Custom (manual distribution imported)'));
+        if (_sp.type==='custom' && _sp.customPct) {
+          [['1','Planning',  inv.planStart,   inv.planDur  ],
+           ['2','Design',    inv.designStart, inv.designDur],
+           ['3','Construction', inv.constrStart, inv.constrDur]].forEach(([k,lbl,st,d])=>{
+            const _arr = _sp.customPct[k] || [];
+            const _tot = parseFloat(_arr.reduce((a,b)=>a+b,0).toFixed(4));
+            const _ok  = _tot >= 0.98;
+            L.push(lbl.padEnd(32)+`: months ${st}–${parseInt(st)+parseInt(d)-1} (${d} mo)  sum=${(_tot*100).toFixed(1)}%  ${_ok?'✓ OK':'⚠ MISMATCH — duration/profile may be misaligned'}`);
+          });
+        }
+        (_sp.importWarnings||[]).forEach(w=>L.push("    ⚠ "+w));
+      }
 
       sec(`QUANTITY LINES — ${rpt.qty.length} of ${(snapSupply||[]).length} supply items`);
       L.push("WBS Code".padEnd(18)+"Qty".padStart(10)+"  Factor".padEnd(8)+"  Description");
@@ -6453,6 +6554,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
                     ["Lines",            importPreview.linesCount!=null ? `${importPreview.linesCount} entered` : "—"],
                     ["Estimator Comments",importPreview.commentCount!=null ? `${importPreview.commentCount} imported` : "—"],
                     ["Hrs/Cost Overrides", importPreview.overrideCount!=null ? `${importPreview.overrideCount} imported` : "—"],
+                    ["Spend Profile", (()=>{ const _s=importPreview.inv?.spendProfile; const _w=(_s?.importWarnings||[]).length; if(!_s||_s.type==='default') return 'Default (S-curve)'; return `Custom${_w>0?(' ⚠ '+_w+' warning'+(_w>1?'s':'')):''}` ; })()],
                     ["Direct-Entry Commissioning", importPreview.commDirectCount!=null ? `${importPreview.commDirectCount} imported` : "—"],
                     ["EE Internal",      importPreview.totalEE!=null ? fmt(importPreview.totalEE) : "—"],
                     ["Commercial",       importPreview.totalComm!=null ? fmt(importPreview.totalComm) : "—"],
