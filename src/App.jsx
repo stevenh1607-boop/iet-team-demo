@@ -5241,17 +5241,21 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
                 '1': { start: parseInt(inv.planStart||1),   dur: parseInt(inv.planDur||4),   label: 'Planning' },
                 '2': { start: parseInt(inv.designStart||1),  dur: parseInt(inv.designDur||9),  label: 'Design' },
                 '3': { start: parseInt(inv.constrStart||6),  dur: parseInt(inv.constrDur||15), label: 'Construction' },
+                '4': { start: parseInt(inv.constrStart||6),  dur: parseInt(inv.constrDur||15), label: 'Commissioning' },
+                '5': { start: parseInt(inv.constrStart||6)+parseInt(inv.constrDur||15)-1, dur: 2, label: 'M&C' },
               };
               const _found = {};
               _spCPct = {};
               // Scan for Level=1 aggregate rows (Col C = integer 1).
               // Col C = c:2, Col D (L3 WBS) = c:3, Month 1 = c:8 (Col I).
-              for (let _r = 4; _r <= Math.min(_maxR, 800); _r++) {
+              // Phase row positions in Kings Plains: 1→5, 2→153, 3→448, 4→1582, 5→1878.
+              // Use _maxR (no artificial cap) so phases 4 & 5 are not missed.
+              for (let _r = 4; _r <= _maxR; _r++) {
                 const _lvl = _spSheet[_EC({r:_r, c:2})];
                 if (!_lvl || _lvl.v !== 1) continue; // Skip non-aggregate rows fast
                 const _l3v  = _spSheet[_EC({r:_r, c:3})]?.v;
-                const _phK  = String(_l3v ?? '').split('.')[0]; // '1', '2', or '3'
-                if (!['1','2','3'].includes(_phK) || _found[_phK]) continue;
+                const _phK  = String(_l3v ?? '').split('.')[0]; // '1'–'5'
+                if (!['1','2','3','4','5'].includes(_phK) || _found[_phK]) continue;
                 _found[_phK] = true;
                 // Read 48 monthly percentage values (Col I = Month 1, Col J = Month 2, …)
                 const _allM = Array.from({length:48}, (_,m)=>{
@@ -5261,7 +5265,9 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
                 // Slice to the phase window (phaseStart is 1-based)
                 const _ph    = _phDefs[_phK];
                 const _slice = _allM.slice(_ph.start - 1, _ph.start - 1 + _ph.dur);
-                _spCPct[_phK] = _slice;
+                // Multiply by 100: sheet stores fractions (0.183); IET customPct UI
+                // expects whole percentages (18.3) summing to 100 per phase.
+                _spCPct[_phK] = _slice.map(v => parseFloat((v * 100).toFixed(4)));
                 // Validate: sum should be ≈ 1.0 (100% of spend accounted for)
                 const _tot = parseFloat(_slice.reduce((a,b)=>a+b,0).toFixed(6));
                 if (_tot < 0.01) {
@@ -5269,10 +5275,10 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
                 } else if (_tot < 0.98) {
                   _spWarn.push(`${_ph.label}: spend profile covers only ${(_tot*100).toFixed(1)}% over the ${_ph.dur}-month window — phase duration may not match profile`);
                 }
-                if (Object.keys(_found).length === 3) break; // All phases found — stop early
+                if (Object.keys(_found).length === 5) break; // All 5 phases found — stop early
               }
               // Flag phases whose aggregate row was not found in the sheet
-              ['1','2','3'].forEach(k => {
+              ['1','2','3','4','5'].forEach(k => {
                 if (!_found[k]) _spWarn.push(`${_phDefs[k].label}: aggregate row not found in Spend Profile sheet — S-curve will be used for this phase`);
               });
             } catch(_err) {
@@ -5642,13 +5648,16 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
         L.push("Profile in workbook".padEnd(32)+": "+(_sp.importRawName||"Default (Automatic)"));
         L.push("IET profile type".padEnd(32)+": "+(_sp.type==='default'?'Default (S-curve)':'Custom (manual distribution imported)'));
         if (_sp.type==='custom' && _sp.customPct) {
-          [['1','Planning',  inv.planStart,   inv.planDur  ],
-           ['2','Design',    inv.designStart, inv.designDur],
-           ['3','Construction', inv.constrStart, inv.constrDur]].forEach(([k,lbl,st,d])=>{
+          [['1','Planning',      inv.planDur,   inv.planStart  ],
+           ['2','Design',        inv.designDur, inv.designStart],
+           ['3','Construction',  inv.constrDur, inv.constrStart],
+           ['4','Commissioning', inv.constrDur, inv.constrStart],
+           ['5','M&C',           '2',           '']].forEach(([k,lbl,d,st])=>{
             const _arr = _sp.customPct[k] || [];
-            const _tot = parseFloat(_arr.reduce((a,b)=>a+b,0).toFixed(4));
-            const _ok  = _tot >= 0.98;
-            L.push(lbl.padEnd(32)+`: months ${st}–${parseInt(st)+parseInt(d)-1} (${d} mo)  sum=${(_tot*100).toFixed(1)}%  ${_ok?'✓ OK':'⚠ MISMATCH — duration/profile may be misaligned'}`);
+            const _tot = parseFloat(_arr.reduce((a,b)=>a+b,0).toFixed(2));
+            const _ok  = _tot >= 98;
+            const _stNote = st ? ` (start month ${st})` : '';
+            L.push(lbl.padEnd(32)+`: ${d} months${_stNote}  sum=${_tot.toFixed(1)}%  ${_ok?'✓ OK':'⚠ MISMATCH'}`);
           });
         }
         (_sp.importWarnings||[]).forEach(w=>L.push("    ⚠ "+w));
