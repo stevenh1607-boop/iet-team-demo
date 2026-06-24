@@ -3436,12 +3436,12 @@ function doGeneratePDF(ctx) {
       </tr>
       ${(isCommercial && escResult.escComm>0)?`
       <tr class="esc-row"><td style="padding:5px 8px;font-size:10px;">📈 Escalation (weighted avg)</td>
-        ${commercialOnly?'':`<td style="padding:5px 8px;text-align:right;color:#0f766e;font-weight:600;">${fmt(escResult.escComm)}</td>`}
+        ${commercialOnly?'':`<td style="padding:5px 8px;text-align:right;color:#0f766e;">—</td>`}
         <td style="padding:5px 8px;text-align:right;color:#0f766e;font-weight:600;">${fmt(escResult.escComm)}</td>
       </tr>`:''}
       <tr class="final-row">
         <td>TOTAL — Base + Contingency + Escalation &nbsp;·&nbsp; ${inv.estClass} Rev ${inv.revision||'A'}</td>
-        ${commercialOnly?'':`<td style="text-align:right;">${fmt(finalTotal*(grandEEwithOTV/(grandComm||grandEEwithOTV)))}</td>`}
+        ${commercialOnly?'':`<td style="text-align:right;">${fmt(grandEEwithOTV + contAmt)}</td>`}
         ${isCommercial?`<td style="text-align:right;color:#fed7aa;">${fmt(finalTotal)}</td>`:''}
       </tr>
     </tbody>
@@ -3881,7 +3881,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
                       (weighted avg across project timeline)
                     </span>
                   </div>
-                  <div className="py-2 text-right pr-4 font-bold text-teal-700">{fmt(escResult.escComm)}</div>
+                  <div className="py-2 text-right pr-4 font-bold text-teal-400">—</div>
                   {isCommercial && <div className="py-2 text-right pr-4 font-bold text-teal-700">{fmt(escResult.escComm)}</div>}
                 </div>
                 {/* Category breakdown */}
@@ -3891,7 +3891,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
                     <div className="px-6 py-1 text-teal-700">
                       ↳ {label} <span className="text-teal-400">({v.pct.toFixed(2)}% of base)</span>
                     </div>
-                    <div className="py-1 text-right pr-4 text-teal-600 font-medium">{fmt(v.val)}</div>
+                    <div className="py-1 text-right pr-4 text-teal-400">—</div>
                     {isCommercial && <div className="py-1 text-right pr-4 text-teal-500">{fmt(v.val*(1+(label==="Materials"?ANS_MAT:label==="EE Labour"?0:ANS_CON)))}</div>}
                   </div>
                 ))}
@@ -3912,7 +3912,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
                   {inv.name||"Investment"} · {inv.estClass} · Rev {inv.revision}
                 </div>
               </div>
-              <div className="py-3.5 text-right pr-4 text-white text-base">{fmt(isCommercial ? finalTotal * (grandEEwithOT/(grandComm||grandEEwithOT)) : finalTotal)}</div>
+              <div className="py-3.5 text-right pr-4 text-white text-base">{fmt(grandEEwithOT + contAmt)}</div>
               {isCommercial && <div className="py-3.5 text-right pr-4 text-orange-300 text-base font-bold">{fmt(finalTotal)}</div>}
             </div>
           </div>
