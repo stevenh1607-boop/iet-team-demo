@@ -3441,7 +3441,7 @@ function doGeneratePDF(ctx) {
       </tr>`:''}
       <tr class="final-row">
         <td>TOTAL — Base + Contingency + Escalation &nbsp;·&nbsp; ${inv.estClass} Rev ${inv.revision||'A'}</td>
-        ${commercialOnly?'':`<td style="text-align:right;">${fmt(grandEEwithOTV + contAmt)}</td>`}
+        ${commercialOnly?'':`<td style="text-align:right;">${fmt(grandEEwithOTV + contAmt*(grandEEwithOTV/(grandComm||grandEEwithOTV)))}</td>`}
         ${isCommercial?`<td style="text-align:right;color:#fed7aa;">${fmt(finalTotal)}</td>`:''}
       </tr>
     </tbody>
@@ -3912,7 +3912,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
                   {inv.name||"Investment"} · {inv.estClass} · Rev {inv.revision}
                 </div>
               </div>
-              <div className="py-3.5 text-right pr-4 text-white text-base">{fmt(grandEEwithOT + contAmt)}</div>
+              <div className="py-3.5 text-right pr-4 text-white text-base">{fmt(grandEEwithOT + contAmt*(grandEEwithOT/(grandComm||grandEEwithOT)))}</div>
               {isCommercial && <div className="py-3.5 text-right pr-4 text-orange-300 text-base font-bold">{fmt(finalTotal)}</div>}
             </div>
           </div>
