@@ -5262,9 +5262,22 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
                   const _c = _spSheet[_EC({r:_r, c:8+m})];
                   return typeof _c?.v === 'number' ? _c.v : 0;
                 });
-                // Slice to the phase window (phaseStart is 1-based)
-                const _ph    = _phDefs[_phK];
-                const _slice = _allM.slice(_ph.start - 1, _ph.start - 1 + _ph.dur);
+                // Slice strategy:
+                // Phases 1–4: absolute project-month slice starting at _ph.start (1-based).
+                //   allMonths[_ph.start-1] aligns with the first project month of that phase.
+                // Phase 5 (M&C): start position varies by estimate — auto-detect first non-zero.
+                //   e.g. Kings Plains M&C is at allMonths[28–29] (project months 29–30), not
+                //   at constrStart+constrDur-1 as a naive formula would give.
+                const _ph     = _phDefs[_phK];
+                let   _sliceStart;
+                if (_phK === '5') {
+                  // Auto-detect: find first non-zero value in this phase's row
+                  const _nz = _allM.findIndex(v => v > 0);
+                  _sliceStart = _nz >= 0 ? _nz : 0;
+                } else {
+                  _sliceStart = _ph.start - 1;
+                }
+                const _slice  = _allM.slice(_sliceStart, _sliceStart + _ph.dur);
                 // Multiply by 100: sheet stores fractions (0.183); IET customPct UI
                 // expects whole percentages (18.3) summing to 100 per phase.
                 _spCPct[_phK] = _slice.map(v => parseFloat((v * 100).toFixed(4)));
