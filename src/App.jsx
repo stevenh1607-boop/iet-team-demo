@@ -5267,7 +5267,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
         });
       }
       const XL = window.XLSX;
-      const wbk = XL.read(buf, { type:"array", cellStyles:false, sheets:["General Information","Database & Estimate","Spend Profile","List"] });
+      const wbk = XL.read(buf, { type:"array", cellStyles:false, sheets:["General Information","Database & Estimate","Spend Profile","Lists"] });
       const gi = wbk.Sheets["General Information"];
       const de = wbk.Sheets["Database & Estimate"];
       if (!gi || !de) { setImportError("Workbook doesn't look like an IET estimate — needs 'General Information' and 'Database & Estimate' sheets."); setImportBusy(false); return; }
@@ -5444,26 +5444,30 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
       if (ms.length) inv.milestones = ms;
 
       // ── PCE / LLT Procurement Milestones (OUTGOING money) ────────────
-      // This is the schedule of payments EE makes to suppliers for Long Lead
-      // Time equipment — entirely separate from the Invoicing Milestones above
-      // (incoming customer payments). The outgoing schedule lives on the workbook
-      // 'List' sheet at F8:H12 (col F = stage, G = month, H = %). Mode
-      // (Manual/Automatic) is read from the GI sheet. Note pct=0 is valid (e.g.
-      // Practical Completion 0%), so rows are kept on a non-empty stage + month.
+      // Schedule of payments EE makes to suppliers for Long Lead Time equipment.
+      // Entirely separate from Invoicing Milestones above (incoming customer payments).
+      // Source: workbook 'Lists' sheet (note: sheet name is "Lists" with an s).
+      // Data rows: Excel rows 9–12 (0-indexed _r = 8–11).
+      // Column layout confirmed from workbook inspection:
+      //   col F (c:5) = month number  (e.g. 3, 10, 13, 39)
+      //   col G (c:6) = percentage    (e.g. 50, 30, 20, 0)
+      //   col H (c:7) = stage description (string)
+      // Mode (Manual/Automatic) read from GI sheet row matching "LLT".
+      // pct=0 is valid (Practical Completion stage is typically 0%).
       {
         const _lltMode = giVal(starts("LLT")) || 'Automatic';
         const _llt = [];
-        const _listSheet = wbk.Sheets["List"];
+        const _listSheet = wbk.Sheets["Lists"];
         if (_listSheet) {
-          for (let _r = 7; _r <= 11; _r++) {            // rows 8–12 (0-indexed)
-            const _stg = _listSheet[EC({r:_r, c:5})]?.v;  // col F — stage
-            const _mo  = _listSheet[EC({r:_r, c:6})]?.v;  // col G — month
-            const _pct = _listSheet[EC({r:_r, c:7})]?.v;  // col H — %
+          for (let _r = 8; _r <= 11; _r++) {            // Excel rows 9–12 (0-indexed)
+            const _mo  = _listSheet[EC({r:_r, c:5})]?.v;  // col F — month (number)
+            const _pct = _listSheet[EC({r:_r, c:6})]?.v;  // col G — percentage (number)
+            const _stg = _listSheet[EC({r:_r, c:7})]?.v;  // col H — stage (string)
             if (typeof _stg === 'string' && _stg.trim() && typeof _mo === 'number') {
               _llt.push({
                 stage: _stg.replace(/\n/g,' ').trim(),
                 month: Math.round(_mo),
-                pct:   typeof _pct === 'number' ? Math.round(_pct*100)/100 : 0,
+                pct:   typeof _pct === 'number' ? Math.round(_pct * 100) / 100 : 0,
               });
             }
           }
