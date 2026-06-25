@@ -3637,9 +3637,11 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
     });
 
     const escTotal = escEE + escContr + escMat;
-    // escEE needs no ANS uplift — eeLabCost is already computed at ee_commercial_rate
-    // when isCommercial=true, so ANS is embedded. Applying a % on top would double-count.
-    // Contractors and Materials do need uplift as their base costs carry no embedded margin.
+    // escEE carries no ANS uplift — eeLabCost is the EE-INTERNAL labour cost (eeIntRate,
+    // no margin embedded), and EE labour escalation is never ANS-uplifted in either stream.
+    // escContr/escMat are escalated on BARE pre-ANS bases (byPhase.contrCost = raw
+    // contractor cost, byPhase.matCost = raw equipment cost; plant is excluded), so the
+    // ANS_CON / ANS_MAT uplift below is applied exactly once — never compounded in the base.
     const escComm  = escEE + escContr * (1 + ANS_CON) + escMat * (1 + ANS_MAT);
     return {
       escEE, escContr, escMat, escTotal,
