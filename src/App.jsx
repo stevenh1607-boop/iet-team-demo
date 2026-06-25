@@ -14430,11 +14430,273 @@ function SMEReportScreen({ inv, lines, isCommercial }) {
   );
 }
 
+// ── HELP / USER GUIDE SCREEN ─────────────────────────────────────
+// Team-facing reference that explains every part of the IET
+// Estimation Tool in plain English. Pure UI — zero calculation
+// impact. Content is grounded in the actual behaviour of each screen.
+function HelpCallout({ kind="note", children }) {
+  const cfg = {
+    tip:     { box:"bg-green-50 border-green-200 text-green-800",                                   icon:"💡", label:"Tip" },
+    note:    { box:"bg-[var(--primary-50)] border-[var(--primary-200)] text-[var(--primary-800)]",  icon:"ℹ️", label:"Note" },
+    warning: { box:"bg-amber-50 border-amber-300 text-amber-900",                                   icon:"⚠️", label:"Important" },
+  }[kind] || { box:"bg-gray-50 border-gray-200 text-gray-700", icon:"ℹ️", label:"Note" };
+  return (
+    <div className={`flex gap-2 items-start border rounded-lg px-3 py-2 text-xs leading-relaxed ${cfg.box}`}>
+      <span className="flex-shrink-0">{cfg.icon}</span>
+      <span><span className="font-semibold">{cfg.label}: </span>{children}</span>
+    </div>
+  );
+}
+
+function HelpHeading({ icon, title }) {
+  return (
+    <h3 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-1">
+      <span className="text-lg">{icon}</span>{title}
+    </h3>
+  );
+}
+
+function HelpSection({ id, icon, title, intro, points=[], callouts=[] }) {
+  return (
+    <section id={id} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm scroll-mt-4">
+      <HelpHeading icon={icon} title={title}/>
+      {intro && <p className="text-xs text-gray-500 mb-3 leading-relaxed">{intro}</p>}
+      <ul className="space-y-2 mb-3">
+        {points.map((p,i)=>(
+          <li key={i} className="text-xs text-gray-700 leading-relaxed pl-3 border-l-2 border-gray-100">
+            <span className="font-semibold text-gray-900">{p.heading}. </span>{p.body}
+          </li>
+        ))}
+      </ul>
+      {callouts.length>0 && (
+        <div className="space-y-1.5">
+          {callouts.map((c,i)=><HelpCallout key={i} kind={c.kind}>{c.text}</HelpCallout>)}
+        </div>
+      )}
+    </section>
+  );
+}
+
+const HELP_CONTENT = [
+  {
+    id:"overview", icon:"⚡", title:"Getting Started with the IET Estimation Tool",
+    intro:`This web tool is Essential Energy's replacement for the old MASTER Excel workbook. You use it to build a capital cost estimate for a Zone Substation investment, typically an early Class 4 or Class 5 estimate, and to manage that estimate from first draft through to an approved, exportable figure.`,
+    points:[
+      {heading:"What the tool produces", body:`It builds a full cost estimate for a substation investment from the quantities you enter against a standard work breakdown. The result is a defensible Class 4 or 5 capital cost figure, broken down by phase and category, with timeline, escalation, contingency and risk all rolled in, ready to feed into Copperleaf and management reporting.`},
+      {heading:"Four tabs across the top", body:`The app has four main work areas. The Investment Hub is your home base for finding, opening and creating estimates. The Estimation Tool is where you do the actual estimating. The WBS Manager holds the master pricing and work-breakdown reference data. Settings lets you change the colour theme and manage user sign-in.`},
+      {heading:"Start in the Investment Hub", body:`The Hub shows your whole portfolio of saved investments in a searchable, filterable table with totals, status, class, estimator and dollar values. From here you Open an existing investment to keep working on it, or use the File menu to start a New Estimate or Import one from a JSON file or an old IET Excel workbook.`},
+      {heading:"Set up the investment first", body:`A new estimate opens on the Investment Setup screen. You give it a name and fill in identity details (number, type, estimate class, complexity, estimator and reviewer), the project timeline (planning, design and construction phases), the spend profile, and invoicing milestones. The setup matters before the numbers mean anything, since the timeline drives escalation and phasing.`},
+      {heading:"Enter quantities, then review", body:`On the Estimation screen you work down the work-breakdown tree and enter quantities against supply items; the tool prices each line automatically. The Equipment screen handles major plant. You then move through Review Lines to check entries, the Summary for the headline totals, and the Financial Report for the detailed cost and cash-flow breakdown.`},
+      {heading:"Run CART for risk", body:`The CART screen runs a Monte Carlo risk simulation over your estimate. You list project risks and it produces a range of likely outcomes; the P50 result can flow back into the estimate as your contingency dollar figure, replacing the rough pre-risk percentage you entered earlier with a properly modelled allowance.`},
+      {heading:"Save, approve and export", body:`You save the investment from the Summary screen, which adds it to the Hub portfolio. Status moves from Draft through In Review to Approved. Approving requires a manager PIN and locks the estimate, freezing its pricing. From the Hub you can export the estimate to JSON, and the tool also supports Copperleaf and PDF outputs.`},
+    ],
+    callouts:[
+      {kind:"note", text:`EE Internal vs Commercially Funded: every investment is one of these two types, and it changes how costs are built. Both views are tracked side by side. For Commercially Funded work the tool adds ANS margins on labour, contractors and materials and escalates those costs inside the estimate. For Internally Funded work those margins are not applied and no separate escalation line is shown — internal escalation is handled downstream in Copperleaf.`},
+      {kind:"tip", text:`Work the tabs left to right: set up the investment, enter quantities, review the Summary and Financial Report, then run CART before you finalise. Feeding the CART P50 back into the contingency gives a far stronger number than the pre-risk percentage.`},
+      {kind:"warning", text:`Once an estimate is Approved it is locked and its rates are frozen, so it will not silently re-price when master rates change. To make further changes you create a new revision rather than editing the approved one.`},
+    ],
+  },
+  {
+    id:"hub", icon:"📋", title:"Investment Hub",
+    intro:`The Investment Hub is the home base for all your saved estimates. It lists every investment you've saved, lets you open, clone, approve, delete, import and export them, and offers a Template Library of ready-made starting points so you don't build common jobs from scratch.`,
+    points:[
+      {heading:"The Portfolio table", body:`The Portfolio tab shows every saved investment in one list, with its status, estimate class, revision, estimator, reviewer, and both the EE Internal and Commercial totals. You can search by name, number or estimator, filter by status, class and funding type, and sort by name, totals or save date. A running portfolio total of all the filtered estimates is shown along the top and in a footer row.`},
+      {heading:"Opening and reviewing an estimate", body:`Click any row to select it and open the detail panel on the right, which shows the key setup fields, financial totals, an ANS uplift figure, a phase-by-phase cost breakdown, and any parent/child lineage links. Use Open to load it into the estimating screens. Opening an estimate also claims an editing lock so colleagues see it is in use; opening an Approved estimate brings it in read-only.`},
+      {heading:"Starting a new estimate", body:`New Estimate (from the File menu) clears the workspace and drops you into a blank Setup form. If your current estimate has unsaved quantities it first asks whether to save them, so you don't lose work by accident.`},
+      {heading:"Cloning to promote a class", body:`Clone / Promote takes a selected estimate and creates a fresh copy at a new estimate class (for example moving from Class 5 toward Class 4), copying every quantity, factor and cost exactly while leaving the original untouched. The new copy is linked back to its source so the promotion history is visible in the detail panel. A clone re-prices against current rates rather than carrying the original's frozen prices.`},
+      {heading:"Approve and delete safeguards", body:`Changing an estimate's status to Approved requires a Team Leader PIN; once approved the record is locked, its rates are frozen as a snapshot, and the status can no longer be changed from the dropdown (further changes need an Unlock to Amend, which makes a new revision). Deleting requires choosing your role, confirming a warning, and typing DELETE — and it cannot be undone.`},
+      {heading:"Templates (Template Library)", body:`The Template Library tab offers built-in starting points for common Essential Energy jobs (switching stations and feeders, transformers, protection and SCADA upgrades, battery systems, subtransmission cable, and more), each pre-loaded with indicative scope lines and a default timeline. You can search and filter them, tweak the name, number, class and funding type before opening, and open one as a new Draft. You can also save your current estimate as your own custom template for reuse.`},
+      {heading:"Importing and exporting", body:`Import (File menu) accepts either a JSON file exported from this tool or an Essential Energy estimate workbook (.xlsm/.xlsx), which it reads to pull in the General Information setup and every entered quantity, then shows a preview and a detailed import report before you confirm. Imports always come in as a new Draft. You can export any saved estimate as a PDF summary or as JSON (which round-trips back through Import), with a Copperleaf export option also present.`},
+    ],
+    callouts:[
+      {kind:"warning", text:`On import, if the investment number already exists in the hub you get an amber warning. The import is still allowed (useful for comparing options under the same number), so check the warning before confirming an accidental re-import.`},
+      {kind:"note", text:`Saving an estimate updates the existing record only when it is the same one you opened (matched by its internal id). Two option estimates that share the same number and revision letter stay as separate records and won't overwrite each other.`},
+      {kind:"tip", text:`Excel import deliberately skips install rows whose labour is auto-derived from supply quantities (to avoid double-counting) and flags any WBS codes it doesn't recognise. Check the import report to confirm nothing important was missed before you rely on the totals.`},
+    ],
+  },
+  {
+    id:"estimation", icon:"📐", title:"Estimation Tool",
+    intro:`The Estimation Tool is where you build the bottom-up cost of an investment: you pick a work area from the left-hand tree, type quantities against the standard line items, and watch the dollars and hours update instantly on the right. It sits among a row of sub-tabs — Investment Setup, Estimation, Equipment, Review Lines, Summary, Financial Report, SME Reports and CART — with the Estimation tab being the main quantity-entry workspace.`,
+    points:[
+      {heading:"Navigating the WBS tree", body:`The left panel is a five-phase work breakdown: 1 Planning, 2 Design, 3 Construction, 4 Commissioning, and 5 Maintenance & Construction. You pick a phase along the top of the panel, then drill down through the indented levels until you reach a work group. Only groups that actually contain line items are shown, and each group displays a small count of how many items sit inside it. A search box lets you jump to any work group or item by name or code.`},
+      {heading:"Entering quantities", body:`Selecting a work group lists its supply and install items in the centre. You type a quantity into the orange Qty box against each item, and an optional Factor (a multiplier, normally 1) if you need to scale it. Rows with a quantity are highlighted so it is easy to see what you have priced. A counter at the top shows how many of the items in the group now have quantities against them.`},
+      {heading:"Live costs as you type", body:`The right-hand Live Cost Display recalculates the moment you change a number. It shows install hours and both an EE Internal and a Commercial total for the current work group, plus running Investment Totals for the whole estimate and a count of lines entered. There is no Save or Calculate button to press — the figures are always current.`},
+      {heading:"EE Internal vs Commercial + ANS", body:`A label near the top-right tells you which rate set is in play: 'EE Internal Rates only' for internally funded work, or 'Commercial + ANS Rates' for commercially funded work. This is driven by the investment type set in Investment Setup, not a toggle here. EE Internal is Essential Energy's own cost; the Commercial figure adds the ANS margins for labour, contractor and materials on top so it can be quoted externally.`},
+      {heading:"Per-line cost breakdown", body:`Clicking the expand arrow on any item opens a Cost Detail panel. There you can change the delivery method (EE Delivered or Contractor Delivered), override the resource code, install hours, contractor rate, equipment price and plant cost, and add a drawing reference or scope comments. A Line Cost Breakdown box itemises EE labour or contractor cost, equipment, plant and material burden, then shows the line's EE Internal and Commercial totals side by side.`},
+      {heading:"Install and commissioning rows", body:`Install hours are mostly worked out for you: as you enter supply quantities, a read-only Install Rows section derives the labour hours from pre-agreed standard rates, and you can expand a row to see exactly which supply items fed into it. Phase 4 Commissioning works the same way — quantities flow through from your supply entries with a scale factor applied — though a few 'DIRECT' items ask you to type a quantity or hours yourself because they vary site by site.`},
+      {heading:"Recent Changes log", body:`A Recent Changes button at the top-right opens a log of recent edits to the estimate — who changed what, when, and the old and new value. It tracks both quantity/line edits and Investment Setup changes, keeps the latest entries, and lets you Revert any single change back to its previous value. Reverting is itself logged rather than erasing history.`},
+    ],
+    callouts:[
+      {kind:"warning", text:`Watch for the amber 'Fill in hrs / cost' flag and ring on a row. It means you have entered a quantity but the item will add $0 to the estimate until you enter hours or a cost in its Cost Detail panel — these rows can silently understate the estimate.`},
+      {kind:"note", text:`Editing resource codes and overriding install hours is PIN-protected (manager PIN). If a record is Approved, locked by another user, or you are not signed in, the whole screen is read-only.`},
+      {kind:"tip", text:`Use the Review Lines tab to see every priced line grouped by phase with EE Internal and Commercial totals, and a separate auto-derived Phase 4 commissioning table — a good final check before saving.`},
+    ],
+  },
+  {
+    id:"equipment", icon:"📦", title:"Equipment & Procurement",
+    intro:`This area turns the equipment you put into an estimate into a clean procurement schedule, keeps a single source of truth for what you can order and at what price, and helps you spot prices that have gone stale. It has three connected parts: the per-investment Equipment Schedule, the Equipment Pricing page, and the Equipment Catalogue.`,
+    points:[
+      {heading:"Items appear automatically", body:`You don't manually pick equipment for the procurement report. As soon as you enter a quantity against a priced equipment item (PCE, SCADA or Comms) in the Estimation tab, it shows up on the Equipment Schedule. Until you've entered quantities, the schedule is empty and tells you to go enter them. Items with no quantity are ignored.`},
+      {heading:"Four procurement categories", body:`Each item is sorted into one of four groups for the report. PCE (Period Contract Equipment) is standard catalogue plant. SCADA covers control and telemetry gear. COMMS covers radio, fibre and networking. LLT (Long Lead Time) is any priced item with a lead time over 20 weeks, pulled out separately so you can order it early.`},
+      {heading:"How items get classified", body:`The tool first checks the equipment catalogue for a definitive category. If the item isn't listed there, it falls back to clues: SCADA-type codes or descriptions become SCADA; comms-type codes or words like router, comms or fibre become COMMS; remaining priced items become PCE, or LLT if their lead time exceeds 20 weeks. Anything with no price and no clear type is left off the report entirely.`},
+      {heading:"The procurement report", body:`The Equipment Schedule presents a header with the total equipment value and item count, then one table per category showing WBS code, description, make/model, and for PCE/LLT items the contract number and lead time. Each line shows unit price, quantity and line total, with subtotals per category and a grand total. Items priced at zero show as POA (price on application), flagging that a quotation is still needed.`},
+      {heading:"Long lead time warning", body:`If any long-lead items are present, a red banner near the top names them and recommends early procurement. Lead times over 20 weeks are highlighted in red in the tables, and the report notes that LLT items should be ordered immediately on investment approval. The footer reminds you all prices exclude GST and that you should confirm current contract pricing with Procurement before raising purchase orders.`},
+      {heading:"Commercial pricing column", body:`When the investment is commercially funded, the report adds a second value alongside every total: the commercial figure, which applies the ANS materials margin on top of the base equipment cost. Both the plain estimate value and the commercial value are shown at category and grand-total level so you can see the uplift.`},
+      {heading:"Where prices come from", body:`Each line uses the materials cost you entered on the estimate line if there is one, otherwise the catalogue price for that item. If you updated a price on the Equipment Pricing page during the session, that flows through to the line. The make, model, part number, contract number and lead time shown come from the catalogue record for that WBS code.`},
+    ],
+    callouts:[
+      {kind:"tip", text:`To get an item onto the procurement report, just give it a quantity in the Estimation tab — there is no separate "add to procurement" step.`},
+      {kind:"note", text:`POA on a line means no price is set yet. The item still appears in the schedule but contributes nothing to the totals until a price is entered.`},
+    ],
+  },
+  {
+    id:"summary", icon:"📊", title:"Summary Screen & Cost Model",
+    intro:`The Summary screen is where your estimate comes together into a single costed picture: it rolls up everything you've entered, builds it back up through phases and the full work breakdown, adds contingency and (for commercial work) escalation, and presents the EE Internal total next to the Commercial total so you can see both numbers side by side.`,
+    points:[
+      {heading:"Base cost roll-up by phase", body:`At the top, five cards summarise the cost of each project phase — Planning, Design, Construction, Commissioning and Maintenance & Commissioning. Each card shows the phase cost and, where relevant, the install hours behind it. Commissioning is marked auto-derived because its cost and hours are calculated automatically from the items you entered, not typed in directly. Below the cards, a full WBS Cost Breakdown lets you drill down from each phase through the work-breakdown levels to see exactly where the money sits.`},
+      {heading:"Two columns: EE Internal vs Commercial", body:`Every figure is shown in up to two columns. EE Internal is the cost to deliver the work using Essential Energy's own internal rates. Commercial is the price for externally funded work, which adds ANS margins on top. For an Internally Funded investment only the EE Internal column appears; for a Commercially Funded investment both columns show side by side so you can compare the internal cost against the commercial price.`},
+      {heading:"ANS margins build the Commercial price", body:`The Commercial column starts from the same base costs as EE Internal, then adds ANS margins: a labour margin that varies by resource type, a flat materials margin (about 26.9%), and a flat contractor margin (20%). A note at the bottom of a commercial estimate spells out the margins applied and shows the EE Internal base alongside the resulting commercial uplift, so the gap between the two columns is fully explained.`},
+      {heading:"20% overtime uplift (internal only)", body:`For the EE Internal side, a separate 'Cost of 20% OT for Internal Resources' line is added on top of the base. This reflects the extra cost of overtime on Essential Energy-delivered labour only — it does not touch contractor or materials costs, and it excludes work-away-from-home (travel) costs. This line appears only on the internal side.`},
+      {heading:"Escalation to future financial years", body:`Escalation grows today's costs out to the financial years in which the money is actually spent, using FY-based rates (Australian financial year, July to June). Each phase is escalated by a weighted average factor based on when that phase runs across your project timeline, applied separately to EE labour, contractors and materials. Key point: EE Internal estimates show NO separate escalation line on this screen (internal escalation is handled downstream in Copperleaf), while Commercial estimates show a full escalation line with a breakdown by category. Set your project timeline correctly in Investment Setup, as the start months and durations directly drive these factors.`},
+      {heading:"Contingency (can come from CART)", body:`A contingency line is added to the base. By default it uses the percentage you set in Investment Setup (the pre-risk estimator figure), and the line is tagged 'pre-risk'. If you've run a CART risk analysis for this estimate, the contingency is instead driven by the simulated P50 result and the line is tagged 'CART P50' with the run date — replacing your manual percentage with a risk-based figure. A fixed dollar contingency imported from the workbook can also override the percentage.`},
+      {heading:"Grand totals and milestones", body:`The bottom band gives the final total as Base + Contingency + Escalation, shown for both columns where applicable. Remember the EE Internal total carries the overtime uplift and contingency but no escalation, while the Commercial total carries ANS margins, contingency and escalation. Invoicing milestones (the payment schedule that must sum to 100%) are set up in Investment Setup; they shape the cash-flow view on the Financial Report rather than the cost totals here.`},
+    ],
+    callouts:[
+      {kind:"warning", text:`If escalation rates haven't been loaded, the Summary shows an amber warning and no escalation is applied — check this before trusting a commercial total.`},
+      {kind:"tip", text:`Run CART before finalising a commercial estimate so the contingency line shows a risk-based P50 instead of your flat pre-risk percentage. The line tag tells you which one is in use.`},
+      {kind:"note", text:`EE Internal and Commercial are not just the same number with a markup: the internal total adds 20% overtime but no escalation, while the commercial total adds ANS margins and escalation instead — so they are built differently, not scaled.`},
+    ],
+  },
+  {
+    id:"financial", icon:"💰", title:"Financial Report & Contribution Split",
+    intro:`These two areas turn your finished estimate into the numbers Finance and Commercial actually use: the Financial Report restates one estimate as Finance sees it (sub-contract, materials, internal works, contingency, ANS, overheads and cash flow), while the Contribution Split tab lets you group several investments into a programme and decide how each one's cost is shared between Essential Energy and a paying customer.`,
+    points:[
+      {heading:"The three cost buckets", body:`The Financial Report opens on the estimate you currently have loaded and reorganises everything into three lines: Sub-Contract (contractor labour plus any plant on contractor-delivered items), Materials (all equipment and supplied items), and Essential Energy Internal Works (your own crew labour, plant on EE items, and WAFHA). Every quantity you entered flows into one of these automatically.`},
+      {heading:"Cost, ANS burden and contract value", body:`For each bucket you see the bare Cost, the Admin/ANS Burden added on top, and the Contract Value (what the customer pays = cost plus ANS). There are also two internal columns: the EE Internal ERP figure (direct spend, no ANS) and the same figure grossed up by the corporate and network burden factor so you can see the fully-loaded internal cost.`},
+      {heading:"Contingency and the grand total", body:`A contingency line is added before the Total Estimated Cost. If you have run a CART risk simulation for this estimate it uses the P50 contingency from that run; otherwise it falls back to the pre-risk percentage you set in Investment Setup. Note the report deliberately excludes escalation — it shows present-day money only, and says so in the footnotes.`},
+      {heading:"Commercial PA breakdown and cash flow", body:`Alongside the cost table is a Commercial Project Agreement breakdown (Design, Materials and contracts, Construction, Commissioning, GST) plus the GST-exclusive and GST-inclusive construction charges. Below that, a cash-flow chart projects spend month-by-month as an S-curve over your planning, design and construction durations, with separate lines for cost-plus-contingency, fully-loaded internal cost, and incoming milestone payments.`},
+      {heading:"Programmes group investments for splitting", body:`On the Contribution Split (Portfolio Report) tab in Programme mode you create named programmes, give each a number, and add any saved investments as children. Each programme is saved on your machine, so it persists between sessions. The programme header shows the combined commercial total and a single EE-versus-Customer funding bar across all its investments.`},
+      {heading:"Four ways to split each investment", body:`Open any child investment and choose how its cost is divided: Percentage (a flat EE/Customer slider), Capped (EE pays up to a dollar limit — default $7M — and anything above goes to the customer), WBS Section (tag whole sections of the work to a funder), or WBS Item (tag individual estimate lines). Section and Item modes let you mark each line as EE, Customer, a custom percentage, or leave it untagged, with bulk All-EE / All-Customer / Clear buttons per group.`},
+      {heading:"Stacked bar chart and the RIT-D flag", body:`The Financial Summary panel draws a horizontal stacked bar for each investment, coloured by project phase for the internal cost, with a dashed outline showing the commercial total for comparison. A combined EE-versus-Customer attribution bar sits below. If EE's share on any capped investment exceeds the $7M cap, the tool flags that a RIT-D is required, both on that investment and at the programme level.`},
+    ],
+    callouts:[
+      {kind:"warning", text:`The Financial Report and the per-investment financial detail in a programme only fill in completely if the investment has been saved from the Summary tab. If a breakdown looks blank or shows a 're-save to populate' notice, go back and save the estimate first.`},
+      {kind:"note", text:`All Financial Report figures exclude escalation on purpose — they are in today's dollars. Don't reconcile them against escalated commercial quotes without allowing for that.`},
+      {kind:"tip", text:`Untagged lines in WBS Section or WBS Item mode default to 100% Customer, not EE. Tag everything you expect EE to fund, or the customer's share will look larger than intended.`},
+    ],
+  },
+  {
+    id:"cart", icon:"🎲", title:"CART Risk Analysis",
+    intro:`CART (Contingency and Accuracy Range Tool) runs a Monte Carlo risk simulation to size the contingency allowance for your estimate. It produces a probability-based spread of likely contingency outcomes (P10, P50, P80, P90), combining estimate-wide systemic uncertainty with the specific risks you list. It replaces the old Excel CART workbook and runs in the browser in about a second.`,
+    points:[
+      {heading:"What CART does for you", body:`It takes your finished Base Estimate (the cost before contingency and escalation) and runs thousands of simulated outcomes to work out how much contingency you need at different confidence levels. Instead of a single guessed percentage, you get a defensible range showing the chance that your contingency will be enough.`},
+      {heading:"Two sources of risk", body:`CART always adds systemic risk (estimate-wide uncertainty assumed to be present on every job) on top of the base, then adds any project-specific risks you enter. The systemic range is looked up automatically from your Estimate Class, Complexity and Use of New Technology in Investment Setup, so it tightens on its own as the estimate matures from Class 5 toward Class 3.`},
+      {heading:"The risk register", body:`In the Simulation view you add each High or Very High residual risk from the Project Risk Register, with an ID, description, residual likelihood, and a three-point cost impact (Realistic Best, Most Likely, Realistic Worst). Only enter the cost if the risk occurs; CART applies the likelihood for you. Enter only risks still rated High or Very High after mitigation, so you do not double-count what systemic risk already covers.`},
+      {heading:"Three views", body:`Simulation is where you enter risks, run the model, and read results. Settings lets you adjust how the model runs (iterations, sampling, distribution assumptions, and how P-values are reported). Help Guide is a searchable reference covering everything from when to run CART to why P10 can come out negative.`},
+      {heading:"Reading the outputs", body:`After running, you see P10, P50, P90 and a deterministic check value, each shown as a dollar figure, a percentage of base, and base-plus-contingency. The histogram shows the shape of possible contingency outcomes; the S-curve shows cumulative probability, so you can read across from any confidence level to the contingency it needs. A contribution chart ranks systemic risk and each individual risk by their share, helping you target further mitigation.`},
+      {heading:"Feeding the Summary", body:`When you run the simulation, the P50 contingency is saved to the investment and automatically becomes the contingency used on the Estimate Summary and Financial Report for that rate stream (Internal or Commercial). The Summary then shows the P50 dollar figure and its percentage of base, replacing your earlier pre-risk percentage guess. Running also auto-saves the investment.`},
+      {heading:"Re-run when things change", body:`Results do not refresh on their own. If the estimate, the risk list, the systemic inputs or any setting change after a run, an amber 'Inputs changed since last run — re-run' flag appears and you should re-run before trusting the numbers. The saved P50 only flows to the Summary while it matches the current base and rate stream.`},
+    ],
+    callouts:[
+      {kind:"tip", text:`Run CART only once the estimate is complete and reviewed. Sizing contingency against a half-built base produces meaningless P-values.`},
+      {kind:"note", text:`Risk cost impacts are entered as plain dollars and are NOT converted between Internal and Commercial rate streams. For a commercial job, enter impacts at the rates the risk would actually be incurred at.`},
+      {kind:"warning", text:`A negative P10 is mathematically normal because systemic risk can underrun the base. The recommended 'Floor reported P-values at $0' setting reports $0 while keeping the raw value visible; check the run bar for any risks excluded as incomplete before accepting results.`},
+    ],
+  },
+  {
+    id:"sme", icon:"📡", title:"SME Report",
+    intro:`The SME (Subject Matter Expert) Report regroups your whole estimate by engineering discipline — SCADA & Metering, Protection, Comms, Subtransmission Mains, Civil/Building/Earthing, HV Plant, and a catch-all "Other" — so each specialist can see, cost and export just the work that belongs to their area, without running any spreadsheet macros.`,
+    points:[
+      {heading:"What it is", body:`A live view that takes every priced line in the current estimate and sorts it into engineering disciplines. It mirrors the discipline summary sheets that the Excel workbook macros used to produce, but builds them on the fly from whatever you have entered, so there is no macro to run and nothing to refresh manually.`},
+      {heading:"How disciplines are assigned", body:`Each line is matched to a discipline by its WBS code. Every discipline owns a set of WBS code prefixes (for example HV Plant owns the design, primary-plant and electrical-commissioning codes), and a line is claimed by the first discipline whose prefix matches its code. Anything that no discipline claims falls into the catch-all 'Other / Ancillary' group, so every line always lands somewhere.`},
+      {heading:"Five-phase layout", body:`Within the chosen discipline, rows are grouped into the five project phases — Planning, Design, Construction, Commissioning and Handover — derived from the first number of the WBS code. Each phase can be collapsed or expanded, shows its own subtotal, and reports install hours and commission hours alongside the dollar figures.`},
+      {heading:"Picking a discipline", body:`The left-hand list shows every discipline with its icon, a one-line description, its row count and its EE Internal total at a glance. Click one to load its full summary report in the centre. Disciplines are colour-coded, and the empty 'Other' group is hidden until something actually lands in it.`},
+      {heading:"Per-discipline summary panel", body:`The right-hand panel totals the selected discipline: EE Internal total, and when the estimate is in Commercial mode the Commercial total plus the ANS margin between them. It also shows the discipline's share of the whole investment as a percentage bar, a phase-by-phase breakdown, and an install-hours / commission-hours summary.`},
+      {heading:"EE Internal vs Commercial", body:`The report follows the estimate's current rate mode. In EE Internal mode you see internal costs; switch the estimate to Commercial and the Commercial column and ANS margin figures appear. The header always states which mode is active so the numbers are never ambiguous.`},
+      {heading:"Editing the discipline structure (PIN-gated)", body:`Behind an 'Edit Structure' button, a manager can rename disciplines, change icons and colours, add or remove WBS prefixes, reorder disciplines, add new custom disciplines, or reset everything to the workbook defaults. This is locked behind the manager PIN, and the editor shows a live count of how many codes each discipline would claim as you make changes.`},
+    ],
+    callouts:[
+      {kind:"note", text:`Order is priority. In the structure editor, the discipline listed first that matches a WBS code wins that row, so reordering changes which discipline claims overlapping codes. The 'Other' catch-all always stays last and cannot be removed.`},
+      {kind:"tip", text:`Export to Excel produces a single sheet for just the discipline you are viewing. To capture every discipline you export each one in turn. Print Report prints the on-screen view.`},
+      {kind:"warning", text:`Edits to the discipline structure are saved in your browser only, and a discipline with no WBS prefixes will never match any rows. If nothing appears, check the estimate actually has quantities entered — the report only shows lines with a quantity above zero.`},
+    ],
+  },
+  {
+    id:"wbsmanager", icon:"🗂️", title:"WBS Manager (Admin & Pricing Setup)",
+    intro:`The WBS Manager is the tool's control room for everything that drives pricing: the master list of work items, labour rates, equipment and material prices, escalation rates, commissioning scaling, link-quality checks, and the list of people who can be assigned to estimates. It is normally read-only so you can browse safely; editing is locked behind a manager PIN, because anything you change here changes how every future estimate is priced.`,
+    points:[
+      {heading:"PIN-gated Manager Mode", body:`By default you can look at every tab but not change anything. Click the padlock 'Manager Mode' button and enter the manager PIN to unlock editing. Until then, edit buttons and inputs stay hidden. The unlock applies while you are in that tab; the People tab and Equipment Catalogue have their own unlock as well.`},
+      {heading:"WBS item catalogue", body:`The WBS Item Editor tab lists every work item with its description, scope, delivery method, resources, unit of measure, contractor rate, EE labour rate, standard hours, materials price, plant cost, and its install/commission links. You can search, filter by phase or scope, and switch on 'Gaps only' to find items with no pricing at all (flagged GAP in amber). In Manager Mode you click a row to edit any field inline, or use the Add WBS Item wizard to create new ones; duplicate codes are blocked.`},
+      {heading:"Resource rates editor", body:`The Resource Rates tab holds the labour and resource rate library: EE Internal, EE Internal +20% overtime (the rate actually used for internal WBS calculations), EE Commercial, contractor rate, ANS margin percent, the unit type (Hour, Dollar or Day), and the various craft and account codes used for export. In Manager Mode you click a row, edit the rates and codes, then save. These rates feed straight into how labour is costed on every estimate.`},
+      {heading:"Equipment, civil, assembly & inventory pricing", body:`Separate tabs cover equipment pricing (PCE/long-lead, SCADA and Comms), Civil & Building, Material Assemblies, and Inventory Materials. For inventory and equipment you enter a base price, an escalation percent and a price date, and the tool works out the current escalated price; civil and assembly items show a pre-escalated price you edit directly. The escalated price becomes the materials cost on estimates, and the tool flags prices older than two years so you know what needs refreshing.`},
+      {heading:"Escalation rates (FY2026–FY2029)", body:`The Escalation Rates tab sets the annual percentage rise for Internal Labour, Contractors and Materials across each Australian financial year (FY2026 through FY2029), based on the ABS construction price index. It shows a worked example of the resulting escalation factor for the Planning, Design and Construction phases so you can see the effect before relying on it. These rates apply across every estimate's cost-over-time calculation.`},
+      {heading:"Commission scaling & WBS assignment", body:`The Comm Scaling tab manages volume-discount profiles for commissioning: each profile has quantity tiers with a scale percent (for example, the more units, the lower the per-unit rate). You can edit tiers, set a profile's status (Confirmed, Pending, Draft), and on the WBS Assignment sub-tab choose which scaling profile each commissioning item uses by default. Changing a default here affects all future estimates.`},
+      {heading:"Integrity checks & People/Roles", body:`The Link Integrity tab runs health checks on the catalogue: broken or wrong-scope install links, install/commission rows missing standard hours, and equipment with an install link but no commission link. You can tick items as 'approved' so known, intentional gaps stop being flagged. The People & Roles tab manages who can be selected on estimates and who can review them, with the option to make people inactive (preserving their history) rather than deleting them.`},
+    ],
+    callouts:[
+      {kind:"warning", text:`Edits here are global. Changing a rate, price, escalation figure or scaling profile changes how every future estimate is priced, not just the one you are working on.`},
+      {kind:"note", text:`Most edits made in Manager Mode apply for your current session in this tool. Treat the WBS Manager as the agreed source of truth and coordinate changes with your team lead rather than tweaking rates ad hoc.`},
+      {kind:"tip", text:`Use 'Gaps only' on the WBS items tab and the Link Integrity checks before relying on the catalogue, so missing rates and broken links surface before they affect an estimate.`},
+    ],
+  },
+  {
+    id:"roles", icon:"🔐", title:"Access, Roles, Themes & Data Safety",
+    intro:`This part of the tool controls who can change estimates versus just look at them, how your colour scheme is set, and how your work is kept safe. Everything you do lives in your own web browser, so saving and exporting matter, and the tool helps recover work if a session is interrupted.`,
+    points:[
+      {heading:"Sign in vs read-only viewing", body:`Anyone can open the tool and browse it in read-only mode without signing in. You can see the Investment Hub, summaries and financial reports, but you cannot change any estimate. To make edits you click Sign in, pick your name, and enter your 4-digit PIN. A small banner reminds you when you are viewing read-only, with a one-click link to sign in.`},
+      {heading:"User roles", body:`Each person is set up with a role: ND Manager, ND Team Leader, Senior Engineering Officer, Estimation Senior Specialist, or Estimation Specialist. Signing in with any role lets you create and edit estimates. ND Managers and ND Team Leaders have an extra power: they can release an estimate that is stuck open under someone else's name.`},
+      {heading:"Managing people and PINs", body:`In Settings, the User Access section lets you add people, set their role, and give each a 4-digit PIN. PINs are hidden by default with a Show PINs toggle. Anyone you do not give a PIN to is effectively a read-only viewer. Your own row is marked as signed in.`},
+      {heading:"Manager Mode for protected data", body:`The reference data behind every estimate (labour rates, equipment pricing, escalation rates, WBS items, scaling factors) is locked by default to protect it. To change any of it you switch on Manager Mode by entering the manager PIN. While Manager Mode is on you can click rows to edit, fill data gaps, and delete items; otherwise these areas are view-only.`},
+      {heading:"Approving and locking estimates", body:`Approving an estimate requires a Team Leader PIN. Once approved, that estimate is permanently locked: no field can be edited and its status cannot be changed. To make further changes you use Unlock to Amend (also Team Leader PIN), which leaves the approved record untouched as a permanent audit trail and creates a fresh draft at the next revision letter, reset to Class 5 for re-review.`},
+      {heading:"Edit-locks stop two people clashing", body:`When you open an estimate to work on it, it is locked to your name so two people cannot edit the same one at once. If a colleague already has it open, you will see a red read-only banner showing their name and when they opened it, and your changes will not save until the lock is released. Managers and Team Leaders can force-release a stuck lock.`},
+      {heading:"Choosing a theme", body:`The Appearance section in Settings lets you pick a colour theme. The default Essential Energy theme matches corporate navy-and-orange branding; alternates (Classic Blue, Slate, Forest & Ember, Midnight Plum, Steel & Rust) are handy for contrast during stakeholder reviews. A live preview shows the colours, and your choice is remembered in your browser.`},
+    ],
+    callouts:[
+      {kind:"warning", text:`All your data is stored only in this browser on this computer. Clearing browser data, or using a different browser or device, means unsaved work is lost. Save your estimates and export important work regularly so it is not tied to one browser.`},
+      {kind:"tip", text:`If the tool was closed unexpectedly, a yellow 'Unsaved draft recovered' banner appears on reopening, showing the estimate name, number of lines and when it was last auto-saved (the tool auto-saves a working draft about every 45 seconds). Click Restore Draft to pick up where you left off, or Discard to clear it.`},
+      {kind:"note", text:`Your sign-in lasts for the current browser session, and theme and user settings are saved per browser, so colleagues on other machines will not see your changes unless work is saved and shared deliberately.`},
+    ],
+  },
+];
+
+function HelpScreen() {
+  return (
+    <div className="flex-1 overflow-auto p-6 bg-gray-50">
+      <div className="max-w-3xl mx-auto">
+        <h2 className="text-lg font-bold text-gray-900 mb-1">❓ Help &amp; User Guide</h2>
+        <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+          A plain-English guide to every part of the IET Estimation Tool. Jump to a section below, or
+          scroll through. This guide is for reference only and never changes any of your data.
+        </p>
+        {/* Quick jump */}
+        <div className="bg-white border border-gray-200 rounded-xl p-3 mb-5 shadow-sm">
+          <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Jump to</div>
+          <div className="flex flex-wrap gap-1.5">
+            {HELP_CONTENT.map(s=>(
+              <a key={s.id} href={`#${s.id}`}
+                className="text-xs px-2.5 py-1 rounded-full border border-[var(--primary-200)] bg-[var(--primary-50)] text-[var(--primary-700)] hover:bg-[var(--primary-100)] transition-colors">
+                {s.icon} {s.title}
+              </a>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-4">
+          {HELP_CONTENT.map(s=><HelpSection key={s.id} {...s}/>)}
+        </div>
+        <div className="text-center text-[10px] text-gray-400 mt-6 mb-2">
+          IET Estimation Tool · Essential Energy · Internal use only
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const APP_TABS = [
   {id:"hub",        label:"🔍 Investment Hub"},
   {id:"estimation", label:"⚡ Estimation Tool"},
   {id:"wbsmanager", label:"🗂 WBS Manager"},
   {id:"settings",   label:"🎨 Settings"},
+  {id:"help",       label:"❓ Help"},
 ];
 
 // ── THEMES ──────────────────────────────────────────────────────
@@ -15489,6 +15751,7 @@ export default function App() {
             currentInv={inv}
             currentLines={lines}
           />}
+          {appTab==="help"       && <HelpScreen/>}
         </div>
 
         {/* Recent changes modal */}
