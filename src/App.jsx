@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, createContext, useContext, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback, createContext, useContext, useRef, Fragment } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 // ═══════════════════════════════════════════════════════════════════
@@ -3082,6 +3082,11 @@ function doGeneratePDF(ctx) {
   } = ctx;
   const otCostVal      = ctx.otCost || 0;
   const grandEEwithOTV = ctx.grandEEwithOT ?? (grandEE + otCostVal);
+  // EE-stream contingency for the EE column in the PDF — resolved independently
+  // from contIntDollar (CART D40), mirroring SummaryScreen's contResEE. Without
+  // this the EE column would derive a proportional share of the Commercial
+  // contingency rather than the imported CART fixed dollar.
+  const contResEEP = resolveContingency(inv, grandEEwithOTV, false);
   const commercialOnly = !!ctx.commercialOnly && isCommercial; // hide EE Internal $/margins, show Commercial only
 
   const fmt  = (v) => '$' + Math.round(v||0).toLocaleString('en-AU');
@@ -3430,8 +3435,8 @@ function doGeneratePDF(ctx) {
         ${commercialOnly?'':`<td style="padding:5px 8px;text-align:right;font-weight:700;color:#1e40af;">${fmt(grandEEwithOTV)}</td>`}
         ${(isCommercial)?`<td style="padding:5px 8px;text-align:right;font-weight:700;color:#c2410c;">${fmt(grandComm)}</td>`:''}
       </tr>
-      <tr class="cont-row"><td style="padding:5px 8px;font-size:10px;">Contingency (${contPct}%)</td>
-        ${commercialOnly?'':`<td style="padding:5px 8px;text-align:right;">${fmt(contAmt*(grandEEwithOTV/(grandComm||grandEEwithOTV)))}</td>`}
+      <tr class="cont-row"><td style="padding:5px 8px;font-size:10px;">Contingency (${isCommercial ? contResEEP.pct.toFixed(1) : contPct}%)</td>
+        ${commercialOnly?'':`<td style="padding:5px 8px;text-align:right;">${fmt(contResEEP.amt)}</td>`}
         ${isCommercial?`<td style="padding:5px 8px;text-align:right;">${fmt(contAmt)}</td>`:''}
       </tr>
       ${(isCommercial && escResult.escComm>0)?`
@@ -3441,7 +3446,7 @@ function doGeneratePDF(ctx) {
       </tr>`:''}
       <tr class="final-row">
         <td>TOTAL — Base + Contingency + Escalation &nbsp;·&nbsp; ${inv.estClass} Rev ${inv.revision||'A'}</td>
-        ${commercialOnly?'':`<td style="text-align:right;">${fmt(grandEEwithOTV + contAmt*(grandEEwithOTV/(grandComm||grandEEwithOTV)))}</td>`}
+        ${commercialOnly?'':`<td style="text-align:right;">${fmt(grandEEwithOTV + contResEEP.amt)}</td>`}
         ${isCommercial?`<td style="text-align:right;color:#fed7aa;">${fmt(finalTotal)}</td>`:''}
       </tr>
     </tbody>
@@ -3582,6 +3587,12 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
   const contPct   = contRes.pct;
   const contAmt   = contRes.amt;
   const totalWithCont = contBase+contAmt;
+  // EE Internal contingency resolved independently — uses contIntDollar (CART D40)
+  // regardless of whether this is a Commercial estimate. This ensures the EE
+  // column always shows the imported CART fixed dollar, not a proportional
+  // share of the Commercial contingency. (For Internally Funded estimates this
+  // equals contRes, since contBase is then grandEEwithOT with isCommercial=false.)
+  const contResEE = resolveContingency(inv, grandEEwithOT, false);
 
   // ── ESCALATION ──────────────────────────────────────────────────
   // Calculate weighted escalation per phase using project timeline.
@@ -3860,13 +3871,13 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
             </div>
             <div className="grid text-xs border-b" style={{gridTemplateColumns: isCommercial?"1fr 100px 100px":"1fr 100px"}}>
               <div className="px-4 py-2 text-gray-600 flex items-center gap-1.5">
-                Contingency ({contPct.toFixed(1)}%)
+                Contingency ({isCommercial ? contResEE.pct.toFixed(1) : contPct.toFixed(1)}%)
                 {contRes.source==="cart"
                   ? <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-semibold" title={`CART P50 — run ${new Date(contRes.cr.runAt).toLocaleDateString("en-AU")}`}>🎲 CART P50</span>
                   : <span className="text-xs text-gray-400" title="Pre-risk estimator percentage — run CART to replace with a simulated P50">pre-risk</span>}
               </div>
               <div className="py-2 text-right pr-4 text-[var(--primary-600)] font-medium">
-                {fmt(isCommercial ? contAmt * (grandEEwithOT/(grandComm||grandEEwithOT)) : contAmt)}
+                {fmt(contResEE.amt)}
               </div>
               {isCommercial && <div className="py-2 text-right pr-4 text-orange-600 font-medium">{fmt(contAmt)}</div>}
             </div>
@@ -3912,7 +3923,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
                   {inv.name||"Investment"} · {inv.estClass} · Rev {inv.revision}
                 </div>
               </div>
-              <div className="py-3.5 text-right pr-4 text-white text-base">{fmt(grandEEwithOT + contAmt*(grandEEwithOT/(grandComm||grandEEwithOT)))}</div>
+              <div className="py-3.5 text-right pr-4 text-white text-base">{fmt(grandEEwithOT + contResEE.amt)}</div>
               {isCommercial && <div className="py-3.5 text-right pr-4 text-orange-300 text-base font-bold">{fmt(finalTotal)}</div>}
             </div>
           </div>
@@ -5951,7 +5962,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
         {[
           {id:"portfolio", label:"📋 Portfolio"},
           {id:"templates", label:"🏗️ Template Library"},
-          {id:"split",     label:"💰 Contribution Split"},
+          {id:"split",     label:"📊 Portfolio Report"},
         ].map(t=>(
           <button key={t.id} onClick={()=>setHubTab(t.id)}
             className={`text-xs px-4 py-2.5 font-semibold border-b-2 transition-colors ${hubTab===t.id?"border-[var(--primary-700)] text-[var(--primary-700)]":"border-transparent text-gray-500 hover:text-gray-700"}`}>
@@ -6005,8 +6016,8 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
       {/* Template Library tab */}
       {hubTab==="templates" && <TemplateLibrary onLoad={onLoad} saved={saved} setSaved={setSaved} currentInv={currentInv} currentLines={currentLines}/>}
 
-      {/* Contribution Split tab */}
-      {hubTab==="split" && <ContributionSplitTab saved={saved} setSaved={setSaved}/>}
+      {/* Portfolio Report tab */}
+      {hubTab==="split" && <PortfolioReportScreen saved={saved} setSaved={setSaved}/>}
 
       {/* Portfolio tab */}
       {hubTab==="portfolio" && <div className="flex flex-1 overflow-hidden">
@@ -6592,6 +6603,21 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
                     ⚠ {importPreview._importUnmatched} WBS code(s) in the workbook were not recognised against the current WBS master and were skipped. Usually superseded or custom codes — review the source workbook if the line count looks low.
                   </div>
                 )}
+                {(()=>{
+                  const dupNum = importPreview.inv?.number;
+                  const dupMatches = dupNum
+                    ? saved.filter(s=>s.inv?.number===dupNum)
+                    : [];
+                  if (!dupMatches.length) return null;
+                  const names = dupMatches.map(s=>s.inv?.name||"(unnamed)").join(", ");
+                  return (
+                    <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-3">
+                      ⚠ Investment #{dupNum} already exists in the hub: <span className="font-semibold">{names}</span>.
+                      Importing will add a second estimate with this number — this is fine for comparing options.
+                      If this is an accidental re-import, click ← Back to cancel.
+                    </div>
+                  );
+                })()}
                 <div className="text-xs text-gray-400 mb-4">The estimate will be added to your Investment Hub as a new Draft. All existing estimates are unchanged.</div>
                 <div className="flex gap-3">
                   <button onClick={()=>{ setImportPreview(null); }}
@@ -6612,12 +6638,14 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
 
 // ── OLD SAVED INVESTMENTS (now replaced by hub) ──
 
-// ── CONTRIBUTION SPLIT TAB ───────────────────────────────────────
-// Reporting-only feature. Groups multiple saved investments under a
-// parent programme. Each child investment has its OWN independent
-// split method: Percentage | Capped | WBS Section | WBS Item.
-// Programme bar aggregates all child resolved splits.
-function ContributionSplitTab({ saved, setSaved }) {
+// ── PORTFOLIO REPORT SCREEN ──────────────────────────────────────
+// Combined investment report builder. Two modes:
+//   Programme — groups investments under named programmes (persisted
+//               to iet_programmes localStorage), full split config.
+//   Free selection — pick any saved investments ad-hoc; split config
+//               held in component state only (not persisted).
+// All prior contribution-split logic retained verbatim.
+function PortfolioReportScreen({ saved, setSaved }) {
   const { supply } = useData();
   const fmt  = (n) => `$${Math.round(n||0).toLocaleString("en-AU")}`;
   const pct  = (a,b) => b>0 ? Math.round(a/b*100) : 0;
@@ -6644,14 +6672,28 @@ function ContributionSplitTab({ saved, setSaved }) {
   const [expandedNodes, setExpandedNodes] = useState({});
   const toggleNode = (code)=>setExpandedNodes(e=>({...e,[code]:!e[code]}));
 
+  // ── Report mode + free-selection state ───────────────────────
+  const [reportMode, setReportMode] = useState("programme"); // "programme" | "free"
+  const [freeSelIds,      setFreeSelIds]      = useState(new Set());   // Set of saved inv IDs (as strings)
+  const [freeSearch,      setFreeSearch]      = useState("");
+  const [freeTypeFilter,  setFreeTypeFilter]  = useState("All");       // "All" | "Commercially Funded" | "EE Internal"
+  const [freeStatusFilter,setFreeStatusFilter]= useState("All");
+  const [freeSelSplitCfg, setFreeSelSplitCfg] = useState({});          // {[invId]: {splitMethod,eePct,...}}
+  const [freeChartToggle, setFreeChartToggle] = useState({bar:true, split:true});
+  const [freeExpandedChild, setFreeExpandedChild] = useState(null);    // invId of open split drawer (free mode)
+  const [freeExpandedNodes, setFreeExpandedNodes] = useState({});
+  const toggleFreeNode = (code)=>setFreeExpandedNodes(e=>({...e,[code]:!e[code]}));
+
   const prog = programmes.find(p=>p.id===selectedProg)||null;
 
   // ── Helpers ──────────────────────────────────────────────────
   const getInvTotals = (invId)=>{
     const s = findById(invId);
-    if(!s) return {ee:0,comm:0,name:"Unknown",type:"",number:"",estClass:"",status:"",revision:"",estimatedBy:"",reviewedBy:"",phaseBreakdown:{},savedAt:""};
+    if(!s) return {ee:0,comm:0,totalEE:0,totalComm:0,totalInstallHrs:0,contAmt:0,name:"Unknown",type:"",number:"",estClass:"",status:"",revision:"",estimatedBy:"",reviewedBy:"",phaseBreakdown:{},savedAt:""};
     return {
       ee:s.totalEE||0, comm:s.totalComm||0,
+      totalEE:s.totalEE||0, totalComm:s.totalComm||0,
+      totalInstallHrs:s.totalInstallHrs||0, contAmt:s.contAmt||0,
       name:s.inv?.name||"Unnamed", number:s.inv?.number||"",
       type:s.inv?.type||"", estClass:s.inv?.estClass||"",
       status:s.status||"Draft", revision:s.inv?.revision||"",
@@ -6809,15 +6851,19 @@ function ContributionSplitTab({ saved, setSaved }) {
   };
 
   // ── Report generator ─────────────────────────────────────────
-  const generateReport = ()=>{
-    if(!prog||!summary.children.length) return;
+  const generateReport = (progArg, summaryArg)=>{
+    const P = progArg || prog;
+    const S = summaryArg || summary;
+    if(!P||!S.children.length) return;
+    const PT = S.totalEESplit + S.totalCustSplit;
+    const anyR = S.children.some(c=>c.split?.ritD);
     const PHASE_NAMES={"1":"Planning","2":"Design","3":"Construction","4":"Commissioning","5":"M&C"};
     const fmtD=(n)=>`$${Math.round(n||0).toLocaleString("en-AU")}`;
     const fmtP=(n)=>`${Math.round(n||0)}%`;
     const pctOf=(a,b)=>b>0?Math.round(a/b*100):0;
     const methodLabel={percentage:"Percentage Split",capped:"Capped EE Contribution",section:"WBS Section Attribution",item:"WBS Item Attribution"};
 
-    const invRows=summary.children.map(c=>{
+    const invRows=S.children.map(c=>{
       const pb=c.phaseBreakdown||{};
       const phaseRows=Object.entries(pb).sort().map(([ph,p])=>`
         <tr><td style="padding:5px 10px;color:#374151">Phase ${ph} — ${PHASE_NAMES[ph]||ph}</td>
@@ -6888,7 +6934,7 @@ function ContributionSplitTab({ saved, setSaved }) {
     }).join("");
 
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
-<title>Contribution Split Report — ${prog.name}</title>
+<title>Contribution Split Report — ${P.name}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;color:#1f2937;padding:24px}
 h1{font-size:20px;color:#1e3a5f}h2{font-size:13px;color:#1e3a5f;margin:16px 0 8px;border-bottom:1px solid #e5e7eb;padding-bottom:4px}
@@ -6920,32 +6966,32 @@ h1{font-size:20px;color:#1e3a5f}h2{font-size:13px;color:#1e3a5f;margin:16px 0 8p
 @media print{body{padding:10px}.inv-block{page-break-inside:avoid}}
 </style></head><body>
 <div class="header">
-  <div><h1>${prog.name}</h1><div class="subtitle">${prog.number?prog.number+" · ":""}Contribution Split Report · Generated ${new Date().toLocaleDateString("en-AU",{dateStyle:"long"})}</div></div>
+  <div><h1>${P.name}</h1><div class="subtitle">${P.number?P.number+" · ":""}Contribution Split Report · Generated ${new Date().toLocaleDateString("en-AU",{dateStyle:"long"})}</div></div>
   <div style="text-align:right;font-size:9px;color:#9ca3af"><div>Essential Energy — IET Estimation Tool</div><div>Reporting only — not a Copperleaf export</div></div>
 </div>
 <h2>Programme Summary</h2>
 <div class="meta-grid">
-  <div class="meta-box"><div class="meta-label">Investments</div><div class="meta-value">${summary.children.length}</div></div>
-  <div class="meta-box"><div class="meta-label">EE Funded (split)</div><div class="meta-value" style="color:#1e3a5f">${fmtD(summary.totalEESplit)}</div></div>
-  <div class="meta-box"><div class="meta-label">Customer Funded (split)</div><div class="meta-value" style="color:#ea580c">${fmtD(summary.totalCustSplit)}</div></div>
-  <div class="meta-box"><div class="meta-label">Portfolio Commercial</div><div class="meta-value">${fmtD(summary.totalComm)}</div></div>
+  <div class="meta-box"><div class="meta-label">Investments</div><div class="meta-value">${S.children.length}</div></div>
+  <div class="meta-box"><div class="meta-label">EE Funded (split)</div><div class="meta-value" style="color:#1e3a5f">${fmtD(S.totalEESplit)}</div></div>
+  <div class="meta-box"><div class="meta-label">Customer Funded (split)</div><div class="meta-value" style="color:#ea580c">${fmtD(S.totalCustSplit)}</div></div>
+  <div class="meta-box"><div class="meta-label">Portfolio Commercial</div><div class="meta-value">${fmtD(S.totalComm)}</div></div>
 </div>
 <h2>Combined Funding Attribution</h2>
 <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-  <span style="font-weight:700;color:#1e3a5f">EE: ${fmtD(summary.totalEESplit)} (${pctOf(summary.totalEESplit,progTotal)}%)</span>
-  <span style="font-weight:700;color:#ea580c">Customer: ${fmtD(summary.totalCustSplit)} (${pctOf(summary.totalCustSplit,progTotal)}%)</span>
+  <span style="font-weight:700;color:#1e3a5f">EE: ${fmtD(S.totalEESplit)} (${pctOf(S.totalEESplit,PT)}%)</span>
+  <span style="font-weight:700;color:#ea580c">Customer: ${fmtD(S.totalCustSplit)} (${pctOf(S.totalCustSplit,PT)}%)</span>
 </div>
 <div class="prog-bar">
-  <div class="bar-fill" style="width:${pctOf(summary.totalEESplit,progTotal)}%;background:#1e3a5f"></div>
-  <div class="bar-fill" style="width:${pctOf(summary.totalCustSplit,progTotal)}%;background:#ea580c"></div>
+  <div class="bar-fill" style="width:${pctOf(S.totalEESplit,PT)}%;background:#1e3a5f"></div>
+  <div class="bar-fill" style="width:${pctOf(S.totalCustSplit,PT)}%;background:#ea580c"></div>
 </div>
-${anyRitD?`<div class="rit">⚠️ One or more investments have EE contributions exceeding the $7M regulatory cap. See investment detail below.</div>`:""}
+${anyR?`<div class="rit">⚠️ One or more investments have EE contributions exceeding the $7M regulatory cap. See investment detail below.</div>`:""}
 <h2>Investment Attribution Summary</h2>
 <table class="attr-table"><thead><tr>
   <th>Investment</th><th>Number</th><th>Class</th><th>Role</th><th>Method</th>
   <th style="text-align:right">EE Funded</th><th style="text-align:right">Customer Funded</th><th style="text-align:right">EE%</th>
 </tr></thead><tbody>
-${summary.children.map(c=>`<tr>
+${S.children.map(c=>`<tr>
   <td>${c.name}</td><td style="font-family:monospace">${c.number}</td><td>${c.estClass}</td>
   <td style="color:${c.role==="EE-funded"?"#1e3a5f":c.role==="Customer-funded"?"#ea580c":"#374151"};font-weight:600">${c.role}</td>
   <td>${methodLabel[c.splitMethod||"percentage"]}</td>
@@ -6955,15 +7001,15 @@ ${summary.children.map(c=>`<tr>
 </tr>`).join("")}
 </tbody><tfoot><tr>
   <td colspan="5">Programme Total</td>
-  <td style="text-align:right;color:#1e3a5f">${fmtD(summary.totalEESplit)}</td>
-  <td style="text-align:right;color:#ea580c">${fmtD(summary.totalCustSplit)}</td>
-  <td style="text-align:right">${fmtP(pctOf(summary.totalEESplit,progTotal))}</td>
+  <td style="text-align:right;color:#1e3a5f">${fmtD(S.totalEESplit)}</td>
+  <td style="text-align:right;color:#ea580c">${fmtD(S.totalCustSplit)}</td>
+  <td style="text-align:right">${fmtP(pctOf(S.totalEESplit,PT))}</td>
 </tr></tfoot></table>
 <h2>Investment Detail (per-investment attribution)</h2>
 ${invRows}
 <div class="footer">
   <span>IET Estimation Tool — Programme Contribution Split Report</span>
-  <span>${prog.name}${prog.number?` (${prog.number})`:""} · ${summary.children.length} investments · ${new Date().toLocaleString("en-AU")}</span>
+  <span>${P.name}${P.number?` (${P.number})`:""} · ${S.children.length} investments · ${new Date().toLocaleString("en-AU")}</span>
 </div>
 <script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}</script>
 </body></html>`;
@@ -6972,7 +7018,487 @@ ${invRows}
     if(w){w.document.write(html);w.document.close();}
   };
 
+  // ── Free-selection mode helpers (state-only, not persisted) ──
+  const freeDefaultCfg = {splitMethod:"percentage",eePct:25,eeCap:7000000,lineTagging:{},itemPercentages:{}};
+  const freeCfgFor = (invId)=>({...freeDefaultCfg, ...(freeSelSplitCfg[String(invId)]||{})});
+  const toggleFreeSel = (invId)=>{
+    const id=String(invId);
+    setFreeSelIds(prev=>{ const next=new Set(prev); if(next.has(id)) next.delete(id); else next.add(id); return next; });
+  };
+  const updateFreeChild = (invId, updates)=>{
+    setFreeSelSplitCfg(prev=>({...prev,[String(invId)]:{...freeDefaultCfg,...(prev[String(invId)]||{}),...updates}}));
+  };
+  const updateFreeChildTagging = (invId, key, value)=>{
+    setFreeSelSplitCfg(prev=>{
+      const cur={...freeDefaultCfg,...(prev[String(invId)]||{})};
+      const tagging={...cur.lineTagging};
+      const percentages={...cur.itemPercentages};
+      if(cur.lineTagging?.[key]==="%"&&value!=="%") delete percentages[key];
+      if(value===undefined) delete tagging[key]; else tagging[key]=value;
+      return {...prev,[String(invId)]:{...cur,lineTagging:tagging,itemPercentages:percentages}};
+    });
+  };
+  const updateFreeItemPercentage = (invId, key, p)=>{
+    setFreeSelSplitCfg(prev=>{
+      const cur={...freeDefaultCfg,...(prev[String(invId)]||{})};
+      const percentages={...cur.itemPercentages};
+      if(p!==undefined&&!isNaN(p)) percentages[key]=Math.min(100,Math.max(0,p)); else delete percentages[key];
+      return {...prev,[String(invId)]:{...cur,itemPercentages:percentages}};
+    });
+  };
+
+  // Build enriched free-selection children + summary (mirrors getProgSummary)
+  const freeChildren = saved
+    .filter(s=>freeSelIds.has(String(s.id)))
+    .map(s=>{
+      const cfg=freeCfgFor(s.id);
+      const child={invId:String(s.id), role:"Shared", ...cfg};
+      const t=getInvTotals(child.invId);
+      return {...child,...t,split:resolveChildSplit(child,t)};
+    });
+  const freeSummary = {
+    totalEE: freeChildren.reduce((a,c)=>a+c.ee,0),
+    totalComm: freeChildren.reduce((a,c)=>a+c.comm,0),
+    totalEESplit: freeChildren.reduce((a,c)=>a+c.split.eeSplit,0),
+    totalCustSplit: freeChildren.reduce((a,c)=>a+c.split.custSplit,0),
+    children: freeChildren,
+  };
+  const freeProgTotal = freeSummary.totalEESplit+freeSummary.totalCustSplit;
+  const freeAnyRitD = freeSummary.children.some(c=>c.split?.ritD);
+
+  // Filtered list for the free-selection picker
+  const freeFiltered = saved.filter(s=>{
+    const q=freeSearch.trim().toLowerCase();
+    const name=(s.inv?.name||"").toLowerCase();
+    const num=(s.inv?.number||"").toLowerCase();
+    if(q && !name.includes(q) && !num.includes(q)) return false;
+    if(freeTypeFilter!=="All"){
+      const isComm=s.inv?.type==="Commercially Funded";
+      if(freeTypeFilter==="Commercially Funded" && !isComm) return false;
+      if(freeTypeFilter==="EE Internal" && isComm) return false;
+    }
+    if(freeStatusFilter!=="All" && (s.status||"Draft")!==freeStatusFilter) return false;
+    return true;
+  });
+
+  const produceFreeReport = ()=>{
+    if(!freeSummary.children.length) return;
+    generateReport({name:"Portfolio Report (Free Selection)",number:""}, freeSummary);
+  };
+
+  const statusColor = (st)=> st==="Approved"?"#16a34a" : st==="In Review"?"#d97706" : st==="Draft"?"#9ca3af" : "#6b7280";
+
+  // ── Financial summary panel (display-only — reads stored totals) ──
+  const PHASE_COL={"1":"#94a3b8","2":"#64748b","3":"#1F478A","4":"#4A7BC1","5":"#0e7490"};
+  const renderFinancialSummary = (invs)=>{
+    if(!invs.length) return null;
+    const totEE   = invs.reduce((s,i)=>s+(i.totalEE||0),0);
+    const totComm = invs.reduce((s,i)=>s+(i.totalComm||0),0);
+    const totCont = invs.reduce((s,i)=>s+(i.contAmt||0),0);
+    const totHrs  = invs.reduce((s,i)=>s+(i.totalInstallHrs||0),0);
+    const maxEE   = Math.max(1,...invs.map(i=>i.totalEE||0));
+    const anyComm = invs.some(i=>i.type==="Commercially Funded");
+    const totEESplit  = invs.reduce((s,i)=>s+(i.split?.eeSplit||0),0);
+    const totCustSplit= invs.reduce((s,i)=>s+(i.split?.custSplit||0),0);
+    const splitTot = totEESplit+totCustSplit;
+    const rowH=24, gap=8, labelW=190, barAreaW=440;
+    const chartW=labelW+barAreaW+110;
+    const chartH=invs.length*(rowH+gap)+10;
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-4">
+        <div className="text-xs font-bold text-gray-700">Financial Summary</div>
+        {/* Metric cards */}
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            {label:"EE Internal total",value:fmt(totEE),color:EE_BLUE},
+            {label:"Commercial total (PA)",value:fmt(totComm),color:CUST_ORG},
+            {label:"Total contingency",value:fmt(totCont),color:"#16a34a"},
+            {label:"Total install hours",value:`${Math.round(totHrs).toLocaleString("en-AU")} hrs`,color:"#7c3aed"},
+          ].map((m,i)=>(
+            <div key={i} className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+              <div className="text-xs text-gray-500">{m.label}</div>
+              <div className="text-sm font-bold mt-0.5" style={{color:m.color}}>{m.value}</div>
+            </div>
+          ))}
+        </div>
+        {/* Financial breakdown — horizontal stacked bar (EE Internal by phase) */}
+        <div>
+          <div className="text-xs font-semibold text-gray-600 mb-1">Financial breakdown — EE Internal by phase (dashed = Commercial total)</div>
+          <svg width="100%" viewBox={`0 0 ${chartW} ${chartH}`} style={{maxWidth:"100%"}}>
+            {invs.map((iv,idx)=>{
+              const y=idx*(rowH+gap)+4;
+              const pb=iv.phaseBreakdown||{};
+              const phases=Object.keys(pb).sort();
+              const eeTot=iv.totalEE||0;
+              const fullW=eeTot/maxEE*barAreaW;
+              let x=labelW;
+              const segs=[];
+              if(phases.length && eeTot>0){
+                phases.forEach(ph=>{
+                  const v=pb[ph]?.eeInt||0;
+                  const w=v/eeTot*fullW;
+                  segs.push(<rect key={ph} x={x} y={y} width={Math.max(0,w)} height={rowH} fill={PHASE_COL[ph]||"#9ca3af"}/>);
+                  x+=w;
+                });
+              } else {
+                segs.push(<rect key="base" x={labelW} y={y} width={fullW} height={rowH} fill="#9ca3af"/>);
+              }
+              const commW=Math.min(barAreaW,(iv.totalComm||0)/maxEE*barAreaW);
+              return (
+                <g key={iv.invId}>
+                  <text x={labelW-8} y={y+rowH/2+4} textAnchor="end" fontSize="11" fill="#374151">{(iv.name||"—").slice(0,26)}</text>
+                  {segs}
+                  {commW>0 && <rect x={labelW} y={y} width={commW} height={rowH} fill="none" stroke={CUST_ORG} strokeWidth="1.5" strokeDasharray="4 3"/>}
+                  <text x={labelW+Math.max(fullW,commW)+6} y={y+rowH/2+4} fontSize="10" fill="#6b7280">{fmt(eeTot)}</text>
+                </g>
+              );
+            })}
+          </svg>
+          <div className="flex gap-3 mt-1 flex-wrap">
+            {Object.entries(PHASE_COL).map(([ph,col])=>(
+              <span key={ph} className="flex items-center gap-1 text-xs text-gray-500"><span className="inline-block w-3 h-3 rounded-sm" style={{background:col}}/>Phase {ph}</span>
+            ))}
+            <span className="flex items-center gap-1 text-xs text-gray-500"><span className="inline-block w-3 h-3 rounded-sm border-2 border-dashed" style={{borderColor:CUST_ORG}}/>Commercial total</span>
+          </div>
+        </div>
+        {/* Funding attribution bar — only if any commercial inv */}
+        {anyComm && splitTot>0 && (
+          <div>
+            <div className="text-xs font-semibold text-gray-600 mb-1">Funding attribution (combined)</div>
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="font-semibold" style={{color:EE_BLUE}}>EE: {fmt(totEESplit)} ({pct(totEESplit,splitTot)}%)</span>
+              <span className="font-semibold" style={{color:CUST_ORG}}>Customer: {fmt(totCustSplit)} ({pct(totCustSplit,splitTot)}%)</span>
+            </div>
+            <div className="h-3 rounded-full flex overflow-hidden bg-gray-100">
+              <div className="h-full transition-all" style={{width:`${pct(totEESplit,splitTot)}%`,background:EE_BLUE}}/>
+              <div className="h-full transition-all" style={{width:`${pct(totCustSplit,splitTot)}%`,background:CUST_ORG}}/>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ── Free-mode split controls drawer (mirrors programme controls) ──
+  const renderFreeSplitControls = (c)=>{
+    const tagGroups=(c.splitMethod==="section"||c.splitMethod==="item")?buildTagGroups(c):[];
+    return (
+      <div className="bg-white border-t border-[var(--primary-100)] px-4 py-4 space-y-4">
+        <div>
+          <div className="text-xs font-semibold text-gray-600 mb-1.5">Attribution method</div>
+          <div className="flex border border-gray-200 rounded overflow-hidden">
+            {["percentage","capped","section","item"].map(m=>(
+              <button key={m} onClick={()=>updateFreeChild(c.invId,{splitMethod:m})}
+                className={`flex-1 text-xs py-1.5 font-semibold transition-colors ${(c.splitMethod||"percentage")===m?"bg-[var(--primary-700)] text-white":"text-gray-600 hover:bg-gray-50"}`}>
+                {METHOD_LABELS[m]}
+              </button>
+            ))}
+          </div>
+          <div className="text-xs text-gray-400 mt-1">{METHOD_DESCS[c.splitMethod||"percentage"]}</div>
+        </div>
+
+        {(c.splitMethod||"percentage")==="percentage"&&(
+          <div className="bg-gray-50 rounded-lg p-3">
+            <div className="text-xs font-semibold text-gray-600 mb-2">EE funded percentage</div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-500 min-w-20">0% Customer</span>
+              <input type="range" min="0" max="100" step="1" value={c.eePct??25}
+                onChange={e=>updateFreeChild(c.invId,{eePct:Math.min(100,Math.max(0,parseInt(e.target.value,10)||0))})}
+                className="flex-1"/>
+              <input type="number" min="0" max="100" step="1"
+                value={c.eePct??25}
+                onChange={e=>updateFreeChild(c.invId,{eePct:Math.min(100,Math.max(0,parseInt(e.target.value,10)||0))})}
+                onBlur={e=>updateFreeChild(c.invId,{eePct:Math.min(100,Math.max(0,parseInt(e.target.value,10)||0))})}
+                className="border border-gray-300 rounded px-2 py-1 text-xs w-14 text-center focus:outline-none focus:ring-1 focus:ring-[var(--primary-400)]"/>
+              <span className="text-xs text-gray-500">%</span>
+              <span className="text-xs text-gray-500 min-w-20 text-right">100% EE</span>
+            </div>
+            <div className="flex justify-between mt-2">
+              <span className="text-xs font-bold" style={{color:EE_BLUE}}>EE: {c.eePct??25}% — {fmt((c.comm||c.ee)*(c.eePct??25)/100)}</span>
+              <span className="text-xs font-bold" style={{color:CUST_ORG}}>Customer: {100-(c.eePct??25)}% — {fmt((c.comm||c.ee)*(100-(c.eePct??25))/100)}</span>
+            </div>
+          </div>
+        )}
+
+        {(c.splitMethod)==="capped"&&(
+          <div className="bg-gray-50 rounded-lg p-3">
+            <div className="text-xs font-semibold text-gray-600 mb-2">EE contribution cap</div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-500">Cap ($)</span>
+              <input type="number" value={c.eeCap||7000000} step="100000"
+                onChange={e=>updateFreeChild(c.invId,{eeCap:parseFloat(e.target.value)})}
+                className="border border-gray-300 rounded px-2 py-1 text-xs w-40 focus:outline-none focus:ring-1 focus:ring-[var(--primary-400)]"/>
+              <span className="text-xs text-gray-400">Default $7M — RIT-D required to increase</span>
+            </div>
+            {c.split.ritD&&<div className="mt-2 text-xs bg-red-50 border border-red-200 rounded px-3 py-1.5 text-red-700">⚠️ Cap exceeded by {fmt(c.split.overCap)}. RIT-D required.</div>}
+          </div>
+        )}
+
+        {(c.splitMethod==="section"||c.splitMethod==="item")&&(
+          <div>
+            <div className="text-xs font-semibold text-gray-600 mb-2">
+              {c.splitMethod==="section"?"Tag WBS sections (L3) to a funder:":"Tag individual estimate line items to a funder:"}
+            </div>
+            {tagGroups.length===0?(
+              <div className="text-xs text-gray-400 italic py-4 text-center bg-gray-50 rounded-lg">No entered quantities found for this investment. Enter quantities and save first.</div>
+            ):(
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                {tagGroups.map(([gk,group])=>{
+                  const isOpen=freeExpandedNodes[`${c.invId}_${gk}`]!==false;
+                  const tagging=c.lineTagging||{};
+                  const itemPercentages=c.itemPercentages||{};
+                  const eeCount=group.items.filter(t=>tagging[t.key]==="EE").length;
+                  const custCount=group.items.filter(t=>tagging[t.key]==="Customer").length;
+                  const pctCount=group.items.filter(t=>tagging[t.key]==="%").length;
+                  const untagged=group.items.length-eeCount-custCount-pctCount;
+                  return (
+                    <div key={gk} className="border-b last:border-0">
+                      <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                        onClick={()=>toggleFreeNode(`${c.invId}_${gk}`)}>
+                        <span className="text-xs text-gray-400">{isOpen?"▾":"▸"}</span>
+                        <span className="text-xs font-mono font-semibold text-gray-700">{gk}</span>
+                        <span className="text-xs text-gray-400 flex-1">{group.items.length} {c.splitMethod==="section"?"sections":"items"}</span>
+                        <button onClick={e=>{e.stopPropagation();group.items.forEach(t=>updateFreeChildTagging(c.invId,t.key,"EE"));}}
+                          className="text-xs bg-[var(--primary-50)] hover:bg-[var(--primary-100)] text-[var(--primary-700)] border border-[var(--primary-200)] px-2 py-0.5 rounded">All EE</button>
+                        <button onClick={e=>{e.stopPropagation();group.items.forEach(t=>updateFreeChildTagging(c.invId,t.key,"Customer"));}}
+                          className="text-xs bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 px-2 py-0.5 rounded">All Cust</button>
+                        <button onClick={e=>{e.stopPropagation();group.items.forEach(t=>updateFreeChildTagging(c.invId,t.key,undefined));}}
+                          className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 border border-gray-300 px-2 py-0.5 rounded">Clear</button>
+                        <span className="text-xs text-gray-400">
+                          {eeCount>0&&<span style={{color:EE_BLUE}}>{eeCount} EE </span>}
+                          {custCount>0&&<span style={{color:CUST_ORG}}>{custCount} Cust </span>}
+                          {pctCount>0&&<span className="text-purple-600">{pctCount} % </span>}
+                          {untagged>0&&<span>{untagged} untagged</span>}
+                        </span>
+                      </div>
+                      {isOpen&&group.items.map(t=>{
+                        const tag=tagging[t.key];
+                        const eePctVal=itemPercentages[t.key]??50;
+                        return (
+                          <div key={t.key} className={`flex items-center gap-2 px-5 py-1.5 border-t border-gray-100 ${tag==="EE"?"bg-[var(--primary-50)]":tag==="Customer"?"bg-orange-50":tag==="%"?"bg-purple-50":""}`}>
+                            <span className="text-xs font-mono text-[var(--primary-700)] min-w-36">{t.key}</span>
+                            <span className="text-xs text-gray-600 flex-1 truncate">{t.label}</span>
+                            <div className="flex border border-gray-200 rounded overflow-hidden">
+                              {[["EE","EE"],["Customer","Customer"],["%","% Override"]].map(([v,label])=>(
+                                <button key={v}
+                                  onClick={()=>{
+                                    updateFreeChildTagging(c.invId,t.key,v);
+                                    if(v==="%"&&itemPercentages[t.key]===undefined) updateFreeItemPercentage(c.invId,t.key,50);
+                                  }}
+                                  className={`text-xs px-2.5 py-1 transition-colors ${tag===v
+                                    ?v==="EE"?"bg-[var(--primary-700)] text-white":v==="Customer"?"bg-orange-600 text-white":"bg-purple-600 text-white"
+                                    :"text-gray-500 hover:bg-gray-50"}`}>
+                                  {label}
+                                </button>
+                              ))}
+                              <button
+                                onClick={()=>updateFreeChildTagging(c.invId,t.key,undefined)}
+                                className={`text-xs px-2.5 py-1 transition-colors ${tag===undefined?"bg-gray-300 text-gray-700":"text-gray-500 hover:bg-gray-50"}`}>
+                                —
+                              </button>
+                            </div>
+                            {tag==="%"&&(
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number" min="0" max="100" step="1"
+                                  value={eePctVal}
+                                  onChange={e=>updateFreeItemPercentage(c.invId,t.key,Math.min(100,Math.max(0,parseInt(e.target.value,10)||0)))}
+                                  onBlur={e=>updateFreeItemPercentage(c.invId,t.key,Math.min(100,Math.max(0,parseInt(e.target.value,10)||0)))}
+                                  className="border border-purple-300 rounded px-2 py-1 w-16 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400 text-center"
+                                />
+                                <span className="text-xs text-gray-500">% EE</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Resolved split */}
+        <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+          <div className="text-xs font-semibold text-gray-600 mb-2">Resolved attribution for this investment</div>
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span style={{color:EE_BLUE}}>EE: {fmt(c.split.eeSplit)} ({c.split.eePct}%)</span>
+            <span style={{color:CUST_ORG}}>Customer: {fmt(c.split.custSplit)} ({c.split.custPct}%)</span>
+          </div>
+          <div className="h-2 rounded-full flex overflow-hidden bg-gray-200">
+            <div style={{width:`${c.split.eePct}%`,background:EE_BLUE}} className="h-full transition-all"/>
+            <div style={{width:`${c.split.custPct}%`,background:CUST_ORG}} className="h-full transition-all"/>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Free-selection mode panel ────────────────────────────────
+  const renderFreeSelectionPanel = ()=>(
+    <div className="flex flex-1 overflow-hidden">
+      {/* Left: investment picker */}
+      <div className="w-72 flex-shrink-0 border-r bg-white flex flex-col overflow-hidden">
+        <div className="px-3 py-2.5 border-b space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-gray-700">Investments ({freeSelIds.size} selected)</span>
+          </div>
+          <input value={freeSearch} onChange={e=>setFreeSearch(e.target.value)} placeholder="Search name or number…"
+            className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--primary-400)]"/>
+          <div className="flex border border-gray-200 rounded overflow-hidden">
+            {[["All","All"],["Commercially Funded","Commercial"],["EE Internal","EE"]].map(([v,label])=>(
+              <button key={v} onClick={()=>setFreeTypeFilter(v)}
+                className={`flex-1 text-xs py-1 font-semibold transition-colors ${freeTypeFilter===v?"bg-[var(--primary-700)] text-white":"text-gray-600 hover:bg-gray-50"}`}>{label}</button>
+            ))}
+          </div>
+          <div className="flex border border-gray-200 rounded overflow-hidden">
+            {["All","Draft","In Review","Approved"].map(v=>(
+              <button key={v} onClick={()=>setFreeStatusFilter(v)}
+                className={`flex-1 text-[11px] py-1 font-semibold transition-colors ${freeStatusFilter===v?"bg-[var(--primary-700)] text-white":"text-gray-600 hover:bg-gray-50"}`}>{v}</button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={()=>setFreeSelIds(prev=>{const next=new Set(prev);freeFiltered.forEach(s=>next.add(String(s.id)));return next;})}
+              className="flex-1 text-xs bg-[var(--primary-50)] hover:bg-[var(--primary-100)] text-[var(--primary-700)] border border-[var(--primary-200)] px-2 py-1 rounded font-semibold">Select all filtered</button>
+            <button onClick={()=>setFreeSelIds(new Set())}
+              className="flex-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 border border-gray-300 px-2 py-1 rounded font-semibold">Clear</button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {freeFiltered.length===0&&(
+            <div className="text-xs text-gray-400 text-center px-4 py-8">No saved investments match.</div>
+          )}
+          {freeFiltered.map(s=>{
+            const id=String(s.id);
+            const isSel=freeSelIds.has(id);
+            const isComm=s.inv?.type==="Commercially Funded";
+            return (
+              <label key={id} className={`flex items-center gap-2 px-3 py-2 border-b cursor-pointer transition-colors ${isSel?"bg-[var(--primary-50)]":"hover:bg-gray-50"}`}>
+                <input type="checkbox" checked={isSel} onChange={()=>toggleFreeSel(id)} className="accent-[var(--primary-600)]"/>
+                <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{background:statusColor(s.status||"Draft")}}/>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-gray-800 truncate">{s.inv?.name||"Unnamed"}</div>
+                  <div className="text-xs text-gray-400 font-mono">{s.inv?.number||"—"}</div>
+                </div>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${isComm?"bg-orange-100 text-orange-700":"bg-[var(--primary-100)] text-[var(--primary-700)]"}`}>{isComm?"Comm":"EE"}</span>
+                <span className="text-xs text-gray-400">{fmt(s.totalEE||0)}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Right: report panel */}
+      <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
+        {freeSummary.children.length===0?(
+          <div className="flex-1 flex items-center justify-center text-gray-400">
+            <div className="text-center">
+              <div className="text-3xl mb-2">🔀</div>
+              <div className="text-sm font-semibold">Select investments from the list to build a report</div>
+              <div className="text-xs mt-1 max-w-xs">Check any combination of saved investments. Configure each investment's split inline, then produce a report.</div>
+            </div>
+          </div>
+        ):(
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="max-w-5xl mx-auto space-y-3">
+              {/* Toolbar */}
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-4 py-2.5 flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-700">{freeSummary.children.length} investment{freeSummary.children.length!==1?"s":""} selected</span>
+                <button onClick={produceFreeReport}
+                  className="text-xs bg-[var(--accent-600)] hover:bg-[var(--accent-700)] text-white px-3 py-1.5 rounded font-semibold flex items-center gap-1.5 shadow">
+                  🖨️ Produce Report
+                </button>
+              </div>
+
+              {/* Financial summary */}
+              {renderFinancialSummary(freeSummary.children)}
+
+              {/* Investment summary table with split drawers */}
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                <div className="px-4 py-2.5 bg-gray-50 border-b">
+                  <span className="text-xs font-bold text-gray-700">Investment summary — click ⚙ Split to configure attribution</span>
+                </div>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-gray-50 border-b text-gray-500">
+                      <th className="text-left px-3 py-2 font-semibold">Name</th>
+                      <th className="text-left px-3 py-2 font-semibold">Number</th>
+                      <th className="text-left px-3 py-2 font-semibold">Type</th>
+                      <th className="text-left px-3 py-2 font-semibold">Status</th>
+                      <th className="text-right px-3 py-2 font-semibold">EE Internal</th>
+                      <th className="text-right px-3 py-2 font-semibold">Commercial</th>
+                      <th className="text-right px-3 py-2 font-semibold">Hours</th>
+                      <th className="px-3 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {freeSummary.children.map(c=>{
+                      const isOpen=freeExpandedChild===String(c.invId);
+                      const isComm=c.type==="Commercially Funded";
+                      return (
+                        <Fragment key={c.invId}>
+                          <tr className={`border-b ${isOpen?"bg-[var(--primary-50)]":"hover:bg-gray-50"}`}>
+                            <td className="px-3 py-2 font-semibold text-gray-800 max-w-44 truncate">{c.name}</td>
+                            <td className="px-3 py-2 font-mono text-gray-500">{c.number||"—"}</td>
+                            <td className="px-3 py-2">
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${isComm?"bg-orange-100 text-orange-700":"bg-[var(--primary-100)] text-[var(--primary-700)]"}`}>{isComm?"Commercial":"EE Internal"}</span>
+                            </td>
+                            <td className="px-3 py-2">
+                              <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full" style={{background:statusColor(c.status)}}/>{c.status}</span>
+                            </td>
+                            <td className="px-3 py-2 text-right font-semibold" style={{color:EE_BLUE}}>{fmt(c.totalEE)}</td>
+                            <td className="px-3 py-2 text-right font-semibold" style={{color:CUST_ORG}}>{fmt(c.totalComm)}</td>
+                            <td className="px-3 py-2 text-right text-purple-700">{Math.round(c.totalInstallHrs||0).toLocaleString("en-AU")}</td>
+                            <td className="px-3 py-2 text-right">
+                              <button onClick={()=>setFreeExpandedChild(isOpen?null:String(c.invId))}
+                                className={`text-xs px-2 py-1 rounded font-semibold border ${isOpen?"bg-[var(--primary-700)] text-white border-[var(--primary-700)]":"text-gray-600 border-gray-300 hover:bg-gray-50"}`}>
+                                ⚙ Split
+                              </button>
+                            </td>
+                          </tr>
+                          {isOpen&&(
+                            <tr><td colSpan={8} className="p-0 border-b">{renderFreeSplitControls(c)}</td></tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
+    <div className="flex flex-col flex-1 overflow-hidden bg-gray-50">
+      {/* ── Mode toggle bar ── */}
+      <div className="bg-white border-b px-4 py-2 flex items-center gap-4 flex-shrink-0">
+        <span className="text-xs font-semibold text-gray-600">Report mode:</span>
+        {["programme","free"].map(m=>(
+          <label key={m} className="flex items-center gap-1.5 text-xs cursor-pointer">
+            <input type="radio" name="reportMode" value={m}
+              checked={reportMode===m} onChange={()=>setReportMode(m)}
+              className="accent-[var(--primary-600)]"/>
+            {m==="programme" ? "📋 Programme" : "🔀 Free selection"}
+          </label>
+        ))}
+        <span className="text-xs text-gray-400 ml-4">
+          {reportMode==="programme"
+            ? "Group investments under named programmes with persisted split config"
+            : "Pick any combination of investments for an ad-hoc report"}
+        </span>
+      </div>
+
+      {/* ── Free selection mode ── */}
+      {reportMode==="free" && renderFreeSelectionPanel()}
+
+      {/* ── Programme mode ── */}
+      {reportMode==="programme" && (
     <div className="flex flex-1 overflow-hidden">
       {/* ── Left: Programme list ── */}
       <div className="w-60 flex-shrink-0 border-r bg-white flex flex-col overflow-hidden">
@@ -7084,6 +7610,9 @@ ${invRows}
               </div>
               )}
 
+              {/* Financial summary panel (display-only) */}
+              {summary.children.length>0&&renderFinancialSummary(summary.children)}
+
               {/* Child investments — accordion with per-child split */}
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b">
@@ -7167,9 +7696,21 @@ ${invRows}
                                   <div className="text-xs font-semibold text-gray-600 mb-2">EE funded percentage</div>
                                   <div className="flex items-center gap-3">
                                     <span className="text-xs text-gray-500 min-w-20">0% Customer</span>
-                                    <input type="range" min="0" max="100" step="5" value={c.eePct??25}
-                                      onChange={e=>updateChild(c.invId,{eePct:parseFloat(e.target.value)})}
+                                    <input type="range" min="0" max="100" step="1" value={c.eePct??25}
+                                      onChange={e=>updateChild(c.invId,{eePct:Math.min(100,Math.max(0,parseInt(e.target.value,10)||0))})}
                                       className="flex-1"/>
+                                    <input type="number" min="0" max="100" step="1"
+                                      value={c.eePct??25}
+                                      onChange={e=>{
+                                        const v=Math.min(100,Math.max(0,parseInt(e.target.value,10)||0));
+                                        updateChild(c.invId,{eePct:v});
+                                      }}
+                                      onBlur={e=>{
+                                        const v=Math.min(100,Math.max(0,parseInt(e.target.value,10)||0));
+                                        updateChild(c.invId,{eePct:v});
+                                      }}
+                                      className="border border-gray-300 rounded px-2 py-1 text-xs w-14 text-center focus:outline-none focus:ring-1 focus:ring-[var(--primary-400)]"/>
+                                    <span className="text-xs text-gray-500">%</span>
                                     <span className="text-xs text-gray-500 min-w-20 text-right">100% EE</span>
                                   </div>
                                   <div className="flex justify-between mt-2">
@@ -7272,9 +7813,10 @@ ${invRows}
                                                   {tag==="%"&&(
                                                     <div className="flex items-center gap-1">
                                                       <input
-                                                        type="number" min="0" max="100" step="5"
+                                                        type="number" min="0" max="100" step="1"
                                                         value={eePctVal}
-                                                        onChange={e=>updateItemPercentage(c.invId,t.key,parseFloat(e.target.value))}
+                                                        onChange={e=>updateItemPercentage(c.invId,t.key,Math.min(100,Math.max(0,parseInt(e.target.value,10)||0)))}
+                                                        onBlur={e=>updateItemPercentage(c.invId,t.key,Math.min(100,Math.max(0,parseInt(e.target.value,10)||0)))}
                                                         className="border border-purple-300 rounded px-2 py-1 w-16 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400 text-center"
                                                       />
                                                       <span className="text-xs text-gray-500">% EE</span>
@@ -7393,6 +7935,8 @@ ${invRows}
             </div>
           </div>
         </div>
+      )}
+    </div>
       )}
     </div>
   );
@@ -13905,7 +14449,11 @@ export default function App() {
     };
     try {
       const existing = JSON.parse(localStorage.getItem("iet_investments")||"[]");
-      const updated = [record, ...existing.filter(s=>s.id!==record.id&&(s.inv.number!==inv.number||s.inv.revision!==inv.revision))];
+      // Deduplicate by id only — number+revision is NOT a unique key because
+      // multiple option estimates (e.g. Option 1C vs Option 2C) can legitimately
+      // share the same Copperleaf number and revision letter. Using number+revision
+      // as the eviction predicate would silently delete the earlier option on save.
+      const updated = [record, ...existing.filter(s=>s.id!==record.id)];
       localStorage.setItem("iet_investments", JSON.stringify(updated));
       setCurrentRecordId(record.id);
       setLastSaved(record.savedAt);
