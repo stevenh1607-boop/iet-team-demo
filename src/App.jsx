@@ -3082,6 +3082,11 @@ function doGeneratePDF(ctx) {
   } = ctx;
   const otCostVal      = ctx.otCost || 0;
   const grandEEwithOTV = ctx.grandEEwithOT ?? (grandEE + otCostVal);
+  // EE-stream contingency for the EE column in the PDF — resolved independently
+  // from contIntDollar (CART D40), mirroring SummaryScreen's contResEE. Without
+  // this the EE column would derive a proportional share of the Commercial
+  // contingency rather than the imported CART fixed dollar.
+  const contResEEP = resolveContingency(inv, grandEEwithOTV, false);
   const commercialOnly = !!ctx.commercialOnly && isCommercial; // hide EE Internal $/margins, show Commercial only
 
   const fmt  = (v) => '$' + Math.round(v||0).toLocaleString('en-AU');
@@ -3430,8 +3435,8 @@ function doGeneratePDF(ctx) {
         ${commercialOnly?'':`<td style="padding:5px 8px;text-align:right;font-weight:700;color:#1e40af;">${fmt(grandEEwithOTV)}</td>`}
         ${(isCommercial)?`<td style="padding:5px 8px;text-align:right;font-weight:700;color:#c2410c;">${fmt(grandComm)}</td>`:''}
       </tr>
-      <tr class="cont-row"><td style="padding:5px 8px;font-size:10px;">Contingency (${contPct}%)</td>
-        ${commercialOnly?'':`<td style="padding:5px 8px;text-align:right;">${fmt(contAmt*(grandEEwithOTV/(grandComm||grandEEwithOTV)))}</td>`}
+      <tr class="cont-row"><td style="padding:5px 8px;font-size:10px;">Contingency (${isCommercial ? contResEEP.pct.toFixed(1) : contPct}%)</td>
+        ${commercialOnly?'':`<td style="padding:5px 8px;text-align:right;">${fmt(contResEEP.amt)}</td>`}
         ${isCommercial?`<td style="padding:5px 8px;text-align:right;">${fmt(contAmt)}</td>`:''}
       </tr>
       ${(isCommercial && escResult.escComm>0)?`
@@ -3441,7 +3446,7 @@ function doGeneratePDF(ctx) {
       </tr>`:''}
       <tr class="final-row">
         <td>TOTAL — Base + Contingency + Escalation &nbsp;·&nbsp; ${inv.estClass} Rev ${inv.revision||'A'}</td>
-        ${commercialOnly?'':`<td style="text-align:right;">${fmt(grandEEwithOTV + contAmt*(grandEEwithOTV/(grandComm||grandEEwithOTV)))}</td>`}
+        ${commercialOnly?'':`<td style="text-align:right;">${fmt(grandEEwithOTV + contResEEP.amt)}</td>`}
         ${isCommercial?`<td style="text-align:right;color:#fed7aa;">${fmt(finalTotal)}</td>`:''}
       </tr>
     </tbody>
@@ -3582,6 +3587,12 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
   const contPct   = contRes.pct;
   const contAmt   = contRes.amt;
   const totalWithCont = contBase+contAmt;
+  // EE Internal contingency resolved independently — uses contIntDollar (CART D40)
+  // regardless of whether this is a Commercial estimate. This ensures the EE
+  // column always shows the imported CART fixed dollar, not a proportional
+  // share of the Commercial contingency. (For Internally Funded estimates this
+  // equals contRes, since contBase is then grandEEwithOT with isCommercial=false.)
+  const contResEE = resolveContingency(inv, grandEEwithOT, false);
 
   // ── ESCALATION ──────────────────────────────────────────────────
   // Calculate weighted escalation per phase using project timeline.
@@ -3860,13 +3871,13 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
             </div>
             <div className="grid text-xs border-b" style={{gridTemplateColumns: isCommercial?"1fr 100px 100px":"1fr 100px"}}>
               <div className="px-4 py-2 text-gray-600 flex items-center gap-1.5">
-                Contingency ({contPct.toFixed(1)}%)
+                Contingency ({isCommercial ? contResEE.pct.toFixed(1) : contPct.toFixed(1)}%)
                 {contRes.source==="cart"
                   ? <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-semibold" title={`CART P50 — run ${new Date(contRes.cr.runAt).toLocaleDateString("en-AU")}`}>🎲 CART P50</span>
                   : <span className="text-xs text-gray-400" title="Pre-risk estimator percentage — run CART to replace with a simulated P50">pre-risk</span>}
               </div>
               <div className="py-2 text-right pr-4 text-[var(--primary-600)] font-medium">
-                {fmt(isCommercial ? contAmt * (grandEEwithOT/(grandComm||grandEEwithOT)) : contAmt)}
+                {fmt(contResEE.amt)}
               </div>
               {isCommercial && <div className="py-2 text-right pr-4 text-orange-600 font-medium">{fmt(contAmt)}</div>}
             </div>
@@ -3912,7 +3923,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
                   {inv.name||"Investment"} · {inv.estClass} · Rev {inv.revision}
                 </div>
               </div>
-              <div className="py-3.5 text-right pr-4 text-white text-base">{fmt(grandEEwithOT + contAmt*(grandEEwithOT/(grandComm||grandEEwithOT)))}</div>
+              <div className="py-3.5 text-right pr-4 text-white text-base">{fmt(grandEEwithOT + contResEE.amt)}</div>
               {isCommercial && <div className="py-3.5 text-right pr-4 text-orange-300 text-base font-bold">{fmt(finalTotal)}</div>}
             </div>
           </div>
