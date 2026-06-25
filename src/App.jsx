@@ -1249,6 +1249,67 @@ function InvestmentSetup({ inv, onChange }) {
           </div>
         </Card>
 
+        {/* PCE / LLT Procurement Milestones Card (commercial estimates) */}
+        {inv.type === 'Commercially Funded' && (
+        <Card>
+          <SectionHeader color="purple" title="📦 PCE / LLT Procurement Milestones"
+            subtitle="Outgoing money — EE payments to suppliers for long-lead equipment (distinct from Invoicing Milestones below)" />
+          <div className="p-4 bg-white">
+            {(inv.lltMilestones?.mode || 'Automatic').toLowerCase().includes('auto') && (
+              <div className="mb-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700">
+                ℹ Procurement milestones set to <b>Automatic</b> in the source workbook. Import a workbook with a Manual LLT schedule (workbook ‘List’ sheet) to populate custom procurement payment stages, or add them below.
+              </div>
+            )}
+            {(()=>{
+              const milestones = inv.lltMilestones?.milestones || [];
+              const totalPct = milestones.reduce((a,m)=>a+(parseFloat(m.pct)||0),0);
+              const ok = Math.abs(totalPct - 100) < 0.1;
+              const setMilestones = (next) => upd('lltMilestones', {...(inv.lltMilestones||{}), milestones: next});
+              return (
+                <>
+                  <div className="grid items-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide border-b pb-1 mb-1"
+                    style={{gridTemplateColumns:'1fr 70px 60px 32px'}}>
+                    <div>Stage</div>
+                    <div className="text-center">Month</div>
+                    <div className="text-right">%</div>
+                    <div/>
+                  </div>
+                  {milestones.map((m, i) => (
+                    <div key={i} className="grid items-center gap-1 py-0.5"
+                      style={{gridTemplateColumns:'1fr 70px 60px 32px'}}>
+                      <input className="border border-gray-200 rounded px-2 py-1 text-xs w-full focus:outline-none focus:ring-1 focus:ring-purple-400"
+                        value={m.stage}
+                        onChange={e=>{const n=[...milestones];n[i]={...n[i],stage:e.target.value};setMilestones(n);}}/>
+                      <input type="number" min="1" max="60"
+                        className="border border-gray-200 rounded px-2 py-1 text-xs w-full text-center focus:outline-none focus:ring-1 focus:ring-purple-400"
+                        value={m.month}
+                        onChange={e=>{const n=[...milestones];n[i]={...n[i],month:parseInt(e.target.value)||1};setMilestones(n);}}/>
+                      <input type="number" min="0" max="100" step="0.01"
+                        className="border border-gray-200 rounded px-2 py-1 text-xs w-full text-right focus:outline-none focus:ring-1 focus:ring-purple-400"
+                        value={m.pct}
+                        onChange={e=>{const n=[...milestones];n[i]={...n[i],pct:parseFloat(e.target.value)||0};setMilestones(n);}}/>
+                      <button className="text-red-400 hover:text-red-600 text-xs px-1"
+                        onClick={()=>setMilestones(milestones.filter((_,j)=>j!==i))}>✕</button>
+                    </div>
+                  ))}
+                  <div className={`grid text-xs font-semibold mt-1 pt-1 border-t ${ok?'text-green-700':'text-amber-700'}`}
+                    style={{gridTemplateColumns:'1fr 70px 60px 32px'}}>
+                    <div>Total</div>
+                    <div/>
+                    <div className="text-right">{totalPct.toFixed(1)}% {ok?'✓':'⚠'}</div>
+                    <div/>
+                  </div>
+                  <button className="mt-3 text-xs px-3 py-1 rounded border border-dashed border-gray-300 text-gray-500 hover:border-purple-400 hover:text-purple-600 transition-colors"
+                    onClick={()=>setMilestones([...milestones,{stage:'New milestone',month:1,pct:0}])}>
+                    + Add milestone
+                  </button>
+                </>
+              );
+            })()}
+          </div>
+        </Card>
+        )}
+
         {/* Invoicing Milestones Card */}
         <Card>
           <SectionHeader color="orange" title="Invoicing Milestones" subtitle="Milestone payment schedule (incoming money) — must sum to 100%" />
@@ -3614,42 +3675,72 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
       "5": { start:parseInt(inv.constrStart||6)+parseInt(inv.constrDur||15)-1, dur:2   },
     };
 
+    // ── Spend-profile-weighted escalation ──────────────────────────
+    // Matches MASTER.xlsm Escalation sheet behaviour:
+    //   monthly esc cost = cashFlow(month) × escalationIndex(month, rates)
+    //   cashFlow(month)  = streamBase × spendWeight(month)
+    //   spendWeight      = imported customPct when available, else uniform 1/dur
+    //
+    // For Commercial estimates the three base streams (EE, Contractors, Materials)
+    // are summed then scaled by (1 + contAmt/grandCommBase) to fold in proportionate
+    // contingency. NO ANS uplift is applied to escalation dollars — confirmed from the
+    // MASTER workbook; the prior escContr*(1+ANS_CON)+escMat*(1+ANS_MAT) was wrong.
+    //   escComm = (escEE + escContr + escMat) × (1 + contAmt/grandCommBase)
+    //   Verified: Kings Plains $803,139 × 1.14927 = $923,026 ✓
+    // Per-month spend weights for a phase (fractions summing to 1.0).
+    const phaseWeights = (ph, dur) => {
+      const sp = inv.spendProfile;
+      if (sp?.type === 'custom' && Array.isArray(sp.customPct?.[ph])) {
+        const raw = sp.customPct[ph];
+        const total = raw.reduce((a,b)=>a+(parseFloat(b)||0),0);
+        // customPct values are stored as percentages (0–100); normalise to sum=1.
+        if (total > 0.5 && raw.length === dur) {
+          return raw.map(v => (parseFloat(v)||0) / total);
+        }
+      }
+      return Array(dur).fill(1 / Math.max(dur, 1));   // uniform fallback
+    };
+    // Spend-weighted escalation index for a stream over a phase.
+    const weightedEscIdx = (pd, rates, ph) => {
+      if (!pd || pd.dur <= 0) return 0;
+      const weights = phaseWeights(ph, pd.dur);
+      let idx = 0;
+      for (let i = 0; i < pd.dur; i++) idx += weights[i] * escalationIndex(pd.start + i, rates);
+      return idx;
+    };
+
     let escEE=0, escContr=0, escMat=0;
     Object.entries(byPhase).forEach(([ph, costs])=>{
       const pd = phaseDefs[ph];
       if (!pd || pd.dur <= 0) return;
-      let avgEE=0, avgContr=0, avgMat=0;
-      for (let m=pd.start; m<pd.start+pd.dur; m++) {
-        avgEE    += escalationIndex(m, rEE);
-        avgContr += escalationIndex(m, rContr);
-        avgMat   += escalationIndex(m, rMat);
-      }
-      avgEE    /= pd.dur;
-      avgContr /= pd.dur;
-      avgMat   /= pd.dur;
-      escEE    += (costs.eeLabCost||0) * avgEE;
+      const wEE    = weightedEscIdx(pd, rEE,    ph);
+      const wContr = weightedEscIdx(pd, rContr, ph);
+      const wMat   = weightedEscIdx(pd, rMat,   ph);
+      escEE += (costs.eeLabCost||0) * wEE;
       // Contractors & Materials escalation: commercial investments only.
-      // Internally funded escalation for these categories is calculated in Copperleaf.
+      // Internally funded escalation for these categories is handled in Copperleaf.
       if (isCommercial) {
-        escContr += (costs.contrCost||0) * avgContr;
-        escMat   += (costs.matCost||0)   * avgMat;
+        escContr += (costs.contrCost||0) * wContr;
+        escMat   += (costs.matCost||0)   * wMat;
       }
     });
 
     const escTotal = escEE + escContr + escMat;
-    // escEE carries no ANS uplift — eeLabCost is the EE-INTERNAL labour cost (eeIntRate,
-    // no margin embedded), and EE labour escalation is never ANS-uplifted in either stream.
-    // escContr/escMat are escalated on BARE pre-ANS bases (byPhase.contrCost = raw
-    // contractor cost, byPhase.matCost = raw equipment cost; plant is excluded), so the
-    // ANS_CON / ANS_MAT uplift below is applied exactly once — never compounded in the base.
-    const escComm  = escEE + escContr * (1 + ANS_CON) + escMat * (1 + ANS_MAT);
+    // MASTER formula: scale the summed base escalation by the contingency ratio —
+    // no per-stream ANS uplift. contAmt is the commercial contingency computed above;
+    // grandCommBase is the base the contingency was struck on.
+    const grandCommBase = isCommercial ? grandComm : grandEEwithOT;
+    const contScale = grandCommBase > 0 ? (grandCommBase + contAmt) / grandCommBase : 1;
+    const escComm  = escTotal * contScale;
     return {
       escEE, escContr, escMat, escTotal,
       escComm: isCommercial ? escComm : escTotal,
+      // Sub-lines carry each stream's share of the contingency scale so they sum
+      // to escComm (= escTotal × contScale). No ANS uplift (removed from the model).
       byCategory: {
-        "EE Labour":   { val: escEE,   pct: grandEE>0 ? escEE/grandEE*100   : 0 },
-        "Contractors": { val: escContr, pct: grandEE>0 ? escContr/grandEE*100 : 0 },
-        "Materials":   { val: escMat,   pct: grandEE>0 ? escMat/grandEE*100   : 0 },
+        "EE Labour":   { val: escEE*contScale,    pct: grandEE>0 ? escEE*contScale/grandEE*100    : 0 },
+        "Contractors": { val: escContr*contScale, pct: grandEE>0 ? escContr*contScale/grandEE*100 : 0 },
+        "Materials":   { val: escMat*contScale,   pct: grandEE>0 ? escMat*contScale/grandEE*100   : 0 },
       }
     };
   },[escRates, byPhase, inv, isCommercial]);
@@ -3905,7 +3996,7 @@ function SummaryScreen({ inv, lines, isCommercial, equipSel, onSave, lastSaved, 
                       ↳ {label} <span className="text-teal-400">({v.pct.toFixed(2)}% of base)</span>
                     </div>
                     <div className="py-1 text-right pr-4 text-teal-400">—</div>
-                    {isCommercial && <div className="py-1 text-right pr-4 text-teal-500">{fmt(v.val*(1+(label==="Materials"?ANS_MAT:label==="EE Labour"?0:ANS_CON)))}</div>}
+                    {isCommercial && <div className="py-1 text-right pr-4 text-teal-500">{fmt(v.val)}</div>}
                   </div>
                 ))}
               </div>
@@ -5176,7 +5267,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
         });
       }
       const XL = window.XLSX;
-      const wbk = XL.read(buf, { type:"array", cellStyles:false, sheets:["General Information","Database & Estimate","Spend Profile"] });
+      const wbk = XL.read(buf, { type:"array", cellStyles:false, sheets:["General Information","Database & Estimate","Spend Profile","List"] });
       const gi = wbk.Sheets["General Information"];
       const de = wbk.Sheets["Database & Estimate"];
       if (!gi || !de) { setImportError("Workbook doesn't look like an IET estimate — needs 'General Information' and 'Database & Estimate' sheets."); setImportBusy(false); return; }
@@ -5351,6 +5442,34 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
         });
       }
       if (ms.length) inv.milestones = ms;
+
+      // ── PCE / LLT Procurement Milestones (OUTGOING money) ────────────
+      // This is the schedule of payments EE makes to suppliers for Long Lead
+      // Time equipment — entirely separate from the Invoicing Milestones above
+      // (incoming customer payments). The outgoing schedule lives on the workbook
+      // 'List' sheet at F8:H12 (col F = stage, G = month, H = %). Mode
+      // (Manual/Automatic) is read from the GI sheet. Note pct=0 is valid (e.g.
+      // Practical Completion 0%), so rows are kept on a non-empty stage + month.
+      {
+        const _lltMode = giVal(starts("LLT")) || 'Automatic';
+        const _llt = [];
+        const _listSheet = wbk.Sheets["List"];
+        if (_listSheet) {
+          for (let _r = 7; _r <= 11; _r++) {            // rows 8–12 (0-indexed)
+            const _stg = _listSheet[EC({r:_r, c:5})]?.v;  // col F — stage
+            const _mo  = _listSheet[EC({r:_r, c:6})]?.v;  // col G — month
+            const _pct = _listSheet[EC({r:_r, c:7})]?.v;  // col H — %
+            if (typeof _stg === 'string' && _stg.trim() && typeof _mo === 'number') {
+              _llt.push({
+                stage: _stg.replace(/\n/g,' ').trim(),
+                month: Math.round(_mo),
+                pct:   typeof _pct === 'number' ? Math.round(_pct*100)/100 : 0,
+              });
+            }
+          }
+        }
+        inv.lltMilestones = { mode: _lltMode, milestones: _llt };
+      }
 
       // ── Database & Estimate → lines ──
       // Hardened: columns are FOUND from the header rows (1–4), not assumed.
@@ -5716,6 +5835,23 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
         comment.split(/\r?\n/).forEach(line=>L.push("    "+line));
         L.push("");
       });
+
+      sec("PCE / LLT PROCUREMENT MILESTONES (OUTGOING MONEY)");
+      {
+        const _llt = inv.lltMilestones || {};
+        L.push("Mode".padEnd(32)+": "+(_llt.mode||'Automatic'));
+        const _ms = _llt.milestones || [];
+        if (_ms.length > 0) {
+          L.push("Procurement milestones".padEnd(32)+`: ${_ms.length} stages (List sheet F8:H12)`);
+          _ms.forEach((m,i) => {
+            L.push(`  ${(i+1).toString().padStart(2)}. Month ${String(m.month).padStart(2)}  ${String(((parseFloat(m.pct)||0)).toFixed(1)+'%').padStart(7)}  — ${m.stage}`);
+          });
+          const _tot = _ms.reduce((a,m)=>a+(parseFloat(m.pct)||0),0);
+          L.push("  Total".padEnd(32)+`: ${_tot.toFixed(1)}% ${Math.abs(_tot-100)<0.1?'✓':'(may be intentional — final stage often 0%)'}`);
+        } else {
+          L.push("Procurement milestones".padEnd(32)+": None imported (List sheet F8:H12 empty, or mode Automatic)");
+        }
+      }
 
       sec(`UNMATCHED CODES — ${rpt.unmatched.length} (had a quantity but no match in WBS master or commissioning lookup)`);
       L.push("These were SKIPPED. Usually superseded, custom, or relocated codes —");
