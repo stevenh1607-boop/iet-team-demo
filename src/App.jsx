@@ -6638,6 +6638,466 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
 
 // ── OLD SAVED INVESTMENTS (now replaced by hub) ──
 
+// ── CASH FLOW CHART (inline SVG, no library) ─────────────────────
+function CashFlowChart({ title, series, height=220 }) {
+  if(!series?.length || !series[0]?.pts?.length) return (
+    <div className="text-xs text-gray-400 italic p-4 text-center">
+      No cash flow data — re-save the investment to generate chart data.
+    </div>
+  );
+  const allPts=series.flatMap(s=>s.pts);
+  const maxY=Math.max(...allPts.flatMap(r=>[r.cumC||0,r.cumE||0,r.cumM||0]))*1.12||1;
+  const CW=660,CH=height,PL=52,PR=20,PT=16,PB=52;
+  const W=CW-PL-PR,H=CH-PT-PB;
+  const maxLen=Math.max(...series.map(s=>s.pts.length));
+  const sx=maxLen>1?W/(maxLen-1):W;
+  const sy=v=>H-(v/maxY)*H;
+  const step=Math.max(1,Math.floor(maxLen/10));
+  const LINE_COLORS={cumM:"#eab308",cumC:"#002266",cumE:"#15803d"};
+  const LEGEND=[
+    {c:"#eab308",l:"Milestone Payments (Incoming Money)"},
+    {c:"#002266",l:"Cost + Contingency"},
+    {c:"#15803d",l:"EE Internal ERP incl overheads"},
+  ];
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-3">
+      {title && <div className="text-xs font-semibold text-gray-600 mb-1 text-center">{title} — Cash Flow ($M)</div>}
+      <svg width="100%" viewBox={`0 0 ${CW} ${CH}`} className="overflow-visible">
+        {[0,0.25,0.5,0.75,1].map(f=>{const yv=PT+sy(f*maxY);return <g key={f}>
+          <line x1={PL} y1={yv} x2={PL+W} y2={yv} stroke="#e5e7eb" strokeWidth="1"/>
+          <text x={PL-4} y={yv+3} textAnchor="end" fontSize="8" fill="#6b7280">{(f*maxY).toFixed(2)}</text>
+        </g>;})}
+        <line x1={PL} y1={PT} x2={PL} y2={PT+H} stroke="#9ca3af" strokeWidth="1"/>
+        <line x1={PL} y1={PT+H} x2={PL+W} y2={PT+H} stroke="#9ca3af" strokeWidth="1"/>
+        {series.map((ser,si)=>{
+          const pts=ser.pts||[];
+          if(!pts.length) return null;
+          const op=series.length>1?0.8:1;
+          const w=series.length>1?1.5:2;
+          return <g key={si}>
+            {["cumM","cumC","cumE"].map(key=>(
+              <polyline key={key}
+                points={pts.map((r,i)=>`${PL+i*sx},${PT+sy(r[key]||0)}`).join(" ")}
+                fill="none" stroke={ser.colorOverride||LINE_COLORS[key]}
+                strokeWidth={w} opacity={op}
+                strokeDasharray={si>0&&!ser.colorOverride?"4,3":undefined}/>
+            ))}
+          </g>;
+        })}
+        {(series[0]?.pts||[]).map((r,i)=>i%step!==0?null:(
+          <text key={i} x={PL+i*sx} y={PT+H+13} textAnchor="end" fontSize="8" fill="#6b7280"
+            transform={`rotate(-45,${PL+i*sx},${PT+H+13})`}>{r.lbl}</text>
+        ))}
+        {LEGEND.map(({c,l},i)=>(
+          <g key={i} transform={`translate(${PL+i*196},${CH-8})`}>
+            <line x1={0} y1={0} x2={16} y2={0} stroke={c} strokeWidth="2"/>
+            <text x={20} y={3} fontSize="8" fill="#374151">{l}</text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// ── PORTFOLIO FINANCIAL SUMMARY PANEL ────────────────────────────
+function PortfolioFinancialSummaryPanel({ investments }) {
+  const [viewMode, setViewMode] = useState("individual");
+  const fmt2 = n=>n==null?"—":"$"+Math.round(n).toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmt0 = n=>n==null?"—":"$"+Math.round(n).toLocaleString("en-AU");
+  const hasComm = investments.some(s=>(s.inv?.type||s.type)==="Commercially Funded");
+  if(!investments.length) return null;
+  const agg = investments.reduce((acc,s)=>{
+    const fs=s.financialSummary||{};
+    return {
+      subCost:   acc.subCost   +(fs.subCost||0),
+      subANS:    acc.subANS    +(fs.subANS||0),
+      matCost:   acc.matCost   +(fs.matCost||0),
+      matANS:    acc.matANS    +(fs.matANS||0),
+      eeCost:    acc.eeCost    +(fs.eeCost||0),
+      eeANS:     acc.eeANS     +(fs.eeANS||0),
+      cont:      acc.cont      +(fs.cont||0),
+      contPct:   0,
+      escAmt:    acc.escAmt    +(fs.escAmt||0),
+      totalCost: acc.totalCost +(fs.totalCost||s.totalEE||s.ee||0),
+      totalANS:  acc.totalANS  +(fs.totalANS||0),
+      cv:        acc.cv        +(fs.cv||s.totalComm||s.comm||s.totalEE||s.ee||0),
+      gst:       acc.gst       +(fs.gst||0),
+      eeOH:      acc.eeOH      +(fs.eeOH||0),
+      paDesign:  acc.paDesign  +(fs.paDesign||0),
+      paConst:   acc.paConst   +(fs.paConstruction||0),
+      paComm:    acc.paComm    +(fs.paCommission||0),
+      paMat:     acc.paMat     +(fs.paMatContr||0),
+      hrs:       acc.hrs       +(s.totalInstallHrs||0),
+    };
+  },{subCost:0,subANS:0,matCost:0,matANS:0,eeCost:0,eeANS:0,cont:0,contPct:0,escAmt:0,
+     totalCost:0,totalANS:0,cv:0,gst:0,eeOH:0,paDesign:0,paConst:0,paComm:0,paMat:0,hrs:0});
+
+  const CostTable = ({ fs, invType, isCombined=false }) => {
+    const isComm=isCombined?hasComm:invType==="Commercially Funded";
+    if(!fs||!fs.totalCost) return (
+      <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-2">
+        Full breakdown not available — re-save this investment to populate.
+      </div>
+    );
+    const rows=[
+      {label:"Sub-Contract",          cost:fs.subCost,  ans:fs.subANS,  cv:(fs.subCost||0)+(fs.subANS||0),  erp:0,         erpOH:0},
+      {label:"Materials",             cost:fs.matCost,  ans:fs.matANS,  cv:(fs.matCost||0)+(fs.matANS||0),  erp:0,         erpOH:0},
+      {label:"EE Internal Works",     cost:fs.eeCost,   ans:fs.eeANS,   cv:(fs.eeCost||0)+(fs.eeANS||0),   erp:fs.eeCost, erpOH:(fs.eeCost||0)+(fs.eeANS||0)},
+      {label:`Contingency (${(fs.contPct||0).toFixed(1)}%)`, cost:null,ans:null,cv:fs.cont,erp:fs.cont,erpOH:fs.cont},
+      ...(isComm&&(fs.escAmt||0)>0?[{label:`Escalation (${(fs.escPct||0).toFixed(1)}%)`,cost:null,ans:null,cv:fs.escAmt,erp:null,erpOH:null}]:[]),
+    ];
+    return (
+      <div className="flex gap-3 flex-wrap">
+        <div className="flex-1 min-w-0 overflow-x-auto">
+          <table className="w-full text-xs border-collapse">
+            <thead><tr className="bg-[#1e3a5f] text-white">
+              <th className="text-left px-2 py-1.5">Item</th>
+              <th className="text-right px-2 py-1.5">Cost ($)</th>
+              {isComm&&<th className="text-right px-2 py-1.5">ANS / Admin ($)</th>}
+              {isComm&&<th className="text-right px-2 py-1.5">Contract Value ($)</th>}
+              <th className="text-right px-2 py-1.5">EE Internal ERP ($)</th>
+              {isComm&&<th className="text-right px-2 py-1.5">EE Internal incl OH ($)</th>}
+            </tr></thead>
+            <tbody>
+              {rows.map(r=>(
+                <tr key={r.label} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="px-2 py-1.5 text-gray-700">{r.label}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{r.cost!=null?fmt2(r.cost):""}</td>
+                  {isComm&&<td className="px-2 py-1.5 text-right tabular-nums text-gray-500">{r.ans!=null?fmt2(r.ans):""}</td>}
+                  {isComm&&<td className="px-2 py-1.5 text-right tabular-nums font-medium">{fmt2(r.cv)}</td>}
+                  <td className="px-2 py-1.5 text-right tabular-nums">{r.erp!=null?fmt2(r.erp):""}</td>
+                  {isComm&&<td className="px-2 py-1.5 text-right tabular-nums">{r.erpOH!=null?fmt2(r.erpOH):""}</td>}
+                </tr>
+              ))}
+            </tbody>
+            <tfoot><tr className="bg-[#1e3a5f] text-white font-bold">
+              <td className="px-2 py-1.5">Total Estimated Cost</td>
+              <td className="px-2 py-1.5 text-right tabular-nums">{fmt2(fs.totalCost)}</td>
+              {isComm&&<td className="px-2 py-1.5 text-right tabular-nums">{fmt2(fs.totalANS)}</td>}
+              {isComm&&<td className="px-2 py-1.5 text-right tabular-nums">{fmt2(fs.cv)}</td>}
+              <td className="px-2 py-1.5 text-right tabular-nums">{fmt2(fs.totalCost)}</td>
+              {isComm&&<td className="px-2 py-1.5 text-right tabular-nums">{fmt2(fs.eeOH)}</td>}
+            </tr></tfoot>
+          </table>
+          <div className="text-[10px] text-gray-400 mt-1 space-y-0.5">
+            <div>* Includes base cost, labour on-cost, fleet, and material on-cost</div>
+            {!isComm&&<div>All escalation costs excluded from EE Internal financial reports.</div>}
+          </div>
+        </div>
+        {isComm&&(
+          <div className="w-52 flex-shrink-0 text-xs">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
+              <div className="bg-[#1e3a5f] text-white px-3 py-2 font-semibold text-[11px]">Commercial PA Cost Breakdown</div>
+              <table className="w-full">
+                <tbody>
+                  {[
+                    {l:"Design",                  v:fs.paDesign},
+                    {l:"Materials and contracts", v:fs.paMatContr||fs.paMat},
+                    {l:"Construction",            v:fs.paConstruction||fs.paConst},
+                    {l:"Commissioning",           v:fs.paCommission||fs.paComm},
+                    {l:"GST",                     v:fs.gst},
+                  ].map(r=>(
+                    <tr key={r.l} className="border-b border-gray-100">
+                      <td className="px-2 py-1 text-gray-700 leading-tight">{r.l}</td>
+                      <td className="px-2 py-1 text-right tabular-nums">{r.v!=null?fmt2(r.v):"$—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-[#1e3a5f]">
+                    <td className="px-2 py-1.5 font-semibold text-green-700">PA Sum (GST excl.)</td>
+                    <td className="px-2 py-1.5 text-right font-bold text-green-700 tabular-nums">{fmt2(fs.cv)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 flex flex-col gap-4">
+      <div className="flex items-center gap-4 text-xs">
+        <span className="font-bold text-gray-700">Financial Detail</span>
+        <span className="font-semibold text-gray-500">View:</span>
+        {["individual","combined"].map(m=>(
+          <label key={m} className="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="pfViewMode" value={m} checked={viewMode===m}
+              onChange={()=>setViewMode(m)} className="accent-[var(--primary-600)]"/>
+            {m==="individual"?"Individual investment":"Combined portfolio"}
+          </label>
+        ))}
+      </div>
+      {viewMode==="individual" ? (
+        investments.map(s=>{
+          const isComm=(s.inv?.type||s.type)==="Commercially Funded";
+          return (
+            <div key={s.id||s.invId} className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="bg-gray-50 border-b px-3 py-2 flex items-center gap-3 text-xs">
+                <span className="font-semibold">{s.inv?.name||s.name}</span>
+                <span className="text-gray-400">{s.inv?.number||s.number} · Rev {s.inv?.revision||s.revision}</span>
+                <span className={`px-2 py-0.5 rounded-full font-medium text-[10px] ${isComm?"bg-amber-100 text-amber-800":"bg-blue-100 text-blue-800"}`}>
+                  {isComm?"Commercial":"EE Internal"}
+                </span>
+                <span className="ml-auto text-gray-400">{s.inv?.estClass||s.estClass} · {s.status}</span>
+              </div>
+              <div className="p-3 flex flex-col gap-3">
+                <CostTable fs={s.financialSummary} invType={s.inv?.type||s.type}/>
+                {s.financialSummary?.cashFlowPts?.length>0&&(
+                  <CashFlowChart title={s.inv?.name||s.name}
+                    series={[{label:s.inv?.name||s.name,pts:s.financialSummary.cashFlowPts}]}/>
+                )}
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        <div className="flex flex-col gap-4">
+          <div className="border border-[#1e3a5f] rounded-lg overflow-hidden">
+            <div className="bg-[#1e3a5f] text-white px-3 py-2 text-xs font-semibold">
+              Portfolio Combined — {investments.length} investment{investments.length!==1?"s":""} · {agg.hrs.toLocaleString("en-AU")} install hrs
+            </div>
+            <div className="p-3">
+              <CostTable fs={agg} invType={hasComm?"Commercially Funded":"EE Internal"} isCombined/>
+            </div>
+          </div>
+          <CashFlowChart title="Portfolio Combined — all investments"
+            series={investments.filter(s=>s.financialSummary?.cashFlowPts?.length>0)
+              .map(s=>({label:s.inv?.name||s.name,pts:s.financialSummary.cashFlowPts}))}/>
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <div className="bg-gray-50 border-b px-3 py-2 text-xs font-semibold text-gray-600">Investment breakdown</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead><tr className="border-b bg-gray-50">
+                  <th className="text-left px-3 py-2">Investment</th>
+                  <th className="text-left px-3 py-2">Type</th>
+                  <th className="text-right px-3 py-2">Base cost</th>
+                  <th className="text-right px-3 py-2">Contingency</th>
+                  <th className="text-right px-3 py-2">Escalation</th>
+                  <th className="text-right px-3 py-2">EE Internal total</th>
+                  <th className="text-right px-3 py-2">Commercial (PA)</th>
+                  <th className="text-right px-3 py-2">Install hrs</th>
+                </tr></thead>
+                <tbody>
+                  {investments.map(s=>{
+                    const fs=s.financialSummary||{};
+                    const isComm=(s.inv?.type||s.type)==="Commercially Funded";
+                    return (
+                      <tr key={s.id||s.invId} className="border-b hover:bg-gray-50">
+                        <td className="px-3 py-1.5 font-medium">{s.inv?.name||s.name}
+                          <div className="text-[10px] text-gray-400">{s.inv?.number||s.number} · Rev {s.inv?.revision||s.revision}</div>
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${isComm?"bg-amber-100 text-amber-800":"bg-blue-100 text-blue-800"}`}>
+                            {isComm?"Comm":"EE Int"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-1.5 text-right tabular-nums">{fmt0(fs.totalCost||s.totalEE||s.ee)}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-green-700">{fmt0(fs.cont)}{fs.contPct!=null&&<span className="text-gray-400 text-[10px] ml-1">({fs.contPct?.toFixed(1)}%)</span>}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-teal-700">{isComm&&(fs.escAmt||0)>0?fmt0(fs.escAmt):"—"}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-[#1e3a5f]">{fmt0(s.totalEE||s.ee)}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-amber-700">{isComm?fmt0(s.totalComm||s.comm):"—"}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums">{(s.totalInstallHrs||0).toLocaleString("en-AU")}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot><tr className="bg-[#1e3a5f] text-white font-semibold">
+                  <td className="px-3 py-2" colSpan="2">Portfolio total</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{fmt0(agg.totalCost)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{fmt0(agg.cont)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{agg.escAmt>0?fmt0(agg.escAmt):"—"}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{fmt0(investments.reduce((s,i)=>s+(i.totalEE||i.ee||0),0))}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{fmt0(investments.reduce((s,i)=>s+(i.totalComm||i.comm||0),0))}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{agg.hrs.toLocaleString("en-AU")}</td>
+                </tr></tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── OPTION COMPARE PANEL ─────────────────────────────────────────
+function OptionComparePanel({ saved, cmpIdA, setCmpIdA, cmpIdB, setCmpIdB }) {
+  const fmt0 = n=>n==null?"—":"$"+Math.round(n).toLocaleString("en-AU");
+  const fmt2 = n=>n==null?"—":"$"+Math.round(n).toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtD = (a,b)=>{
+    if(a==null||b==null) return {text:"—",cls:"text-gray-400"};
+    const d=b-a;
+    if(Math.abs(d)<1) return {text:"No difference",cls:"text-gray-400"};
+    const sign=d>0?"+":"";
+    const cls=d>0?"text-red-600":"text-green-700";
+    return {text:`${sign}${fmt0(d)}`,cls};
+  };
+  const fmtDpct = (a,b)=>{
+    if(!a||!b) return {text:"—",cls:"text-gray-400"};
+    const d=((b-a)/a)*100;
+    const sign=d>0?"+":"";
+    const cls=d>0?"text-red-600":"text-green-700";
+    return {text:`${sign}${d.toFixed(1)}%`,cls};
+  };
+  const recA = saved.find(s=>String(s.id)===String(cmpIdA));
+  const recB = saved.find(s=>String(s.id)===String(cmpIdB));
+  const fsA  = recA?.financialSummary;
+  const fsB  = recB?.financialSummary;
+
+  const InvSelector = ({ label, value, onChange, exclude }) => (
+    <div className="flex-1">
+      <div className="text-xs font-semibold text-gray-600 mb-1">{label}</div>
+      <select value={value} onChange={e=>onChange(e.target.value)}
+        className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--primary-400)]">
+        <option value="">— Select investment —</option>
+        {saved.filter(s=>String(s.id)!==String(exclude)).map(s=>(
+          <option key={s.id} value={String(s.id)}>
+            {s.inv?.name} · {s.inv?.number} · Rev {s.inv?.revision} · {s.inv?.estClass} · {s.status}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+
+  const rows = [
+    {section:"Cost breakdown"},
+    {label:"Sub-Contract",          a:fsA?.subCost,        b:fsB?.subCost},
+    {label:"Sub-Contract ANS",      a:fsA?.subANS,         b:fsB?.subANS},
+    {label:"Materials",             a:fsA?.matCost,        b:fsB?.matCost},
+    {label:"Materials ANS",         a:fsA?.matANS,         b:fsB?.matANS},
+    {label:"EE Internal Works",     a:fsA?.eeCost,         b:fsB?.eeCost},
+    {label:"EE Internal ANS",       a:fsA?.eeANS,          b:fsB?.eeANS},
+    {label:"Base cost total",       a:fsA?.totalCost,      b:fsB?.totalCost,      bold:true},
+    {section:"Contingency & escalation"},
+    {label:`Contingency (A: ${fsA?.contPct?.toFixed(1)||"—"}% / B: ${fsB?.contPct?.toFixed(1)||"—"}%)`,
+                                    a:fsA?.cont,           b:fsB?.cont},
+    {label:"Escalation",            a:fsA?.escAmt||0,      b:fsB?.escAmt||0},
+    {section:"ANS / Admin burden"},
+    {label:"Total ANS burden",      a:fsA?.totalANS,       b:fsB?.totalANS},
+    {section:"Grand totals"},
+    {label:"EE Internal total",     a:recA?.totalEE,       b:recB?.totalEE,       bold:true, highlight:"ee"},
+    {label:"Commercial total (PA)", a:recA?.totalComm||0,  b:recB?.totalComm||0,  bold:true, highlight:"comm"},
+    {label:"Contract Value (PA)",   a:fsA?.cv,             b:fsB?.cv,             bold:true},
+    {label:"GST",                   a:fsA?.gst||0,         b:fsB?.gst||0},
+    {label:"Contract Value incl GST", a:fsA?.gstInc||0,   b:fsB?.gstInc||0},
+    {label:"EE Internal ERP incl OH", a:fsA?.eeOH,        b:fsB?.eeOH},
+    {section:"Hours"},
+    {label:"Install hours",         a:recA?.totalInstallHrs, b:recB?.totalInstallHrs, isHrs:true},
+    {section:"PA cost breakdown (Commercial)"},
+    {label:"Design",                a:fsA?.paDesign,       b:fsB?.paDesign},
+    {label:"Materials & contracts", a:fsA?.paMatContr,     b:fsB?.paMatContr},
+    {label:"Construction",          a:fsA?.paConstruction, b:fsB?.paConstruction},
+    {label:"Commissioning",         a:fsA?.paCommission,   b:fsB?.paCommission},
+  ];
+
+  const hasBoth = recA && recB;
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <div className="text-xs font-semibold text-gray-600 mb-3">Select two investments to compare</div>
+        <div className="flex gap-4">
+          <InvSelector label="⬅ Option A" value={cmpIdA} onChange={setCmpIdA} exclude={cmpIdB}/>
+          <div className="flex items-end pb-1 text-gray-300 font-bold text-lg">vs</div>
+          <InvSelector label="Option B ➡" value={cmpIdB} onChange={setCmpIdB} exclude={cmpIdA}/>
+        </div>
+        {recA&&recB&&(
+          <div className="mt-3 text-[10px] text-gray-400 flex gap-6">
+            <span><span className="font-semibold text-[#1e3a5f]">A:</span> {recA.inv?.name} · {recA.inv?.type==="Commercially Funded"?"Commercial":"EE Internal"} · {recA.inv?.estClass}</span>
+            <span><span className="font-semibold text-[#1e3a5f]">B:</span> {recB.inv?.name} · {recB.inv?.type==="Commercially Funded"?"Commercial":"EE Internal"} · {recB.inv?.estClass}</span>
+          </div>
+        )}
+        {((!fsA&&recA)||(!fsB&&recB)) ? (
+          <div className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+            ⚠ One or both investments were saved before financial breakdown tracking was added. Re-save them to populate full comparison data.
+          </div>
+        ):null}
+      </div>
+      {hasBoth && (
+        <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="bg-[#1e3a5f] text-white px-4 py-2.5 flex items-center gap-3">
+            <span className="text-sm font-semibold">Option Comparison</span>
+            <span className="text-xs text-blue-200 ml-2">{recA.inv?.name} vs {recB.inv?.name}</span>
+            <span className="ml-auto text-xs text-blue-200">Δ = B − A · green = B cheaper · red = B more expensive</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="text-left px-4 py-2 font-semibold text-gray-600 w-56">Item</th>
+                  <th className="text-right px-4 py-2 font-semibold text-[#1e3a5f]">
+                    A: {recA.inv?.name?.split(" ").slice(0,3).join(" ")}
+                    <div className="font-normal text-[10px] text-gray-400">{recA.inv?.number} · Rev {recA.inv?.revision}</div>
+                  </th>
+                  <th className="text-right px-4 py-2 font-semibold text-[#1e3a5f]">
+                    B: {recB.inv?.name?.split(" ").slice(0,3).join(" ")}
+                    <div className="font-normal text-[10px] text-gray-400">{recB.inv?.number} · Rev {recB.inv?.revision}</div>
+                  </th>
+                  <th className="text-right px-4 py-2 font-semibold text-gray-600">Δ (B − A)</th>
+                  <th className="text-right px-4 py-2 font-semibold text-gray-600">Δ %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row,i)=>{
+                  if(row.section) return (
+                    <tr key={i} className="bg-gray-100">
+                      <td colSpan="5" className="px-4 py-1.5 text-[11px] font-bold text-gray-500 uppercase tracking-wider">{row.section}</td>
+                    </tr>
+                  );
+                  const diff  = fmtD(row.a, row.b);
+                  const dpct  = fmtDpct(row.a, row.b);
+                  const hlEE  = row.highlight==="ee";
+                  const hlComm= row.highlight==="comm";
+                  const fmtVal= row.isHrs
+                    ? (n=>n==null?"—":Math.round(n).toLocaleString("en-AU")+" hrs")
+                    : fmt0;
+                  return (
+                    <tr key={i} className={`border-b border-gray-100 ${row.bold?"font-semibold":""} ${hlEE?"bg-blue-50":""} ${hlComm?"bg-amber-50":""} hover:bg-gray-50`}>
+                      <td className={`px-4 py-1.5 ${row.bold?"text-gray-800":"text-gray-600"}`}>{row.label}</td>
+                      <td className="px-4 py-1.5 text-right tabular-nums">{fmtVal(row.a)}</td>
+                      <td className="px-4 py-1.5 text-right tabular-nums">{fmtVal(row.b)}</td>
+                      <td className={`px-4 py-1.5 text-right tabular-nums font-semibold ${diff.cls}`}>{diff.text}</td>
+                      <td className={`px-4 py-1.5 text-right tabular-nums ${dpct.cls}`}>{dpct.text}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {hasBoth && (fsA?.cashFlowPts?.length>0 || fsB?.cashFlowPts?.length>0) && (
+        <div className="flex flex-col gap-3">
+          <div className="text-xs font-semibold text-gray-600">Cash flow comparison</div>
+          <div className="grid grid-cols-2 gap-3">
+            {fsA?.cashFlowPts?.length>0&&(
+              <CashFlowChart title={`A: ${recA.inv?.name}`}
+                series={[{label:"A",pts:fsA.cashFlowPts}]} height={180}/>
+            )}
+            {fsB?.cashFlowPts?.length>0&&(
+              <CashFlowChart title={`B: ${recB.inv?.name}`}
+                series={[{label:"B",pts:fsB.cashFlowPts}]} height={180}/>
+            )}
+          </div>
+          {fsA?.cashFlowPts?.length>0&&fsB?.cashFlowPts?.length>0&&(
+            <CashFlowChart title="Overlay — A (solid) vs B (dashed)"
+              series={[
+                {label:"A",pts:fsA.cashFlowPts},
+                {label:"B",pts:fsB.cashFlowPts,colorOverride:"#7c3aed"},
+              ]} height={200}/>
+          )}
+        </div>
+      )}
+      {!hasBoth && (
+        <div className="text-xs text-gray-400 italic text-center py-12 border border-dashed border-gray-200 rounded-lg">
+          Select two investments above to generate the comparison report.
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── PORTFOLIO REPORT SCREEN ──────────────────────────────────────
 // Combined investment report builder. Two modes:
 //   Programme — groups investments under named programmes (persisted
@@ -6682,6 +7142,9 @@ function PortfolioReportScreen({ saved, setSaved }) {
   const [freeChartToggle, setFreeChartToggle] = useState({bar:true, split:true});
   const [freeExpandedChild, setFreeExpandedChild] = useState(null);    // invId of open split drawer (free mode)
   const [freeExpandedNodes, setFreeExpandedNodes] = useState({});
+  // ── Option comparison mode ──────────────────────────────────────
+  const [cmpIdA, setCmpIdA] = useState("");
+  const [cmpIdB, setCmpIdB] = useState("");
   const toggleFreeNode = (code)=>setFreeExpandedNodes(e=>({...e,[code]:!e[code]}));
 
   const prog = programmes.find(p=>p.id===selectedProg)||null;
@@ -6699,6 +7162,9 @@ function PortfolioReportScreen({ saved, setSaved }) {
       status:s.status||"Draft", revision:s.inv?.revision||"",
       estimatedBy:s.inv?.estimatedBy||"", reviewedBy:s.inv?.reviewedBy||"",
       phaseBreakdown:s.phaseBreakdown||{}, savedAt:s.savedAt||"",
+      financialSummary:s.financialSummary||null,
+      inv:s.inv||{},
+      id:s.id,
     };
   };
 
@@ -7413,6 +7879,7 @@ ${invRows}
               </div>
 
               {/* Financial summary */}
+              <PortfolioFinancialSummaryPanel investments={freeSummary.children}/>
               {renderFinancialSummary(freeSummary.children)}
 
               {/* Investment summary table with split drawers */}
@@ -7477,25 +7944,42 @@ ${invRows}
   return (
     <div className="flex flex-col flex-1 overflow-hidden bg-gray-50">
       {/* ── Mode toggle bar ── */}
-      <div className="bg-white border-b px-4 py-2 flex items-center gap-4 flex-shrink-0">
-        <span className="text-xs font-semibold text-gray-600">Report mode:</span>
-        {["programme","free"].map(m=>(
-          <label key={m} className="flex items-center gap-1.5 text-xs cursor-pointer">
-            <input type="radio" name="reportMode" value={m}
-              checked={reportMode===m} onChange={()=>setReportMode(m)}
+      <div className="bg-white border-b px-4 py-2 flex items-center gap-6 flex-shrink-0">
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Report mode</span>
+        {[
+          {id:"programme", icon:"📋", label:"Programme"},
+          {id:"free",      icon:"🔀", label:"Free selection"},
+          {id:"compare",   icon:"⚖️",  label:"Option comparison"},
+        ].map(m=>(
+          <label key={m.id} className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+            <input type="radio" name="reportMode" value={m.id}
+              checked={reportMode===m.id} onChange={()=>setReportMode(m.id)}
               className="accent-[var(--primary-600)]"/>
-            {m==="programme" ? "📋 Programme" : "🔀 Free selection"}
+            <span className={reportMode===m.id?"font-semibold text-[var(--primary-700)]":"text-gray-600"}>
+              {m.icon} {m.label}
+            </span>
           </label>
         ))}
-        <span className="text-xs text-gray-400 ml-4">
-          {reportMode==="programme"
-            ? "Group investments under named programmes with persisted split config"
-            : "Pick any combination of investments for an ad-hoc report"}
+        <span className="text-xs text-gray-400 ml-4 italic">
+          {{
+            programme:"Group investments under named programmes with persisted contribution split config",
+            free:"Pick any combination of saved investments for an ad-hoc portfolio report",
+            compare:"Select two option estimates to view side-by-side with calculated differences",
+          }[reportMode]}
         </span>
       </div>
 
       {/* ── Free selection mode ── */}
       {reportMode==="free" && renderFreeSelectionPanel()}
+
+      {/* ── Option comparison mode ── */}
+      {reportMode==="compare" && (
+        <div className="flex-1 overflow-y-auto p-4">
+          <OptionComparePanel saved={saved}
+            cmpIdA={cmpIdA} setCmpIdA={setCmpIdA}
+            cmpIdB={cmpIdB} setCmpIdB={setCmpIdB}/>
+        </div>
+      )}
 
       {/* ── Programme mode ── */}
       {reportMode==="programme" && (
@@ -7611,6 +8095,7 @@ ${invRows}
               )}
 
               {/* Financial summary panel (display-only) */}
+              {summary.children.length>0&&<PortfolioFinancialSummaryPanel investments={summary.children}/>}
               {summary.children.length>0&&renderFinancialSummary(summary.children)}
 
               {/* Child investments — accordion with per-child split */}
@@ -14446,6 +14931,49 @@ export default function App() {
       totalEE:Math.round(totals.eeInt), totalComm:Math.round(totals.comm),
       totalInstallHrs: Math.round(totals.installHrs||0),
       phaseBreakdown: totals.byPhase||{},
+      financialSummary: (()=>{
+        let subCost=0,matCost=0,eeCost=0,subANS=0,matANS=0,eeANS=0;
+        const pctBaseSnap=buildPctBase(supply,lines,isCommercial,resourceCodes);
+        supply.forEach(item=>{
+          const ln=lines[item.wbs_code]||{};
+          if(!parseFloat(ln.qty||"0")) return;
+          const c=calcLine(item,ln.qty||"",ln.factor||"1",ln.delivery,
+            ln.instHrsOvrd,ln.contrRate,ln.plant,ln.mats,isCommercial,
+            ln.resourceOvrd,resourceCodes,pctBaseSnap[item.wbs_code]||0);
+          const isContr=(ln.delivery||item.delivery_method||"")==="Contractor Delivered";
+          if(isContr){subCost+=(c.contrCost||0)+(c.plantFact||0);subANS+=(c.contrCost||0)*ANS_CON;}
+          else{eeCost+=(c.eeLabCost||0)+(c.plantFact||0);eeANS+=(c.eeLabCost||0)*labMargin(c.effectiveResource,resourceCodes);}
+          matCost+=c.equipCost||0; matANS+=(c.equipCost||0)*ANS_MAT;
+        });
+        const totalCost=subCost+matCost+eeCost;
+        const totalANS=subANS+matANS+eeANS;
+        const contResult=resolveContingency(inv,totalCost,isCommercial);
+        const cont=isCommercial?(contResult.contCommDollar||contResult.amt||0):(contResult.contIntDollar||contResult.amt||0);
+        const contPct=totalCost>0?Math.round(cont/totalCost*1000)/10:0;
+        const escAmt=isCommercial?parseFloat(inv.escCommAmt||inv.escAmt||0):0;
+        const escPct=isCommercial?parseFloat(inv.escCommPct||inv.escPct||0):0;
+        const cv=totalCost+totalANS+cont+(isCommercial?escAmt:0);
+        const gst=isCommercial?cv*0.1:0;
+        const gstInc=cv+gst;
+        const OVERHEAD=1.866;
+        const eeOH=totalCost*OVERHEAD;
+        const paDesign=eeCost*0.12,paConstruction=eeCost*0.63,paCommission=eeCost*0.25,paMatContr=matCost+subCost+matANS+subANS;
+        const conStart=parseInt(inv.constrStart||6),conDur=parseInt(inv.constrDur||15);
+        const total=Math.max(parseInt(inv.planDur||4)+1,parseInt(inv.designStart||1)+parseInt(inv.designDur||9),conStart+conDur);
+        const MON={Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
+        const sm=MON[inv.startMonth||"Jul"]||7,sy=parseInt(inv.startYear||2025);
+        const lbl=i=>{const o=sm-1+i;const mn=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return `${mn[o%12]}${String(sy+Math.floor(o/12)).slice(2)}`;};
+        const weights=Array.from({length:total},(_,i)=>{const m=i+1;if(m>=conStart&&m<conStart+conDur){const mid=conStart+conDur/2;return Math.exp(-Math.pow((m-mid)/(conDur/3),2));}return m<conStart?0.3/(conStart-1||1):0;});
+        const ws=weights.reduce((a,b)=>a+b,0)||1,norm=weights.map(w=>w/ws);
+        const milestones=Array(total).fill(0);
+        const configMs=(inv.milestones||[]).filter(m=>parseFloat(m.pct||0)>0&&parseInt(m.month||0)>0);
+        if(configMs.length>0){configMs.forEach(m=>{const idx=Math.min(Math.max(0,parseInt(m.month)-1),total-1);milestones[idx]=(milestones[idx]||0)+parseFloat(m.pct)/100;});}
+        else{milestones[0]=0.15;milestones[Math.min(conStart+Math.floor(conDur*0.4),total-1)]=0.35;milestones[Math.min(conStart+conDur-2,total-1)]=0.50;}
+        let cumC=0,cumE=0,cumM=0;
+        const cashFlowPts=Array.from({length:total},(_,i)=>{cumC+=norm[i]*(totalCost/1e6);cumE+=norm[i]*(eeOH/1e6);cumM+=milestones[i]*(cv/1e6);return {lbl:lbl(i),cumC,cumE,cumM};});
+        return {subCost,subANS,matCost,matANS,eeCost,eeANS,cont,contPct,escAmt,escPct,
+          totalCost,totalANS,cv,gst,gstInc,eeOH,paDesign,paConstruction,paCommission,paMatContr,cashFlowPts};
+      })(),
     };
     try {
       const existing = JSON.parse(localStorage.getItem("iet_investments")||"[]");
