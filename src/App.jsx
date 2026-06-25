@@ -6592,6 +6592,21 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
                     ⚠ {importPreview._importUnmatched} WBS code(s) in the workbook were not recognised against the current WBS master and were skipped. Usually superseded or custom codes — review the source workbook if the line count looks low.
                   </div>
                 )}
+                {(()=>{
+                  const dupNum = importPreview.inv?.number;
+                  const dupMatches = dupNum
+                    ? saved.filter(s=>s.inv?.number===dupNum)
+                    : [];
+                  if (!dupMatches.length) return null;
+                  const names = dupMatches.map(s=>s.inv?.name||"(unnamed)").join(", ");
+                  return (
+                    <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-3">
+                      ⚠ Investment #{dupNum} already exists in the hub: <span className="font-semibold">{names}</span>.
+                      Importing will add a second estimate with this number — this is fine for comparing options.
+                      If this is an accidental re-import, click ← Back to cancel.
+                    </div>
+                  );
+                })()}
                 <div className="text-xs text-gray-400 mb-4">The estimate will be added to your Investment Hub as a new Draft. All existing estimates are unchanged.</div>
                 <div className="flex gap-3">
                   <button onClick={()=>{ setImportPreview(null); }}
@@ -14423,7 +14438,11 @@ export default function App() {
     };
     try {
       const existing = JSON.parse(localStorage.getItem("iet_investments")||"[]");
-      const updated = [record, ...existing.filter(s=>s.id!==record.id&&(s.inv.number!==inv.number||s.inv.revision!==inv.revision))];
+      // Deduplicate by id only — number+revision is NOT a unique key because
+      // multiple option estimates (e.g. Option 1C vs Option 2C) can legitimately
+      // share the same Copperleaf number and revision letter. Using number+revision
+      // as the eviction predicate would silently delete the earlier option on save.
+      const updated = [record, ...existing.filter(s=>s.id!==record.id)];
       localStorage.setItem("iet_investments", JSON.stringify(updated));
       setCurrentRecordId(record.id);
       setLastSaved(record.savedAt);
