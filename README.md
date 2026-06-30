@@ -3,7 +3,7 @@
 A working prototype of the digital IET (Interim Estimation Tool) estimation platform.
 Built with React + Vite + Tailwind CSS.
 
-**Live demo:**[(https://stevenh1607-boop.github.io/iet-estimation-tool_demo/)
+**Live demo:**[(https://stevenh1607-boop.github.io/iet-team-demo/)
 
 ---
 
