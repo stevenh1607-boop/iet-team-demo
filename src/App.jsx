@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, createContext, useContext, useRef, Fragment } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { hydrate as hydrateInvestments, getAll as getAllInvestments, saveAll as saveAllInvestments, removeOne as removeOneInvestment, subscribe as subscribeInvestments } from './lib/investmentsStore';
 
 // ═══════════════════════════════════════════════════════════════════
 // IET ESTIMATION TOOL — FULL SCALE DEMO
@@ -5122,14 +5123,18 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
   const [recentEstimates,  setRecentEstimates]  = useState([]);
   const [importErrorReport, setImportErrorReport] = useState(null);
 
-  // Load from localStorage on mount and on focus
-  const load = () => {
-    try {
-      const raw = localStorage.getItem("iet_investments");
-      if (raw) setSaved(JSON.parse(raw));
-    } catch(e){}
-  };
-  useEffect(()=>{ load(); window.addEventListener("focus",load); return ()=>window.removeEventListener("focus",load); },[]);
+  // Load from Supabase on mount and on focus. hydrate() is async — the
+  // subscribe() callback fires setSaved once the network round-trip resolves,
+  // and again on every subsequent saveAll()/removeOne() anywhere in the app
+  // (including from other tabs/users, picked up on next focus-triggered hydrate).
+  const load = () => { hydrateInvestments(); };
+  useEffect(() => {
+    setSaved(getAllInvestments()); // seed with whatever's already cached (likely [] on first mount)
+    const unsub = subscribeInvestments(setSaved);
+    load();
+    window.addEventListener("focus", load);
+    return () => { unsub(); window.removeEventListener("focus", load); };
+  }, []);
 
   useEffect(() => {
     const recents = getRecentEstimates();
@@ -5142,7 +5147,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
   const commitStatus = (id, newStatus) => {
     const updated = saved.map(s=>s.id===id ? {...s,status:newStatus} : s);
     setSaved(updated);
-    localStorage.setItem("iet_investments", JSON.stringify(updated));
+    saveAllInvestments(updated);
     setEditStatus(null);
   };
 
@@ -5182,7 +5187,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
       };
       const updated = saved.map(s=>s.id===id ? {...s, status:"Approved", rateSnapshot} : s);
       setSaved(updated);
-      localStorage.setItem("iet_investments", JSON.stringify(updated));
+      saveAllInvestments(updated);
       setEditStatus(null);
       setApproveModal(null);
       setApprovePinVal("");
@@ -5196,7 +5201,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
   const del = (id) => {
     const updated = saved.filter(s=>s.id!==id);
     setSaved(updated);
-    localStorage.setItem("iet_investments", JSON.stringify(updated));
+    removeOneInvestment(id);
     if (selected?.id===id) setSelected(null);
   };
 
@@ -5241,7 +5246,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
     };
     const updated = [...saved, promoted];
     setSaved(updated);
-    localStorage.setItem("iet_investments", JSON.stringify(updated));
+    saveAllInvestments(updated);
     setShowCloneModal(false);
     setCloneSource(null);
     setSelected(promoted);
@@ -5954,7 +5959,7 @@ function InvestmentHub({ onLoad, onNew, currentInv, currentLines }) {
     };
     const updated = [...saved, imported];
     setSaved(updated);
-    localStorage.setItem("iet_investments", JSON.stringify(updated));
+    saveAllInvestments(updated);
     setShowImport(false);
     setImportText("");
     setImportPreview(null);
@@ -15159,7 +15164,7 @@ export default function App() {
   const releaseLock = useCallback((recordId, force=false)=>{
     if (!recordId) return;
     try {
-      const existing = JSON.parse(localStorage.getItem("iet_investments")||"[]");
+      const existing = getAllInvestments();
       const updated = existing.map(s=>{
         if (s.id!==recordId || !s._editingBy) return s;
         if (force || (currentUser && s._editingBy.name===currentUser.name)) {
@@ -15167,7 +15172,7 @@ export default function App() {
         }
         return s;
       });
-      localStorage.setItem("iet_investments", JSON.stringify(updated));
+      saveAllInvestments(updated);
     } catch(e) {}
     setEditLockInfo(null);
   },[currentUser]);
@@ -15380,13 +15385,13 @@ export default function App() {
       })(),
     };
     try {
-      const existing = JSON.parse(localStorage.getItem("iet_investments")||"[]");
+      const existing = getAllInvestments();
       // Deduplicate by id only — number+revision is NOT a unique key because
       // multiple option estimates (e.g. Option 1C vs Option 2C) can legitimately
       // share the same Copperleaf number and revision letter. Using number+revision
       // as the eviction predicate would silently delete the earlier option on save.
       const updated = [record, ...existing.filter(s=>s.id!==record.id)];
-      localStorage.setItem("iet_investments", JSON.stringify(updated));
+      saveAllInvestments(updated);
       setCurrentRecordId(record.id);
       setLastSaved(record.savedAt);
       // Clear draft recovery — estimate is now formally saved
@@ -15420,11 +15425,11 @@ export default function App() {
     } else if (currentUser) {
       setEditLockInfo(null);
       try {
-        const existing = JSON.parse(localStorage.getItem("iet_investments")||"[]");
+        const existing = getAllInvestments();
         const updated = existing.map(s=>s.id===record.id
           ? {...s, _editingBy:{name:currentUser.name, role:currentUser.role, since:new Date().toISOString()}}
           : s);
-        localStorage.setItem("iet_investments", JSON.stringify(updated));
+        saveAllInvestments(updated);
       } catch(e) {}
     } else {
       setEditLockInfo(null); // guest viewing — global read-only handles this
@@ -15505,8 +15510,8 @@ export default function App() {
       _amendmentToRevision: newRev,
     };
     try {
-      const existing = JSON.parse(localStorage.getItem("iet_investments")||"[]");
-      localStorage.setItem("iet_investments", JSON.stringify([amendRecord, ...existing]));
+      const existing = getAllInvestments();
+      saveAllInvestments([amendRecord, ...existing]);
     } catch(e) {}
     setInv(amendedInv);
     setCurrentRecordId(newId);
@@ -15706,7 +15711,7 @@ export default function App() {
                   appTab===tab.id?"border-[var(--accent-600)] text-white bg-[var(--primary-800)]":"border-transparent text-[var(--primary-300)] hover:text-white hover:bg-[var(--primary-800)]"}`}>
                 {tab.label}
                 {tab.id==="saved"&&<span className="ml-1 text-xs bg-[var(--primary-700)] text-[var(--primary-200)] px-1.5 py-0.5 rounded-full font-mono">
-                  {(()=>{try{return JSON.parse(localStorage.getItem("iet_investments")||"[]").length}catch{return 0}})()}
+                  {getAllInvestments().length}
                 </span>}
               </button>
             ))}
