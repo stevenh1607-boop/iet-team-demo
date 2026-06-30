@@ -3,5 +3,5 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/iet-estimation-tool_demo/',
+  base: '/iet-team-demo/',
 })
