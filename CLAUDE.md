@@ -3,9 +3,10 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 > **This is the `iet-team-demo` branch** — a team review/demo deployment of the IET Estimation Tool.
-> It differs from the production repo (`iet-estimation-tool_demo`) in one way only:
-> investment records are persisted to a **shared Supabase table** instead of `localStorage`,
-> so all team members see each other's saves. All calculation logic is identical.
+> It differs from the production repo (`iet-estimation-tool_demo`) in its persistence layer only:
+> investment records, user accounts/PINs, and the people directory are all persisted to
+> **shared Supabase tables** instead of `localStorage`, so all team members see each other's
+> saves, PIN edits, and directory changes. All calculation logic is identical.
 > Never merge changes from this repo back into the production repo.
 
 ## Commands
@@ -29,7 +30,11 @@ Vite base path is `/iet-team-demo/` (differs from production repo which uses `/i
 
 ## Supabase backend (team-demo only)
 
-Investment records are stored in a shared Supabase Postgres table instead of `localStorage`.
+Investment records, user accounts/PINs, and the people directory are stored in shared Supabase
+Postgres tables instead of `localStorage`. All three adapters (`investmentsStore.js`,
+`usersStore.js`, `peopleStore.js`) follow the same shape: synchronous `getAll()` backed by an
+in-memory cache seeded with sane defaults, async `hydrate()`, optimistic `saveAll()`/`removeOne()`,
+and `subscribe()` for cross-component reactivity.
 
 ### Environment variables
 
@@ -70,9 +75,49 @@ All 9 call sites in `App.jsx` (`saveInvestment`, `loadInvestment` lock-claim, `r
 `record_data` IS the full record. Promoted columns exist only for indexing/filtering.
 RLS is enabled with a fully open anon policy — acceptable for an internal demo, must not be carried into production.
 
+### Persistence adapter — `src/lib/usersStore.js`
+
+Same interface as `investmentsStore.js`. `getAll()` is seeded with the same three-user
+`DEFAULT_USERS` array that used to live in `App.jsx` (`u1` Steven Hannigan, `u2` Daniel Lawrence,
+`u3` ND Manager) so the login screen never flashes empty before `hydrate()` resolves. Backs the
+Settings → "User Access & PINs" list (`UserAccessSettings`) **and** the login/session/lock-ownership
+mechanism — `currentUser` is matched against this store on every page load and gates write access,
+change-log attribution, and who can force-release an editing lock. This is the **highest-risk**
+piece of the Supabase migration in this repo: a bug here affects who can log in and edit, not just
+what data displays.
+
+`App`'s `users` state hydrates on mount and subscribes to the store, and a dedicated effect
+re-validates `currentUser` against the live `users` list every time it changes:
+- If the matching user's record changed (PIN/role edited on another browser) → `currentUser` is
+  refreshed and the new value is written back to `sessionStorage["iet_session_user"]`.
+- If the matching user was **deleted** from Settings on another browser → the local session is
+  **automatically logged out** (`handleLogout()`). This has no equivalent in the old localStorage
+  version (one browser couldn't previously see another's deletions) — confirmed as wanted behaviour,
+  not a bug, if you see a session unexpectedly log out shortly after a user is removed elsewhere.
+
+### Persistence adapter — `src/lib/peopleStore.js`
+
+Same interface again. `getAll()` is seeded with the ten-person `SAMPLE_PEOPLE` array (also copied
+verbatim from `App.jsx`). Backs the WBS Manager → "People & Roles" tab — an estimator directory used
+for assignment dropdowns only. Unlike `iet_users`, this does **not** gate access; a bad write here
+only affects who shows up in a dropdown, so it carries no login/lock risk.
+
+### Supabase tables — `iet_users` / `iet_people`
+
+Same shape as `iet_investments`: promoted columns for filtering/display, `record_data jsonb` as the
+authoritative full object, open anon RLS (demo-only). Both tables were added additively — running
+their `CREATE TABLE`/seed statements never touches `iet_investments`. Full DDL lives in
+`supabase/schema.sql`. Note: an older, incompatible `iet_people` table (BIGINT PK, `display_name`/
+`is_active` columns, no `record_data`) was defined earlier in `schema.sql` before this migration —
+if that table still exists in a given Supabase project, it must be `DROP TABLE`'d before the new
+`iet_people` DDL can run (the two schemas cannot coexist under the same table name).
+
+`iet_users` seed: `u1`/`u2`/`u3` matching the old `DEFAULT_USERS` PINs (1234 / 2345 / 1607).
+`iet_people` seed: the ten `SAMPLE_PEOPLE` records, `id` cast to `text`.
+
 ### Other localStorage keys unchanged
 
-`iet_programmes`, `iet_custom_templates`, `iet_recents`, `iet_theme`, `iet_session_user`, `iet_draft_recovery` all remain on `localStorage`. Only `iet_investments` moved to Supabase.
+`iet_programmes`, `iet_custom_templates`, `iet_recents`, `iet_theme`, `iet_session_user`, `iet_draft_recovery` all remain on `localStorage`. `iet_investments`, `iet_users`, and `iet_people` are the only keys that moved to Supabase — note `iet_session_user` itself stays local (it's just a pointer/session token; the user record it resolves against is now remote).
 
 ---
 
@@ -82,6 +127,8 @@ The entire application lives in **`src/App.jsx`** (~15,000 lines). Other source 
 - `src/components/ErrorBoundary.jsx`
 - `src/lib/supabaseClient.js` — Supabase client init from env vars
 - `src/lib/investmentsStore.js` — persistence adapter (see above)
+- `src/lib/usersStore.js` — persistence adapter for `iet_users` (see above) — CRITICAL, gates login/lock
+- `src/lib/peopleStore.js` — persistence adapter for `iet_people` (see above) — low risk, directory display only
 
 No routing library — tab state is local React state in the `App` component.
 
@@ -222,4 +269,4 @@ git pull origin main
 ```
 
 The `team` remote alias is not persisted between sessions — re-add it each time if missing.
-The force-push overwrites team-demo's main with production code. The Supabase changes (`src/lib/`, `.gitignore`, `deploy.yml` env block, `vite.config.js` base path) live only in team-demo and must be re-applied if the repo is ever re-created from scratch.
+The force-push overwrites team-demo's main with production code. The Supabase changes (`src/lib/`, `.gitignore`, `deploy.yml` env block, `vite.config.js` base path) live only in team-demo and must be re-applied if the repo is ever re-created from scratch. This now includes three store files (`investmentsStore.js`, `usersStore.js`, `peopleStore.js`), the corresponding `App.jsx` wiring, and the `iet_investments`/`iet_users`/`iet_people` Supabase tables (`supabase/schema.sql`) — a production sync will overwrite `App.jsx`'s localStorage-based user/people code unless these edits are re-applied afterward.
