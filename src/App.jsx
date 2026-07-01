@@ -15047,7 +15047,7 @@ function LoginModal({ users, onLogin, onClose }) {
     </div>
   );
 }
-function ThemeSettings({ theme, onChange, users, setUsers, currentUser }) {
+function ThemeSettings({ theme, onChange, users, setUsers, removeUser, currentUser }) {
   return (
     <div className="flex-1 overflow-auto p-6 bg-gray-50">
       <div className="max-w-3xl mx-auto">
@@ -15895,7 +15895,7 @@ export default function App() {
             </>
           )}
           {appTab==="wbsmanager" && <WBSManager equipSel={equipSel} setEquipSel={setEquipSel} onPriceUpdate={handlePriceUpdate}/>}
-          {appTab==="settings"   && <ThemeSettings theme={theme} onChange={setTheme} users={users} setUsers={setUsers} currentUser={currentUser}/>}
+          {appTab==="settings"   && <ThemeSettings theme={theme} onChange={setTheme} users={users} setUsers={setUsers} removeUser={removeUser} currentUser={currentUser}/>}
           {appTab==="hub"        && <InvestmentHub
             onLoad={(s)=>{loadInvestment(s);}}
             onNew={newEstimate}
