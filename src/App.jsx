@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect, useCallback, createContext, useContext, useRef, Fragment } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { hydrate as hydrateInvestments, getAll as getAllInvestments, saveAll as saveAllInvestments, removeOne as removeOneInvestment, subscribe as subscribeInvestments } from './lib/investmentsStore';
+import { hydrate as hydrateUsers, getAll as getAllUsers, saveAll as saveAllUsers, removeOne as removeOneUser, subscribe as subscribeUsers } from './lib/usersStore';
+import { hydrate as hydratePeople, getAll as getAllPeople, saveAll as saveAllPeople, removeOne as removeOnePerson, subscribe as subscribePeople } from './lib/peopleStore';
 
 // ═══════════════════════════════════════════════════════════════════
 // IET ESTIMATION TOOL — FULL SCALE DEMO
@@ -10374,13 +10376,13 @@ function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
   const [tab,          setTab]         = useState("items");
   const [search,       setSearch]      = useState("");
   const [scopeFilter,  setScopeFilter] = useState("All");
-  const [people, setPeople] = useState(()=>{
-    try{
-      const raw=localStorage.getItem("iet_people");
-      return raw?JSON.parse(raw):SAMPLE_PEOPLE;
-    }catch(e){return SAMPLE_PEOPLE;}
-  });
-  const savePeople = (p)=>{ setPeople(p); localStorage.setItem("iet_people",JSON.stringify(p)); };
+  const [people, setPeople] = useState(() => getAllPeople());
+  const savePeople = (p) => { saveAllPeople(p); };
+  useEffect(() => {
+    hydratePeople();
+    const unsub = subscribePeople(setPeople);
+    return unsub;
+  }, []);
   const [showAdd,      setShowAdd]     = useState(false);
   const [newP,         setNewP]        = useState({name:"",email:"",role:"Estimator",team:"Zone Substation",canReview:false});
   const [peopleFilter, setPeopleFilter]= useState("active"); // "all"|"active"|"inactive"
@@ -10480,7 +10482,7 @@ function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
     savePeople(people.map(x=>x.id===id?{...x,active:val}:x));
   };
   const deletePerson=(id)=>{
-    savePeople(people.filter(x=>x.id!==id));
+    removeOnePerson(id);
     setDeletePersonModal(null); setDeletePersonStage(1);
   };
 
@@ -14889,43 +14891,27 @@ const ROLES = [
   "Estimation Senior Specialist",
   "Estimation Specialist",
 ];
-const DEFAULT_USERS = [
-  {id:"u1", name:"Steven Hannigan", role:"Estimation Senior Specialist", pin:"1234"},
-  {id:"u2", name:"Daniel Lawrence",  role:"ND Team Leader",               pin:"2345"},
-  {id:"u3", name:"ND Manager",       role:"ND Manager",                   pin:"1607"},
-];
 const ROLES_THAT_CAN_RELEASE_LOCKS = ["ND Manager","ND Team Leader"];
 
-const loadUsers = () => {
-  try {
-    const raw = localStorage.getItem("iet_users");
-    if (raw) return JSON.parse(raw);
-  } catch(e) {}
-  return DEFAULT_USERS;
-};
-const saveUsers = (users) => {
-  try { localStorage.setItem("iet_users", JSON.stringify(users)); } catch(e) {}
-};
-
-function UserAccessSettings({ users, setUsers, currentUser }) {
+function UserAccessSettings({ users, setUsers, removeUser, currentUser }) {
   const [showPins, setShowPins] = useState(false);
   const [draft, setDraft] = useState({ name:"", role:ROLES[ROLES.length-1], pin:"" });
   const [error, setError] = useState("");
 
   const update = (id, field, val) => {
     const updated = users.map(u=>u.id===id?{...u,[field]:val}:u);
-    setUsers(updated); saveUsers(updated);
+    setUsers(updated);
   };
   const remove = (id) => {
-    const updated = users.filter(u=>u.id!==id);
-    setUsers(updated); saveUsers(updated);
+    setUsers(users.filter(u=>u.id!==id));
+    removeUser(id);
   };
   const addUser = () => {
     setError("");
     if (!draft.name.trim()) { setError("Enter a name."); return; }
     if (!/^\d{4}$/.test(draft.pin)) { setError("PIN must be exactly 4 digits."); return; }
     const updated = [...users, { id:`u_${Date.now()}`, name:draft.name.trim(), role:draft.role, pin:draft.pin }];
-    setUsers(updated); saveUsers(updated);
+    setUsers(updated);
     setDraft({ name:"", role:ROLES[ROLES.length-1], pin:"" });
   };
 
@@ -15103,7 +15089,7 @@ function ThemeSettings({ theme, onChange, users, setUsers, currentUser }) {
           </div>
         </div>
 
-        <UserAccessSettings users={users} setUsers={setUsers} currentUser={currentUser}/>
+        <UserAccessSettings users={users} setUsers={setUsers} removeUser={removeUser} currentUser={currentUser}/>
       </div>
     </div>
   );
@@ -15136,15 +15122,21 @@ export default function App() {
   }, [theme]);
 
   // ── User access / login ────────────────────────────────────────
-  const [users, setUsersState] = useState(() => loadUsers());
-  const setUsers = useCallback((u)=>{ setUsersState(u); saveUsers(u); }, []);
+  const [users, setUsersState] = useState(() => getAllUsers());
+  const setUsers = useCallback((u) => { saveAllUsers(u); }, []);
+  const removeUser = useCallback((id) => { removeOneUser(id); }, []);
+  useEffect(() => {
+    hydrateUsers();
+    const unsub = subscribeUsers(setUsersState);
+    return unsub;
+  }, []);
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const raw = sessionStorage.getItem("iet_session_user");
       if (!raw) return null;
       const sess = JSON.parse(raw);
       // Re-validate against the live user list (PIN/role may have changed)
-      const fresh = loadUsers().find(u=>u.id===sess.id);
+      const fresh = getAllUsers().find(u=>u.id===sess.id);
       return fresh || null;
     } catch { return null; }
   });
@@ -15158,6 +15150,18 @@ export default function App() {
     setCurrentUser(null);
     try { sessionStorage.removeItem("iet_session_user"); } catch(e) {}
   },[]);
+  // Re-validate currentUser whenever the users list updates (catches PIN/role edits
+  // made on another browser once hydrate resolves, and forces logout if that user was removed).
+  useEffect(() => {
+    if (!currentUser) return;
+    const fresh = users.find(u => u.id === currentUser.id);
+    if (fresh && JSON.stringify(fresh) !== JSON.stringify(currentUser)) {
+      setCurrentUser(fresh);
+      try { sessionStorage.setItem("iet_session_user", JSON.stringify(fresh)); } catch(e) {}
+    } else if (!fresh) {
+      handleLogout();
+    }
+  }, [users]); // eslint-disable-line react-hooks/exhaustive-deps
   // Lock info for the estimate currently open: {name, role, since} of whoever else has it open
   const [editLockInfo, setEditLockInfo] = useState(null);
   // Release the edit-lock on a record (if held by currentUser, or forced by a manager/team leader)

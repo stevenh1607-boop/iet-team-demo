@@ -219,3 +219,64 @@ CREATE TRIGGER investments_updated_at
 CREATE TRIGGER estimate_lines_updated_at
   BEFORE UPDATE ON estimate_lines
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ── IET_USERS (team-demo only — mirrors iet_investments pattern) ────
+-- Run in Supabase SQL Editor after deploying iet-team-demo.
+-- The update_updated_at() function above must exist first.
+CREATE TABLE IF NOT EXISTS iet_users (
+  id          text PRIMARY KEY,
+  name        text NOT NULL,
+  role        text NOT NULL,
+  pin         text NOT NULL,
+  record_data jsonb NOT NULL,
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE iet_users ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "open anon access - demo only" ON iet_users
+  FOR ALL USING (true) WITH CHECK (true);
+CREATE TRIGGER iet_users_updated_at
+  BEFORE UPDATE ON iet_users
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+INSERT INTO iet_users (id, name, role, pin, record_data) VALUES
+  ('u1', 'Steven Hannigan', 'Estimation Senior Specialist', '1234',
+    '{"id":"u1","name":"Steven Hannigan","role":"Estimation Senior Specialist","pin":"1234"}'::jsonb),
+  ('u2', 'Daniel Lawrence', 'ND Team Leader', '2345',
+    '{"id":"u2","name":"Daniel Lawrence","role":"ND Team Leader","pin":"2345"}'::jsonb),
+  ('u3', 'ND Manager', 'ND Manager', '1607',
+    '{"id":"u3","name":"ND Manager","role":"ND Manager","pin":"1607"}'::jsonb)
+ON CONFLICT (id) DO NOTHING;
+
+-- ── IET_PEOPLE (team-demo only — replaces old iet_people schema above) ──
+-- Drop the old BIGINT-PK iet_people if it exists from the earlier schema version,
+-- then create the new text-PK version matching the iet_investments pattern.
+-- WARNING: only run this if the old table has no live data you need to keep.
+-- DROP TABLE IF EXISTS iet_people;   -- uncomment if replacing the old schema
+CREATE TABLE IF NOT EXISTS iet_people (
+  id          text PRIMARY KEY,
+  name        text NOT NULL,
+  email       text,
+  role        text,
+  team        text,
+  can_review  boolean DEFAULT false,
+  active      boolean DEFAULT true,
+  record_data jsonb NOT NULL,
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE iet_people ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "open anon access - demo only" ON iet_people
+  FOR ALL USING (true) WITH CHECK (true);
+CREATE TRIGGER iet_people_updated_at
+  BEFORE UPDATE ON iet_people
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+INSERT INTO iet_people (id, name, email, role, team, can_review, active, record_data) VALUES
+  ('1','Daniel Lawrence','d.lawrence@essentialenergy.com.au','Lead Estimator','Zone Substation',true,true,'{"id":1,"name":"Daniel Lawrence","email":"d.lawrence@essentialenergy.com.au","role":"Lead Estimator","team":"Zone Substation","canReview":true,"active":true}'::jsonb),
+  ('2','Steven Hannigan','s.hannigan@essentialenergy.com.au','Lead Estimator','Zone Substation',true,true,'{"id":2,"name":"Steven Hannigan","email":"s.hannigan@essentialenergy.com.au","role":"Lead Estimator","team":"Zone Substation","canReview":true,"active":true}'::jsonb),
+  ('3','Richard Gonzalez','r.gonzalez@essentialenergy.com.au','Senior Estimator','Subtransmission',true,true,'{"id":3,"name":"Richard Gonzalez","email":"r.gonzalez@essentialenergy.com.au","role":"Senior Estimator","team":"Subtransmission","canReview":true,"active":true}'::jsonb),
+  ('4','Wayne Trezise','w.trezise@essentialenergy.com.au','Senior Estimator','Commissioning',true,true,'{"id":4,"name":"Wayne Trezise","email":"w.trezise@essentialenergy.com.au","role":"Senior Estimator","team":"Commissioning","canReview":true,"active":true}'::jsonb),
+  ('5','Joshua Walker','j.walker@essentialenergy.com.au','Estimator','Zone Substation',false,true,'{"id":5,"name":"Joshua Walker","email":"j.walker@essentialenergy.com.au","role":"Estimator","team":"Zone Substation","canReview":false,"active":true}'::jsonb),
+  ('6','Matt Baker','m.baker@essentialenergy.com.au','Estimator','Communications',false,true,'{"id":6,"name":"Matt Baker","email":"m.baker@essentialenergy.com.au","role":"Estimator","team":"Communications","canReview":false,"active":true}'::jsonb),
+  ('7','Ryan Evans','r.evans@essentialenergy.com.au','Estimator','Civil & Earthing',false,true,'{"id":7,"name":"Ryan Evans","email":"r.evans@essentialenergy.com.au","role":"Estimator","team":"Civil & Earthing","canReview":false,"active":true}'::jsonb),
+  ('8','Stephanie Dewar','s.dewar@essentialenergy.com.au','Project Manager','Zone Substation',true,true,'{"id":8,"name":"Stephanie Dewar","email":"s.dewar@essentialenergy.com.au","role":"Project Manager","team":"Zone Substation","canReview":true,"active":true}'::jsonb),
+  ('9','Adrian Bruce','a.bruce@essentialenergy.com.au','Estimator','Subtransmission',false,true,'{"id":9,"name":"Adrian Bruce","email":"a.bruce@essentialenergy.com.au","role":"Estimator","team":"Subtransmission","canReview":false,"active":true}'::jsonb),
+  ('10','Ben Morgan','b.morgan@essentialenergy.com.au','Estimator','Zone Substation',false,false,'{"id":10,"name":"Ben Morgan","email":"b.morgan@essentialenergy.com.au","role":"Estimator","team":"Zone Substation","canReview":false,"active":false}'::jsonb)
+ON CONFLICT (id) DO NOTHING;
