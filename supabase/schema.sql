@@ -280,3 +280,59 @@ INSERT INTO iet_people (id, name, email, role, team, can_review, active, record_
   ('9','Adrian Bruce','a.bruce@essentialenergy.com.au','Estimator','Subtransmission',false,true,'{"id":9,"name":"Adrian Bruce","email":"a.bruce@essentialenergy.com.au","role":"Estimator","team":"Subtransmission","canReview":false,"active":true}'::jsonb),
   ('10','Ben Morgan','b.morgan@essentialenergy.com.au','Estimator','Zone Substation',false,false,'{"id":10,"name":"Ben Morgan","email":"b.morgan@essentialenergy.com.au","role":"Estimator","team":"Zone Substation","canReview":false,"active":false}'::jsonb)
 ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================
+-- iet_equipment_pricing — live-editable equipment/materials pricing
+-- (team-demo only — Live Equipment Pricing Phase 1, 2026-07-01)
+-- Added additively. Does not alter iet_investments, iet_users, or iet_people.
+-- One row per wbs_code (granular, not a blob-per-file) so concurrent
+-- edits to different rows never clobber each other.
+--
+-- Scope note: source data audited against public/data/equipment_pricing.json
+-- on 2026-07-01 contains only 333 items across PCE(135)/SCADA(104)/Comms(42)/
+-- Assembly(41)/Civil(11) — there is no "Inventory" source in that file. A
+-- separate public/data/inventory_materials.json exists (5,397 rows) but has
+-- no wbs_code/source fields and cannot be keyed into this schema as-is.
+-- Inventory pricing is therefore deferred until its WBS-mapped source is
+-- identified — this table and seed cover the 5 confirmed sources only.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS iet_equipment_pricing (
+  wbs_code     TEXT PRIMARY KEY,
+  source       TEXT NOT NULL,          -- PCE | SCADA | Comms | Civil | Assembly
+  record_data  JSONB NOT NULL,         -- full item object — authoritative, same shape as equipment_pricing.json values
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_by   TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_iet_equipment_pricing_source ON iet_equipment_pricing(source);
+
+ALTER TABLE iet_equipment_pricing ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "open anon access - demo only" ON iet_equipment_pricing
+  FOR ALL USING (true) WITH CHECK (true);
+
+-- Reuses update_updated_at(), already defined above for iet_users/iet_people.
+CREATE TRIGGER iet_equipment_pricing_updated_at
+  BEFORE UPDATE ON iet_equipment_pricing
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================================
+-- iet_price_change_log — append-only audit trail for pricing publishes.
+-- Every equipmentPricingStore.saveAll() write is paired with a call to
+-- logPriceChange() so publishes are always traceable (who/when/what),
+-- even though there is no approval gate on this self-service flow.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS iet_price_change_log (
+  id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  wbs_code    TEXT NOT NULL,
+  field       TEXT NOT NULL,
+  old_value   TEXT,
+  new_value   TEXT,
+  changed_by  TEXT,
+  changed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_iet_price_change_log_wbs_code ON iet_price_change_log(wbs_code);
+
+ALTER TABLE iet_price_change_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "open anon access - demo only" ON iet_price_change_log
+  FOR ALL USING (true) WITH CHECK (true);
