@@ -158,7 +158,7 @@ function downloadErrorReport(errorReport, estimateNumber) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ── DATA CONTEXT ────────────────────────────────────────────────
-const DataCtx = createContext({ wbs:[], supply:[], equipment:[], equipLookup:{}, commLookup:{}, commProfiles:{}, escRates:null, resourceCodes:{}, invMats:[], matAssemblies:[], equipPricing:{}, loading:true, error:null });
+const DataCtx = createContext({ wbs:[], supply:[], equipment:[], equipLookup:{}, commLookup:{}, commProfiles:{}, escRates:null, resourceCodes:{}, matAssemblies:[], equipPricing:{}, loading:true, error:null });
 
 // ── COPPERLEAF CSV EXPORT ────────────────────────────────────────
 // Matches Sync_To_C55 macro structure exactly:
@@ -1482,138 +1482,6 @@ function WBSNavTree({ wbs, supply, activePhase, setActivePhase, selectedL4, onSe
 
 
 // ── ESTIMATION SCREEN ────────────────────────────────────────────
-// ── INVENTORY & ASSEMBLY LOOKUP PANEL ────────────────────────────
-// Searchable lookup for Inventory Materials and Material Assemblies
-// shown as a collapsible drawer in the cost detail panel
-function InvMatsLookup({ wbsCode }) {
-  const { invMats, matAssemblies } = useData();
-  const [open,    setOpen]    = useState(false);
-  const [tab,     setTab]     = useState("assembly"); // "assembly" | "inventory"
-  const [search,  setSearch]  = useState("");
-
-  // Find assembly matching this WBS code
-  const matchAssembly = matAssemblies.find(a => a.wbs_code === wbsCode);
-
-  const filteredInv = useMemo(() => {
-    if (!search.trim()) return invMats.slice(0, 50);
-    const q = search.toLowerCase();
-    return invMats.filter(i =>
-      (i.description||"").toLowerCase().includes(q) ||
-      (i.item_number||"").toLowerCase().includes(q) ||
-      (i.category||"").toLowerCase().includes(q)
-    ).slice(0, 80);
-  }, [invMats, search]);
-
-  const fmtP = v => v > 0 ? `$${v.toFixed(2)}` : "—";
-
-  return (
-    <div className="border-t border-gray-100 mt-2">
-      <button onClick={()=>setOpen(o=>!o)}
-        className="flex items-center gap-1.5 text-xs text-[var(--primary-700)] hover:text-[var(--primary-900)] py-1.5 font-medium w-full">
-        <span>{open ? "▾" : "▸"}</span>
-        <span>📦 Inventory Materials & Assemblies Lookup</span>
-        {matchAssembly && <span className="bg-[var(--primary-100)] text-[var(--primary-700)] rounded px-1.5 py-0.5 text-[10px] ml-1">Assembly available</span>}
-      </button>
-
-      {open && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-2">
-          {/* Tabs */}
-          <div className="flex border-b border-gray-200 bg-white">
-            {[
-              {id:"assembly", label:`🔧 Assembly${matchAssembly?" (matched)":""}`},
-              {id:"inventory", label:"📋 Inventory Materials"},
-            ].map(t=>(
-              <button key={t.id} onClick={()=>setTab(t.id)}
-                className={`text-xs px-3 py-2 font-medium border-b-2 transition-colors ${tab===t.id?"border-[var(--primary-600)] text-[var(--primary-700)]":"border-transparent text-gray-500 hover:text-gray-700"}`}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {tab==="assembly" && (
-            <div className="p-3">
-              {matchAssembly ? (
-                <>
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <div className="text-xs font-bold text-gray-800">{matchAssembly.description}</div>
-                      <div className="text-[10px] text-gray-400">{matchAssembly.wbs_code} · Ref: {matchAssembly.reference||"—"}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs font-bold text-[var(--primary-700)]">{matchAssembly.total_cost ? `$${matchAssembly.total_cost.toFixed(2)}` : "—"}</div>
-                      <div className="text-[10px] text-gray-400">total assembly cost</div>
-                    </div>
-                  </div>
-                  <table className="w-full text-[10px] border-collapse">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="text-left px-2 py-1">Description</th>
-                        <th className="text-left px-2 py-1">Inv Code</th>
-                        <th className="text-right px-2 py-1">Qty</th>
-                        <th className="text-left px-2 py-1">UOM</th>
-                        <th className="text-right px-2 py-1">Unit Rate</th>
-                        <th className="text-right px-2 py-1">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {matchAssembly.components.map((c,i)=>(
-                        <tr key={i} className={i%2===0?"bg-white":"bg-gray-50"}>
-                          <td className="px-2 py-0.5 text-gray-700">{c.description}</td>
-                          <td className="px-2 py-0.5 font-mono text-gray-400">{c.inv_code||"—"}</td>
-                          <td className="px-2 py-0.5 text-right">{c.qty}</td>
-                          <td className="px-2 py-0.5 text-gray-400">{c.uom}</td>
-                          <td className="px-2 py-0.5 text-right">{c.unit_price ? `$${c.unit_price.toFixed(2)}` : "—"}</td>
-                          <td className="px-2 py-0.5 text-right font-semibold">{c.total ? `$${c.total.toFixed(2)}` : "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </>
-              ) : (
-                <div className="text-xs text-gray-400 py-4 text-center">No pre-built assembly found for WBS {wbsCode}</div>
-              )}
-            </div>
-          )}
-
-          {tab==="inventory" && (
-            <div className="p-2">
-              <input value={search} onChange={e=>setSearch(e.target.value)}
-                placeholder="Search inventory by description, item number or category…"
-                className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs mb-2 focus:outline-none focus:ring-1 focus:ring-[var(--primary-400)]"/>
-              <div className="max-h-48 overflow-y-auto">
-                <table className="w-full text-[10px] border-collapse">
-                  <thead className="sticky top-0 bg-gray-100">
-                    <tr>
-                      <th className="text-left px-2 py-1">Item #</th>
-                      <th className="text-left px-2 py-1">Description</th>
-                      <th className="text-left px-2 py-1">Category</th>
-                      <th className="text-left px-2 py-1">UOM</th>
-                      <th className="text-right px-2 py-1">Last Price</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredInv.map((item,i)=>(
-                      <tr key={i} className={i%2===0?"bg-white":"bg-gray-50"}>
-                        <td className="px-2 py-0.5 font-mono text-gray-500">{item.item_number}</td>
-                        <td className="px-2 py-0.5 text-gray-700">{item.description}</td>
-                        <td className="px-2 py-0.5 text-gray-400">{item.category}</td>
-                        <td className="px-2 py-0.5 text-gray-400">{item.uom}</td>
-                        <td className="px-2 py-0.5 text-right font-semibold text-[var(--primary-700)]">{fmtP(item.last_price)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {!search && invMats.length > 50 && (
-                  <div className="text-[10px] text-gray-400 text-center py-1">Showing 50 of {invMats.length} — search to filter</div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // Thin wrapper that scrolls the selected commissioning group into view
 function CommScrollList({ selectedCommGroup, children }) {
@@ -10100,10 +9968,10 @@ function WBSIntegrityPanel({ wbs, supply, nullApproved, toggleNullApproved }) {
 }
 
 // ── SOURCE PRICING EDITOR ────────────────────────────────────────
-// Unified editor for Civil & Building, Material Assemblies, Inventory Materials.
-// All three share the same equipment_pricing.json store and the same
+// Unified editor for Civil & Building and Material Assemblies.
+// Both share the same equipment_pricing.json store and the same
 // base_price / esc_rate / escalated_price fields — this one component
-// handles all three, filtered by source tag.
+// handles both, filtered by source tag.
 function SourcePricingEditor({ source, label, managerMode, onUnlock }) {
   const { equipPricing: ctxPricing, matAssemblies } = useData();
   const [localPricing, setLocalPricing] = useState(null);
@@ -10133,7 +10001,6 @@ function SourcePricingEditor({ source, label, managerMode, onUnlock }) {
 
   // Whether this source has base_price/esc_rate (live re-escalation capable)
   // vs pre-escalated only (Civil, Assembly)
-  const hasLiveEsc = source === "Inventory";
   const hasSomeEsc = source !== "Civil" && source !== "Assembly";
 
   const startEdit = (r) => {
@@ -10193,7 +10060,6 @@ function SourcePricingEditor({ source, label, managerMode, onUnlock }) {
   const srcColour = {
     Civil:     "bg-amber-100 text-amber-800 border-amber-300",
     Assembly:  "bg-purple-100 text-purple-800 border-purple-300",
-    Inventory: "bg-teal-100 text-teal-800 border-teal-300",
   }[source] || "bg-gray-100 text-gray-700 border-gray-300";
 
   // Assembly source: render 2-col card grid from matAssemblies data
@@ -10494,7 +10360,6 @@ function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
     {id:"eqpricing",  label:"💲 Equipment Pricing",    count:null},
     {id:"civil",      label:"🏗️ Civil & Building",     count:null},
     {id:"assemblies", label:"🔩 Material Assemblies",  count:null},
-    {id:"inventory",  label:"📦 Inventory Materials",  count:null},
     {id:"escalation", label:"📈 Escalation Rates",     count:null},
     {id:"scaling",    label:"📐 Comm Scaling",          count:WBS_PROFILES.length},
     {id:"people",     label:"👥 People & Roles",        count:people.filter(p=>p.active).length},
@@ -10620,11 +10485,6 @@ function WBSManager({ equipSel, setEquipSel, onPriceUpdate }) {
       {/* Material Assemblies */}
       {tab==="assemblies"&&(
         <SourcePricingEditor source="Assembly" label="Material Assemblies" managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
-      )}
-
-      {/* Inventory Materials */}
-      {tab==="inventory"&&(
-        <SourcePricingEditor source="Inventory" label="Inventory Materials" managerMode={managerMode} onUnlock={()=>setShowPinModal(true)}/>
       )}
 
       {/* Escalation Rates */}
@@ -14777,7 +14637,7 @@ const HELP_CONTENT = [
       {heading:"PIN-gated Manager Mode", body:`By default you can look at every tab but not change anything. Click the padlock 'Manager Mode' button and enter the manager PIN to unlock editing. Until then, edit buttons and inputs stay hidden. The unlock applies while you are in that tab; the People tab and Equipment Catalogue have their own unlock as well.`},
       {heading:"WBS item catalogue", body:`The WBS Item Editor tab lists every work item with its description, scope, delivery method, resources, unit of measure, contractor rate, EE labour rate, standard hours, materials price, plant cost, and its install/commission links. You can search, filter by phase or scope, and switch on 'Gaps only' to find items with no pricing at all (flagged GAP in amber). In Manager Mode you click a row to edit any field inline, or use the Add WBS Item wizard to create new ones; duplicate codes are blocked.`},
       {heading:"Resource rates editor", body:`The Resource Rates tab holds the labour and resource rate library: EE Internal, EE Internal +20% overtime (the rate actually used for internal WBS calculations), EE Commercial, contractor rate, ANS margin percent, the unit type (Hour, Dollar or Day), and the various craft and account codes used for export. In Manager Mode you click a row, edit the rates and codes, then save. These rates feed straight into how labour is costed on every estimate.`},
-      {heading:"Equipment, civil, assembly & inventory pricing", body:`Separate tabs cover equipment pricing (PCE/long-lead, SCADA and Comms), Civil & Building, Material Assemblies, and Inventory Materials. For inventory and equipment you enter a base price, an escalation percent and a price date, and the tool works out the current escalated price; civil and assembly items show a pre-escalated price you edit directly. The escalated price becomes the materials cost on estimates, and the tool flags prices older than two years so you know what needs refreshing.`},
+      {heading:"Equipment, civil & assembly pricing", body:`Separate tabs cover equipment pricing (PCE/long-lead, SCADA and Comms), Civil & Building, and Material Assemblies. For equipment you enter a base price, an escalation percent and a price date, and the tool works out the current escalated price; civil and assembly items show a pre-escalated price you edit directly. The escalated price becomes the materials cost on estimates, and the tool flags prices older than two years so you know what needs refreshing.`},
       {heading:"Escalation rates (FY2026–FY2029)", body:`The Escalation Rates tab sets the annual percentage rise for Internal Labour, Contractors and Materials across each Australian financial year (FY2026 through FY2029), based on the ABS construction price index. It shows a worked example of the resulting escalation factor for the Planning, Design and Construction phases so you can see the effect before relying on it. These rates apply across every estimate's cost-over-time calculation.`},
       {heading:"Commission scaling & WBS assignment", body:`The Comm Scaling tab manages volume-discount profiles for commissioning: each profile has quantity tiers with a scale percent (for example, the more units, the lower the per-unit rate). You can edit tiers, set a profile's status (Confirmed, Pending, Draft), and on the WBS Assignment sub-tab choose which scaling profile each commissioning item uses by default. Changing a default here affects all future estimates.`},
       {heading:"Integrity checks & People/Roles", body:`The Link Integrity tab runs health checks on the catalogue: broken or wrong-scope install links, install/commission rows missing standard hours, and equipment with an install link but no commission link. You can tick items as 'approved' so known, intentional gaps stop being flagged. The People & Roles tab manages who can be selected on estimates and who can review them, with the option to make people inactive (preserving their history) rather than deleting them.`},
@@ -15247,7 +15107,6 @@ export default function App() {
   const handlePriceUpdate = useCallback((key, updatedRow) => {
     setEquipPricing(prev => ({ ...prev, [key]: updatedRow }));
   }, []);
-  const [invMats,      setInvMats]      = useState([]);
   const [matAssemblies,setMatAssemblies]= useState([]);
   const [equipSel,    setEquipSel]    = useState({});
   const [loading,     setLoading]     = useState(true);
@@ -15263,10 +15122,9 @@ export default function App() {
       fetch(`${BASE}data/escalation_rates.json`).then(r=>{if(!r.ok)return null;return r.json();}).catch(()=>null),
       fetch(`${BASE}data/resource_codes.json`).then(r=>{if(!r.ok)return {};return r.json();}).catch(()=>({})),
       fetch(`${BASE}data/equipment_pricing.json`).then(r=>{if(!r.ok)return {};return r.json();}).catch(()=>({})),
-      fetch(`${BASE}data/inventory_materials.json`).then(r=>{if(!r.ok)return [];return r.json();}).catch(()=>[]),
       fetch(`${BASE}data/material_assemblies.json`).then(r=>{if(!r.ok)return [];return r.json();}).catch(()=>[]),
     ])
-    .then(([wbs,supply,equip,lookup,commLookup,escRatesData,resourceCodesData,equipPricingData,invMatsData,matAssData])=>{
+    .then(([wbs,supply,equip,lookup,commLookup,escRatesData,resourceCodesData,equipPricingData,matAssData])=>{
       setWbsData(wbs.records||[]);
       setSupplyData(supply.items||[]);
       // Normalise equipment items into the shape EquipmentScreen expects
@@ -15312,7 +15170,6 @@ export default function App() {
         : (resourceCodesData || {});
       setResourceCodes(rcByName);
       setEquipPricing(equipPricingData || {});
-      setInvMats(Array.isArray(invMatsData) ? invMatsData : []);
       setMatAssemblies(Array.isArray(matAssData) ? matAssData : []);
       setLoading(false);
     })
@@ -15664,7 +15521,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-    <DataCtx.Provider value={{wbs:wbsData,supply:resolvedSupply,equipment:resolvedEquipment,equipLookup,commLookup,commProfiles,escRates,resourceCodes:(Object.keys(activeSnapshot?.resourceCodes||{}).length ? activeSnapshot.resourceCodes : resourceCodes),equipPricing,invMats,matAssemblies,loading,error}}>
+    <DataCtx.Provider value={{wbs:wbsData,supply:resolvedSupply,equipment:resolvedEquipment,equipLookup,commLookup,commProfiles,escRates,resourceCodes:(Object.keys(activeSnapshot?.resourceCodes||{}).length ? activeSnapshot.resourceCodes : resourceCodes),equipPricing,matAssemblies,loading,error}}>
       <div className="flex flex-col h-screen font-sans text-sm select-none">
 
         {/* Top nav — white logo band + accent swoosh + primary nav */}
